@@ -34659,7 +34659,7 @@ async function getActivityLog(octokit, context, branchName, path) {
     // If the activity log branch exists, check if the activity log file exists
     try {
         // Get the activity log file contents
-        const { data: activityLog } = await octokit.rest.repos.getContent({
+        const { data } = await octokit.rest.repos.getContent({
             mediaType: {
                 format: 'raw',
             },
@@ -34667,7 +34667,9 @@ async function getActivityLog(octokit, context, branchName, path) {
             path,
             ref: branchName,
         });
-        // @ts-expect-error
+        const activityLog = Buffer.from(
+        // @ts-ignore
+        data?.content, 'base64').toString('utf8');
         return activityLog;
     }
     catch (error) {
