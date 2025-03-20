@@ -2,7 +2,7 @@ import * as core from '@actions/core';
 import { OctokitClient } from '@dormant-accounts/github';
 
 /**
- * Creates a new branch in the specified repository.
+ * Fetches the activity log from the specified branch.
  * @param octokit - The Octokit client instance.
  * @param context - The context containing the owner and repo information.
  * @param branchName - The name of the new branch to create.
@@ -14,6 +14,8 @@ export async function getActivityLog(
   path: string,
 ) {
   core.debug(`checking if activity log exists on branch: ${branchName}`);
+  core.debug(`checking if activity log exists on path: ${path}`);
+
   // If the activity log branch exists, check if the activity log file exists
   try {
     // Get the activity log file contents
