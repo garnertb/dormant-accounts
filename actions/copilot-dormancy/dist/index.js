@@ -34684,6 +34684,9 @@ async function run() {
         });
         // Fetch latest activity if needed
         await check.fetchActivity();
+        if (core.isDebug()) {
+            core.debug(`Fetched activity: ${safeStringify(await check.getDatabaseData())}`);
+        }
         // Get dormant and active accounts
         const dormantAccounts = await check.listDormantAccounts();
         const activeAccounts = await check.listActiveAccounts();
@@ -34743,6 +34746,7 @@ async function run() {
         const errorMessage = error instanceof Error ? error.message : String(error);
         core.setFailed(`Action failed with error: ${errorMessage}`);
         core.setOutput('error', errorMessage);
+        throw error; // Rethrow the error to ensure the action fails
     }
 }
 run();
