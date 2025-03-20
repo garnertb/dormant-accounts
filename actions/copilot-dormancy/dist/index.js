@@ -34660,9 +34660,6 @@ async function getActivityLog(octokit, context, branchName, path) {
     try {
         // Get the activity log file contents
         const { data } = await octokit.rest.repos.getContent({
-            mediaType: {
-                format: 'raw',
-            },
             ...context,
             path,
             ref: branchName,
