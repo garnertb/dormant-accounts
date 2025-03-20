@@ -61,6 +61,7 @@ async function run(): Promise<void> {
     const notificationRepo = core.getInput('notifications-repo');
     const notificationDuration = core.getInput('notifications-duration');
     const notificationBody = core.getInput('notifications-body');
+    const checkType = 'copilot-dormancy';
 
     const [owner, repo] = activityLogRepo.split('/');
 
@@ -71,6 +72,7 @@ async function run(): Promise<void> {
     }
 
     const activityLogContext = {
+      path: `${checkType}.json`,
       repo: {
         owner: owner as string,
         repo: repo as string,
@@ -93,22 +95,21 @@ async function run(): Promise<void> {
 
     // Initialize GitHub client
     const octokit = github.getOctokit(token);
-    const checkType = 'copilot-dormancy';
 
     const activityLog = await getActivityLog(
       octokit,
       activityLogContext.repo,
       checkType,
-      checkType,
+      activityLogContext.path,
     );
 
     if (activityLog) {
       core.info('Activity log exists, fetching latest activity...');
       await writeFile(
-        `${checkType}.json`,
+        activityLogContext.path,
         JSON.stringify(activityLog, null, 2),
       );
-      core.info(`Activity log fetched and saved to ${checkType}.json`);
+      core.info(`Activity log fetched and saved to ${activityLogContext.path}`);
     } else {
       core.info('Activity log does not exist, creating new one...');
     }
@@ -163,7 +164,6 @@ async function run(): Promise<void> {
         const contentBase64 = Buffer.from(
           JSON.stringify(content, null, 2),
         ).toString('base64');
-        const path = `${checkType}.json`;
 
         if (!dryRun) {
           await createBranch(octokit, activityLogContext.repo, checkType);
@@ -172,7 +172,7 @@ async function run(): Promise<void> {
             owner: owner as string,
             repo: repo as string,
             branch: checkType,
-            path,
+            path: activityLogContext.path,
             message: `Update Copilot dormancy log for ${dateStamp}`,
             content: contentBase64,
             committer: {
@@ -181,10 +181,12 @@ async function run(): Promise<void> {
             },
           });
 
-          core.info(`Activity log saved to ${org}/${activityLogRepo}/${path}`);
+          core.info(
+            `Activity log saved to ${org}/${activityLogRepo}/${activityLogContext.path}`,
+          );
         } else {
           core.info(
-            `Dry run: Activity log would be saved to ${org}/${activityLogRepo}/${path}`,
+            `Dry run: Activity log would be saved to ${org}/${activityLogRepo}/${activityLogContext.path}`,
           );
         }
       } catch (error) {
