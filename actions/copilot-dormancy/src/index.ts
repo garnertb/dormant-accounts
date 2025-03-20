@@ -92,7 +92,9 @@ async function run(): Promise<void> {
     await check.fetchActivity();
 
     if (core.isDebug()) {
-      core.debug(`Fetched activity: ${safeStringify(check.getDatabaseData())}`);
+      core.debug(
+        `Fetched activity: ${safeStringify(await check.getDatabaseData())}`,
+      );
     }
 
     // Get dormant and active accounts
