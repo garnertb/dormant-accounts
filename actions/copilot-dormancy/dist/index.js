@@ -34712,6 +34712,7 @@ async function run() {
                     await octokit.rest.repos.createOrUpdateFileContents({
                         owner: org,
                         repo: activityLogRepo,
+                        branch: checkType,
                         path,
                         message: `Update Copilot dormancy log for ${dateStamp}`,
                         content: contentBase64,
@@ -34727,7 +34728,7 @@ async function run() {
                 }
             }
             catch (error) {
-                core.warning(`Failed to save activity log: ${error instanceof Error ? error.message : String(error)}`);
+                core.setFailed(`Failed to save activity log: ${error instanceof Error ? error.message : String(error)}`);
             }
         }
         // Send notifications if enabled
