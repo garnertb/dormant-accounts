@@ -91,6 +91,10 @@ async function run(): Promise<void> {
     // Fetch latest activity if needed
     await check.fetchActivity();
 
+    if (core.isDebug()) {
+      core.info(`Fetched activity: ${safeStringify(check.getDatabaseData())}`);
+    }
+
     // Get dormant and active accounts
     const dormantAccounts = await check.listDormantAccounts();
     const activeAccounts = await check.listActiveAccounts();
