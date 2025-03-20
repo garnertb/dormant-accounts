@@ -34674,6 +34674,7 @@ async function getActivityLog(octokit, context, branchName, path) {
         return activityLog;
     }
     catch (error) {
+        core.error(`getActivityLog() error: ${error}`);
         core.debug(`getActivityLog() error.status: ${error.status}`);
         // If the activity log doesn't exist, return false
         if (error.status === 404) {
