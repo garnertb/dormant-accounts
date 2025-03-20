@@ -34665,8 +34665,10 @@ async function getActivityLog(octokit, context, branchName, path) {
             ref: branchName,
             headers: {
                 Accept: 'application/vnd.github.raw+json',
+                "X-GitHub-Api-Version": '2022-11-28',
             },
         });
+        core.debug(`activity log file contents: ${data}`);
         // decode the file contents to json
         const activityLog = JSON.parse(
         // @ts-expect-error
