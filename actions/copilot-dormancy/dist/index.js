@@ -34703,7 +34703,7 @@ async function run() {
         core.info(`Check summary: ${safeStringify(summary)}`);
         // Save activity log if repo info is provided
         if (activityLogRepo) {
-            core.info(`Saving activity log to ${org}/${activityLogRepo}`);
+            core.info(`Saving activity log to ${activityLogOrg}/${activityLogRepo}`);
             try {
                 const dateStamp = new Date().toISOString().split('T')[0];
                 const content = await check.getDatabaseData();
