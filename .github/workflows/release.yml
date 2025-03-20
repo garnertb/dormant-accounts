@@ -5,9 +5,10 @@ env:
   TURBO_TEAM: ${{ vars.TURBO_TEAM }}
 
 on:
-  push:
-    branches:
-      - main
+  workflow_dispatch: # Allow manual triggering
+  # push:
+  #   branches:
+  #     - main
 
 concurrency: ${{ github.workflow }}-${{ github.ref }}
 
