@@ -24,7 +24,7 @@ export async function getActivityLog(
       path: path,
       ref: branchName,
       headers: {
-        Accept: 'application/vnd.github.v3.raw',
+        Accept: 'application/vnd.github.raw+json',
       },
     });
 

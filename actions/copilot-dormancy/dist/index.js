@@ -34664,7 +34664,7 @@ async function getActivityLog(octokit, context, branchName, path) {
             path: path,
             ref: branchName,
             headers: {
-                Accept: 'application/vnd.github.v3.raw',
+                Accept: 'application/vnd.github.raw+json',
             },
         });
         // decode the file contents to json
