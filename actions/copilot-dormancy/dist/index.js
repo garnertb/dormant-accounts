@@ -34652,6 +34652,7 @@ async function run() {
         // Get inputs from workflow
         const org = core.getInput('org');
         const activityLogRepo = core.getInput('activity-log-repo');
+        const activityLogOrg = core.getInput('activity-log-org');
         const duration = core.getInput('duration');
         const token = core.getInput('token');
         const dryRun = core.getInput('dry-run') === 'true';
@@ -34710,7 +34711,7 @@ async function run() {
                 const path = `${checkType}.json`;
                 if (!dryRun) {
                     await octokit.rest.repos.createOrUpdateFileContents({
-                        owner: org,
+                        owner: activityLogOrg,
                         repo: activityLogRepo,
                         branch: checkType,
                         path,
