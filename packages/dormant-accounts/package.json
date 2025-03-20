@@ -1,0 +1,79 @@
+{
+  "name": "dormant-accounts",
+  "version": "0.0.0",
+  "description": "Dormant Accounts - Toolkit for managing dormant accounts in applications or services.",
+  "keywords": [
+    "dormant accounts"
+  ],
+  "homepage": "https://github.com/garnertb/dormant-accounts/",
+  "bugs": {
+    "url": "https://github.com/garnertb/dormant-accounts/issues"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/garnertb/dormant-accounts.git"
+  },
+  "license": "MIT",
+  "sideEffects": false,
+  "type": "module",
+  "exports": {
+    ".": {
+      "import": "./dist/index.js",
+      "require": "./dist/index.cjs"
+    },
+    "./database": {
+      "import": "./dist/database.js",
+      "require": "./dist/database.cjs"
+    },
+    "./utils": {
+      "import": "./dist/utils.js",
+      "require": "./dist/utils.cjs"
+    }
+  },
+  "typesVersions": {
+    "*": {
+      "*": [
+        "dist/*.d.ts",
+        "dist/*.d.cts"
+      ]
+    }
+  },
+  "files": [
+    "dist",
+    "CHANGELOG.md"
+  ],
+  "scripts": {
+    "attw": "attw --pack .",
+    "build": "tsup",
+    "coverage": "vitest run --coverage",
+    "dev": "tsup --watch --clean=false",
+    "eslint": "eslint-runner",
+    "eslint:fix": "eslint-runner --fix",
+    "test": "vitest --run",
+    "test:watch": "vitest",
+    "type-check": "tsc --noEmit"
+  },
+  "dependencies": {
+    "consola": "^3.4.0",
+    "lowdb": "^7.0.0",
+    "ms": "2.1.3",
+    "zod": "^3.22.4"
+  },
+  "devDependencies": {
+    "@arethetypeswrong/cli": "0.17.3",
+    "@types/consola": "^2.2.8",
+    "@types/ms": "2.1.0",
+    "@types/node": "20.11.17",
+    "@vitest/coverage-v8": "^1.0.0",
+    "eslint-config-custom": "workspace:*",
+    "tsconfig": "workspace:*",
+    "tsup": "8.0.1",
+    "type-fest": "4.35.0",
+    "typescript": "5.6.3",
+    "vite": "5.1.1",
+    "vitest": "1.4.0"
+  },
+  "publishConfig": {
+    "access": "public"
+  }
+}

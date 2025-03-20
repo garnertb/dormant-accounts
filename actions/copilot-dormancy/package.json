@@ -1,0 +1,65 @@
+{
+  "name": "@dormant-accounts/copilpot-dormancy-action",
+  "version": "0.1.0",
+  "description": "A GitHub Action to check for dormant accounts in a GitHub organization.",
+  "keywords": [
+    "github",
+    "action",
+    "dormant",
+    "accounts"
+  ],
+  "license": "MIT",
+  "author": "Tyler Garner",
+  "sideEffects": false,
+  "type": "module",
+  "exports": {
+    ".": {
+      "import": "./dist/index.js",
+      "require": "./dist/index.cjs"
+    }
+  },
+  "main": "./dist/index.js",
+  "typesVersions": {
+    "*": {
+      ".": [
+        "dist/*.d.ts",
+        "dist/*.d.cts"
+      ]
+    }
+  },
+  "files": [
+    "dist",
+    "CHANGELOG.md"
+  ],
+  "scripts": {
+    "build": "rimraf dist && ncc build src/index.ts -o dist",
+    "dev": "tsup --watch --clean=false",
+    "eslint": "eslint-runner",
+    "eslint:fix": "eslint-runner --fix",
+    "test": "vitest --run",
+    "test:watch": "vitest",
+    "type-check": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@actions/core": "1.11.1",
+    "@actions/github": "^6.0.0",
+    "@types/ms": "2.1.0",
+    "ms": "2.1.3"
+  },
+  "devDependencies": {
+    "@dormant-accounts/github": "workspace:*",
+    "@types/node": "20.11.17",
+    "@vercel/ncc": "0.38.3",
+    "dormant-accounts": "workspace:*",
+    "eslint-config-custom": "workspace:*",
+    "rimraf": "6.0.1",
+    "tsconfig": "workspace:*",
+    "tsup": "8.0.1",
+    "type-fest": "4.35.0",
+    "typescript": "5.6.3",
+    "vitest": "1.4.0"
+  },
+  "publishConfig": {
+    "access": "public"
+  }
+}

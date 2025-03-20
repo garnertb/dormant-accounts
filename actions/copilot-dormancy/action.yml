@@ -1,0 +1,61 @@
+name: 'Copilot Dormancy Check'
+description: 'Check for dormant GitHub Copilot accounts in a GitHub organization'
+inputs:
+  org:
+    description: 'GitHub organization name to check for dormant accounts'
+    required: false
+    default: ${{ github.repository_owner }}
+  activity-log-repo:
+    description: 'Repository to store activity logs'
+    required: false
+    default: ${{ github.repository }}
+  duration:
+    description: 'Duration of inactivity to consider an account dormant (e.g., 90d, 3m, 1y)'
+    required: false
+    default: '90d'
+  token:
+    description: 'GitHub token with appropriate permissions'
+    required: false
+    default: ${{ github.token }}
+  dry-run:
+    description: 'Run in dry-run mode without making any changes'
+    required: false
+    default: 'true'
+  notifications-enabled:
+    description: 'Enable notifications for dormant users'
+    required: false
+    default: 'false'
+  notifications-repo-org:
+    description: 'Organization that owns the repository for notifications'
+    required: false
+    default: ${{ github.repository_owner }}
+  notifications-repo:
+    description: 'Repository to create notification issues in'
+    required: false
+    default: ${{ github.repository }}
+  notifications-duration:
+    description: 'Grace period before removing users after notification (e.g., 7d, 2w, 1m)'
+    required: false
+    default: '7d'
+  notifications-body:
+    description: 'Custom message template for user notifications'
+    required: false
+    default: 'This organization automatically removes inactive GitHub Copilot users. Your account has been inactive for more than {{duration}} and is pending removal. You have {{gracePeriod}} to take action before removal.'
+
+outputs:
+  dormant-users:
+    description: 'JSON string containing list of dormant accounts'
+  active-users:
+    description: 'JSON string containing list of active accounts'
+  last-activity-fetch:
+    description: 'Timestamp of when the activity was last fetched'
+  check-stats:
+    description: 'Statistics about the dormancy check'
+  notification-results:
+    description: 'Results of the notification process'
+  error:
+    description: 'Any errors encountered during the process'
+
+runs:
+  using: 'node20'
+  main: 'dist/index.js'

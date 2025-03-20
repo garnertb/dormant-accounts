@@ -1,0 +1,16 @@
+# build
+dist/
+
+# dependencies
+node_modules/
+
+# logs
+npm-debug.log
+
+.turbo
+.DS_Store
+.vscode
+.env*.local
+examples
+
+!actions/*/dist
