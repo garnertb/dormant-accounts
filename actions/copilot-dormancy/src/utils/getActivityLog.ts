@@ -19,7 +19,7 @@ export async function getActivityLog(
   // If the activity log branch exists, check if the activity log file exists
   try {
     // Get the activity log file contents
-    const { data } = await octokit.rest.repos.getContent({
+    const { data: activityLog } = await octokit.rest.repos.getContent({
       ...context,
       path: path,
       ref: branchName,
@@ -28,14 +28,6 @@ export async function getActivityLog(
         'X-GitHub-Api-Version': '2022-11-28',
       },
     });
-
-    core.debug(`activity log file contents: ${data}`);
-
-    // decode the file contents to json
-    const activityLog = JSON.parse(
-      // @ts-expect-error
-      Buffer.from(data.content, 'base64').toString(),
-    );
 
     return activityLog;
   } catch (error: any) {
