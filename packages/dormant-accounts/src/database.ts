@@ -16,12 +16,7 @@ export interface DatabaseSchema {
 }
 
 function isUserRecord(value: unknown): value is UserRecord {
-  return (
-    typeof value === 'object' &&
-    value !== null &&
-    'type' in value &&
-    'lastActivity' in value
-  );
+  return typeof value === 'object' && value !== null && 'lastActivity' in value;
 }
 
 export class Database {

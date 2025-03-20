@@ -33898,14 +33898,14 @@ function JSONFileSyncPreset(filename, defaultData) {
 
 
 
-;// CONCATENATED MODULE: ../../packages/dormant-accounts/dist/chunk-TSZJL5F3.js
+;// CONCATENATED MODULE: ../../packages/dormant-accounts/dist/chunk-DJGYVQQO.js
 
 
 // src/database.ts
 
 
 function isUserRecord(value) {
-  return typeof value === "object" && value !== null && "type" in value && "lastActivity" in value;
+  return typeof value === "object" && value !== null && "lastActivity" in value;
 }
 var Database = class {
   constructor(checkType, dbPath) {
@@ -33990,7 +33990,7 @@ var Database = class {
 };
 
 
-//# sourceMappingURL=chunk-TSZJL5F3.js.map
+//# sourceMappingURL=chunk-DJGYVQQO.js.map
 ;// CONCATENATED MODULE: ../../packages/dormant-accounts/dist/index.js
 
 
