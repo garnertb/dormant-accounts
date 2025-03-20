@@ -1,0 +1,17 @@
+name: Test Action
+
+on:
+  workflow_dispatch: # Allow manual triggering
+
+jobs:
+  check-dormancy:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      issues: write
+
+    steps:
+      - name: Check Copilot dormant accounts
+        uses: garnertb/dormant-accounts/actions/copilot-dormancy@main
+        with:
+          duration: '90d'
