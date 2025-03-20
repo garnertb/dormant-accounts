@@ -184,6 +184,7 @@ async function run(): Promise<void> {
     const errorMessage = error instanceof Error ? error.message : String(error);
     core.setFailed(`Action failed with error: ${errorMessage}`);
     core.setOutput('error', errorMessage);
+    throw error; // Rethrow the error to ensure the action fails
   }
 }
 
