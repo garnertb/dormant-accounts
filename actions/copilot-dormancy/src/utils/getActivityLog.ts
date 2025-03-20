@@ -12,7 +12,7 @@ export async function getActivityLog(
   context: { owner: string; repo: string },
   branchName: string,
   path: string,
-) {
+): Promise<string | false> {
   core.debug(`checking if activity log exists on branch: ${branchName}`);
   core.debug(`checking if activity log exists on path: ${path}`);
 
@@ -20,15 +20,15 @@ export async function getActivityLog(
   try {
     // Get the activity log file contents
     const { data: activityLog } = await octokit.rest.repos.getContent({
-      ...context,
-      path: path,
-      ref: branchName,
-      headers: {
-        Accept: 'application/vnd.github.raw+json',
-        'X-GitHub-Api-Version': '2022-11-28',
+      mediaType: {
+        format: 'raw',
       },
+      ...context,
+      path,
+      ref: branchName,
     });
 
+    // @ts-expect-error
     return activityLog;
   } catch (error: any) {
     core.error(`getActivityLog() error: ${error}`);

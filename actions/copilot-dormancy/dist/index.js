@@ -34660,14 +34660,14 @@ async function getActivityLog(octokit, context, branchName, path) {
     try {
         // Get the activity log file contents
         const { data: activityLog } = await octokit.rest.repos.getContent({
-            ...context,
-            path: path,
-            ref: branchName,
-            headers: {
-                Accept: 'application/vnd.github.raw+json',
-                'X-GitHub-Api-Version': '2022-11-28',
+            mediaType: {
+                format: 'raw',
             },
+            ...context,
+            path,
+            ref: branchName,
         });
+        // @ts-expect-error
         return activityLog;
     }
     catch (error) {
@@ -34759,7 +34759,7 @@ async function run() {
         const activityLog = await getActivityLog(octokit, activityLogContext.repo, branchName, activityLogContext.path);
         if (activityLog) {
             core.info('Activity log exists, fetching latest activity...');
-            await (0,external_fs_promises_namespaceObject.writeFile)(activityLogContext.path, JSON.stringify(activityLog, null, 2));
+            await (0,external_fs_promises_namespaceObject.writeFile)(activityLogContext.path, activityLog);
             core.info(`Activity log fetched and saved to ${activityLogContext.path}`);
         }
         else {

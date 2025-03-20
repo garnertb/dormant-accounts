@@ -106,10 +106,7 @@ async function run(): Promise<void> {
 
     if (activityLog) {
       core.info('Activity log exists, fetching latest activity...');
-      await writeFile(
-        activityLogContext.path,
-        JSON.stringify(activityLog, null, 2),
-      );
+      await writeFile(activityLogContext.path, activityLog);
       core.info(`Activity log fetched and saved to ${activityLogContext.path}`);
     } else {
       core.info('Activity log does not exist, creating new one...');
