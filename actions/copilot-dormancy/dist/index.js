@@ -34663,8 +34663,8 @@ async function getActivityLog(octokit, context, branchName, path) {
             path: path,
             ref: branchName,
             headers: {
-                'Accept': 'application/vnd.github.v3.raw',
-            }
+                Accept: 'application/vnd.github.v3.raw',
+            },
         });
         // decode the file contents to json
         const activityLog = JSON.parse(
@@ -34734,14 +34734,18 @@ async function run() {
         const notificationRepo = core.getInput('notifications-repo');
         const notificationDuration = core.getInput('notifications-duration');
         const notificationBody = core.getInput('notifications-body');
+        const checkType = 'copilot-dormancy';
         const [owner, repo] = activityLogRepo.split('/');
         if (!dryRun && (!owner || !repo)) {
             throw new Error(`Invalid activity log repo format. Expected "owner/repo", got "${activityLogRepo}"`);
         }
-        const activityLogContext = { repo: {
+        const activityLogContext = {
+            path: `${checkType}.json`,
+            repo: {
                 owner: owner,
-                repo: repo
-            } };
+                repo: repo,
+            },
+        };
         // Log configuration (without sensitive data)
         core.info(`Starting Copilot dormancy check for org: ${org}`);
         core.info(`Duration threshold: ${duration}`);
@@ -34752,12 +34756,11 @@ async function run() {
         }
         // Initialize GitHub client
         const octokit = github.getOctokit(token);
-        const checkType = 'copilot-dormancy';
-        const activityLog = await getActivityLog(octokit, activityLogContext.repo, checkType, checkType);
+        const activityLog = await getActivityLog(octokit, activityLogContext.repo, checkType, activityLogContext.path);
         if (activityLog) {
             core.info('Activity log exists, fetching latest activity...');
-            await (0,external_fs_promises_namespaceObject.writeFile)(`${checkType}.json`, JSON.stringify(activityLog, null, 2));
-            core.info(`Activity log fetched and saved to ${checkType}.json`);
+            await (0,external_fs_promises_namespaceObject.writeFile)(activityLogContext.path, JSON.stringify(activityLog, null, 2));
+            core.info(`Activity log fetched and saved to ${activityLogContext.path}`);
         }
         else {
             core.info('Activity log does not exist, creating new one...');
@@ -34797,14 +34800,13 @@ async function run() {
                 const dateStamp = new Date().toISOString().split('T')[0];
                 const content = await check.getDatabaseData();
                 const contentBase64 = Buffer.from(JSON.stringify(content, null, 2)).toString('base64');
-                const path = `${checkType}.json`;
                 if (!dryRun) {
                     await createBranch(octokit, activityLogContext.repo, checkType);
                     await octokit.rest.repos.createOrUpdateFileContents({
                         owner: owner,
                         repo: repo,
                         branch: checkType,
-                        path,
+                        path: activityLogContext.path,
                         message: `Update Copilot dormancy log for ${dateStamp}`,
                         content: contentBase64,
                         committer: {
@@ -34812,10 +34814,10 @@ async function run() {
                             email: 'action@github.com',
                         },
                     });
-                    core.info(`Activity log saved to ${org}/${activityLogRepo}/${path}`);
+                    core.info(`Activity log saved to ${org}/${activityLogRepo}/${activityLogContext.path}`);
                 }
                 else {
-                    core.info(`Dry run: Activity log would be saved to ${org}/${activityLogRepo}/${path}`);
+                    core.info(`Dry run: Activity log would be saved to ${org}/${activityLogRepo}/${activityLogContext.path}`);
                 }
             }
             catch (error) {
