@@ -48,7 +48,6 @@ async function run(): Promise<void> {
     // Get inputs from workflow
     const org = core.getInput('org');
     const activityLogRepo = core.getInput('activity-log-repo');
-    const activityLogOrg = core.getInput('activity-log-org');
     const duration = core.getInput('duration');
     const token = core.getInput('token');
     const dryRun = core.getInput('dry-run') === 'true';
@@ -119,7 +118,7 @@ async function run(): Promise<void> {
 
     // Save activity log if repo info is provided
     if (activityLogRepo) {
-      core.info(`Saving activity log to ${activityLogOrg}/${activityLogRepo}`);
+      core.info(`Saving activity log to ${activityLogRepo}`);
 
       try {
         const dateStamp = new Date().toISOString().split('T')[0];
@@ -130,10 +129,12 @@ async function run(): Promise<void> {
         ).toString('base64');
         const path = `${checkType}.json`;
 
+        const [owner, repo] = activityLogRepo.split('/');
+
         if (!dryRun) {
           await octokit.rest.repos.createOrUpdateFileContents({
-            owner: activityLogOrg,
-            repo: activityLogRepo,
+            owner: owner as string,
+            repo: repo as string,
             branch: checkType,
             path,
             message: `Update Copilot dormancy log for ${dateStamp}`,

@@ -5,12 +5,8 @@ inputs:
     description: 'GitHub organization name to check for dormant accounts'
     required: false
     default: ${{ github.repository_owner }}
-  activity-log-org:
-    description: 'Organization that owns the repository for activity logs'
-    required: false
-    default: ${{ github.repository_owner }}
   activity-log-repo:
-    description: 'Repository to store activity logs'
+    description: 'The owner and repository name to fetch/store activity logs from (e.g., owner/repo)'
     required: false
     default: ${{ github.repository }}
   duration:
