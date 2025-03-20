@@ -34735,6 +34735,7 @@ async function run() {
         const notificationDuration = core.getInput('notifications-duration');
         const notificationBody = core.getInput('notifications-body');
         const checkType = 'copilot-dormancy';
+        const branchName = checkType;
         const [owner, repo] = activityLogRepo.split('/');
         if (!dryRun && (!owner || !repo)) {
             throw new Error(`Invalid activity log repo format. Expected "owner/repo", got "${activityLogRepo}"`);
@@ -34756,7 +34757,7 @@ async function run() {
         }
         // Initialize GitHub client
         const octokit = github.getOctokit(token);
-        const activityLog = await getActivityLog(octokit, activityLogContext.repo, checkType, activityLogContext.path);
+        const activityLog = await getActivityLog(octokit, activityLogContext.repo, branchName, activityLogContext.path);
         if (activityLog) {
             core.info('Activity log exists, fetching latest activity...');
             await (0,external_fs_promises_namespaceObject.writeFile)(activityLogContext.path, JSON.stringify(activityLog, null, 2));

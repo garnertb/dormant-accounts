@@ -62,6 +62,7 @@ async function run(): Promise<void> {
     const notificationDuration = core.getInput('notifications-duration');
     const notificationBody = core.getInput('notifications-body');
     const checkType = 'copilot-dormancy';
+    const branchName = checkType;
 
     const [owner, repo] = activityLogRepo.split('/');
 
@@ -99,7 +100,7 @@ async function run(): Promise<void> {
     const activityLog = await getActivityLog(
       octokit,
       activityLogContext.repo,
-      checkType,
+      branchName,
       activityLogContext.path,
     );
 
@@ -171,7 +172,7 @@ async function run(): Promise<void> {
           await octokit.rest.repos.createOrUpdateFileContents({
             owner: owner as string,
             repo: repo as string,
-            branch: checkType,
+            branch: branchName,
             path: activityLogContext.path,
             message: `Update Copilot dormancy log for ${dateStamp}`,
             content: contentBase64,
