@@ -34617,24 +34617,16 @@ function createDefaultNotificationBodyHandler(notificationTemplate, gracePeriod)
 
 
 //# sourceMappingURL=chunk-N3P7UCPY.js.map
-;// CONCATENATED MODULE: ./src/index.ts
+;// CONCATENATED MODULE: ./src/utils/createBranch.ts
 
-
-
-// Function to safely stringify data for output
-const safeStringify = (data) => {
-    try {
-        return JSON.stringify(data);
-    }
-    catch (error) {
-        return JSON.stringify({
-            error: 'Failed to stringify data',
-            message: error instanceof Error ? error.message : 'Unknown error',
-        });
-    }
-};
+/**
+ * Creates a new branch in the specified repository.
+ * @param octokit - The Octokit client instance.
+ * @param context - The context containing the owner and repo information.
+ * @param branchName - The name of the new branch to create.
+ */
 async function createBranch(octokit, context, branchName) {
-    core.debug(`attempting to create lock branch: ${branchName}...`);
+    core.debug(`attempting to create activity log branch: ${branchName}...`);
     // Determine the default branch for the repo
     const repoData = await octokit.rest.repos.get({
         ...context,
@@ -34652,6 +34644,68 @@ async function createBranch(octokit, context, branchName) {
     });
     core.info(`📖 created activity log branch: ${branchName}`);
 }
+
+;// CONCATENATED MODULE: ./src/utils/getActivityLog.ts
+
+/**
+ * Creates a new branch in the specified repository.
+ * @param octokit - The Octokit client instance.
+ * @param context - The context containing the owner and repo information.
+ * @param branchName - The name of the new branch to create.
+ */
+async function getActivityLog(octokit, context, branchName, path) {
+    core.debug(`checking if activity log exists on branch: ${branchName}`);
+    // If the activity log branch exists, check if the activity log file exists
+    try {
+        // Get the activity log file contents
+        const { data } = await octokit.rest.repos.getContent({
+            ...context,
+            path: path,
+            ref: branchName,
+            headers: {
+                'Accept': 'application/vnd.github.v3.raw',
+            }
+        });
+        // decode the file contents to json
+        const activityLog = JSON.parse(
+        // @ts-expect-error
+        Buffer.from(data.content, 'base64').toString());
+        return activityLog;
+    }
+    catch (error) {
+        core.debug(`getActivityLog() error.status: ${error.status}`);
+        // If the activity log doesn't exist, return false
+        if (error.status === 404) {
+            const activityLogNotFoundMsg = `🔍 activity log does not exist on branch: ${branchName}`;
+            core.info('Activity log not found');
+            return false;
+        }
+        // If some other error occurred, throw it
+        throw new Error(error);
+    }
+}
+
+;// CONCATENATED MODULE: external "fs/promises"
+const external_fs_promises_namespaceObject = __WEBPACK_EXTERNAL_createRequire(import.meta.url)("fs/promises");
+;// CONCATENATED MODULE: ./src/index.ts
+
+
+
+
+
+
+// Function to safely stringify data for output
+const safeStringify = (data) => {
+    try {
+        return JSON.stringify(data);
+    }
+    catch (error) {
+        return JSON.stringify({
+            error: 'Failed to stringify data',
+            message: error instanceof Error ? error.message : 'Unknown error',
+        });
+    }
+};
 async function processNotifications(octokit, notificationDuration, notificationRepoOrg, notificationRepo, checkType, notificationBody, dryRun, dormantAccounts) {
     const notifier = new GithubIssueNotifier({
         githubClient: octokit,
@@ -34680,6 +34734,14 @@ async function run() {
         const notificationRepo = core.getInput('notifications-repo');
         const notificationDuration = core.getInput('notifications-duration');
         const notificationBody = core.getInput('notifications-body');
+        const [owner, repo] = activityLogRepo.split('/');
+        if (!dryRun && (!owner || !repo)) {
+            throw new Error(`Invalid activity log repo format. Expected "owner/repo", got "${activityLogRepo}"`);
+        }
+        const activityLogContext = { repo: {
+                owner: owner,
+                repo: repo
+            } };
         // Log configuration (without sensitive data)
         core.info(`Starting Copilot dormancy check for org: ${org}`);
         core.info(`Duration threshold: ${duration}`);
@@ -34691,6 +34753,15 @@ async function run() {
         // Initialize GitHub client
         const octokit = github.getOctokit(token);
         const checkType = 'copilot-dormancy';
+        const activityLog = await getActivityLog(octokit, activityLogContext.repo, checkType, checkType);
+        if (activityLog) {
+            core.info('Activity log exists, fetching latest activity...');
+            await (0,external_fs_promises_namespaceObject.writeFile)(`${checkType}.json`, JSON.stringify(activityLog, null, 2));
+            core.info(`Activity log fetched and saved to ${checkType}.json`);
+        }
+        else {
+            core.info('Activity log does not exist, creating new one...');
+        }
         // Run dormancy check
         const check = await copilotDormancy({
             type: checkType,
@@ -34728,11 +34799,7 @@ async function run() {
                 const contentBase64 = Buffer.from(JSON.stringify(content, null, 2)).toString('base64');
                 const path = `${checkType}.json`;
                 if (!dryRun) {
-                    const [owner, repo] = activityLogRepo.split('/');
-                    if (!owner || !repo) {
-                        throw new Error(`Invalid activity log repo format. Expected "owner/repo", got "${activityLogRepo}"`);
-                    }
-                    await createBranch(octokit, { owner, repo }, checkType);
+                    await createBranch(octokit, activityLogContext.repo, checkType);
                     await octokit.rest.repos.createOrUpdateFileContents({
                         owner: owner,
                         repo: repo,
