@@ -6,7 +6,6 @@ import {
   OctokitClient,
   LastActivityRecord,
 } from '@dormant-accounts/github';
-import { create } from 'domain';
 
 // Function to safely stringify data for output
 const safeStringify = (data: unknown): string => {
