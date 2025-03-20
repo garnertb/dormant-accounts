@@ -34633,6 +34633,25 @@ const safeStringify = (data) => {
         });
     }
 };
+async function createBranch(octokit, context, branchName) {
+    core.debug(`attempting to create lock branch: ${branchName}...`);
+    // Determine the default branch for the repo
+    const repoData = await octokit.rest.repos.get({
+        ...context,
+    });
+    // Fetch the base branch to use its SHA as the parent
+    const baseBranch = await octokit.rest.repos.getBranch({
+        ...context,
+        branch: repoData.data.default_branch,
+    });
+    // Create the lock branch
+    await octokit.rest.git.createRef({
+        ...context,
+        ref: `refs/heads/${branchName}`,
+        sha: baseBranch.data.commit.sha,
+    });
+    core.info(`📖 created activity log branch: ${branchName}`);
+}
 async function processNotifications(octokit, notificationDuration, notificationRepoOrg, notificationRepo, checkType, notificationBody, dryRun, dormantAccounts) {
     const notifier = new GithubIssueNotifier({
         githubClient: octokit,
@@ -34708,8 +34727,12 @@ async function run() {
                 const content = await check.getDatabaseData();
                 const contentBase64 = Buffer.from(JSON.stringify(content, null, 2)).toString('base64');
                 const path = `${checkType}.json`;
-                const [owner, repo] = activityLogRepo.split('/');
                 if (!dryRun) {
+                    const [owner, repo] = activityLogRepo.split('/');
+                    if (!owner || !repo) {
+                        throw new Error(`Invalid activity log repo format. Expected "owner/repo", got "${activityLogRepo}"`);
+                    }
+                    await createBranch(octokit, { owner, repo }, checkType);
                     await octokit.rest.repos.createOrUpdateFileContents({
                         owner: owner,
                         repo: repo,

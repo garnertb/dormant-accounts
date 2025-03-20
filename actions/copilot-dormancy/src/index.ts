@@ -6,6 +6,7 @@ import {
   OctokitClient,
   LastActivityRecord,
 } from '@dormant-accounts/github';
+import { create } from 'domain';
 
 // Function to safely stringify data for output
 const safeStringify = (data: unknown): string => {
@@ -18,6 +19,34 @@ const safeStringify = (data: unknown): string => {
     });
   }
 };
+
+async function createBranch(
+  octokit: OctokitClient,
+  context: { owner: string; repo: string },
+  branchName: string,
+) {
+  core.debug(`attempting to create lock branch: ${branchName}...`);
+
+  // Determine the default branch for the repo
+  const repoData = await octokit.rest.repos.get({
+    ...context,
+  });
+
+  // Fetch the base branch to use its SHA as the parent
+  const baseBranch = await octokit.rest.repos.getBranch({
+    ...context,
+    branch: repoData.data.default_branch,
+  });
+
+  // Create the lock branch
+  await octokit.rest.git.createRef({
+    ...context,
+    ref: `refs/heads/${branchName}`,
+    sha: baseBranch.data.commit.sha,
+  });
+
+  core.info(`📖 created activity log branch: ${branchName}`);
+}
 
 export async function processNotifications(
   octokit: OctokitClient,
@@ -129,9 +158,17 @@ async function run(): Promise<void> {
         ).toString('base64');
         const path = `${checkType}.json`;
 
-        const [owner, repo] = activityLogRepo.split('/');
-
         if (!dryRun) {
+          const [owner, repo] = activityLogRepo.split('/');
+
+          if (!owner || !repo) {
+            throw new Error(
+              `Invalid activity log repo format. Expected "owner/repo", got "${activityLogRepo}"`,
+            );
+          }
+
+          await createBranch(octokit, { owner, repo }, checkType);
+
           await octokit.rest.repos.createOrUpdateFileContents({
             owner: owner as string,
             repo: repo as string,
