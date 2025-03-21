@@ -179,11 +179,17 @@ async function run(): Promise<void> {
             core.debug(`Branch already exists: ${branchName}`);
           }
 
+          // If the branch already exists we need to provide the sha of the latest commit
+          const {
+            commit: { sha },
+          } = branchExists as { name: string; commit: { sha: string } };
+
           await octokit.rest.repos.createOrUpdateFileContents({
             owner: owner as string,
             repo: repo as string,
             branch: branchName,
             path: activityLogContext.path,
+            sha,
             message: `Update Copilot dormancy log for ${dateStamp}`,
             content: contentBase64,
             committer: {

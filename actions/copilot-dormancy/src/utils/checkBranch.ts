@@ -12,17 +12,17 @@ export async function checkBranch(
   octokit: OctokitClient,
   context: { owner: string; repo: string },
   branchName: string,
-): Promise<boolean> {
+): Promise<{ name: string; commit: { sha: string } } | boolean> {
   core.debug(`checking if branch ${branchName} exists...`);
   // Check if the activity log branch already exists
   try {
-    await octokit.rest.repos.getBranch({
+    const { data } = await octokit.rest.repos.getBranch({
       ...context,
       branch: branchName,
     });
     // If the branch exists, return true
     core.debug(`branch '${branchName}' exists`);
-    return true;
+    return data;
   } catch (error: any) {
     core.debug(`checkBranch() error.status: ${error.status}`);
     // Check if the error was due to the activity log branch not existing
