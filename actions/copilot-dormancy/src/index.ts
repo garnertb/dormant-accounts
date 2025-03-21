@@ -10,6 +10,7 @@ import { createBranch } from './utils/createBranch';
 import { getActivityLog } from './utils/getActivityLog';
 import { writeFile } from 'fs/promises';
 import { checkBranch } from './utils/checkBranch';
+import { getNotificationContext } from './utils/getNotificationContext';
 
 // Function to safely stringify data for output
 const safeStringify = (data: unknown): string => {
@@ -56,12 +57,9 @@ async function run(): Promise<void> {
     const token = core.getInput('token');
     const dryRun = core.getInput('dry-run') === 'true';
 
-    // Get notification inputs
-    const sendNotifications = core.getInput('notifications-enabled') === 'true';
-    const notificationRepoOrg = core.getInput('notifications-repo-org');
-    const notificationRepo = core.getInput('notifications-repo');
-    const notificationDuration = core.getInput('notifications-duration');
-    const notificationBody = core.getInput('notifications-body');
+    const notificationsContext = getNotificationContext();
+    const sendNotifications = notificationsContext !== false;
+
     const checkType = 'copilot-dormancy';
     const branchName = checkType;
 
@@ -88,10 +86,10 @@ async function run(): Promise<void> {
 
     if (sendNotifications) {
       core.info(
-        `Notifications enabled with grace period: ${notificationDuration}`,
+        `Notifications enabled with grace period: ${notificationsContext.duration}`,
       );
       core.info(
-        `Notification repository: ${notificationRepoOrg}/${notificationRepo}`,
+        `Notification repository: ${notificationsContext.repo.owner}/${notificationsContext.repo.repo}`,
       );
     }
 
