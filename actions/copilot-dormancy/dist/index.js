@@ -34698,13 +34698,13 @@ async function checkBranch(octokit, context, branchName) {
     core.debug(`checking if branch ${branchName} exists...`);
     // Check if the activity log branch already exists
     try {
-        const { data } = await octokit.rest.repos.getBranch({
+        await octokit.rest.repos.getBranch({
             ...context,
             branch: branchName,
         });
         // If the branch exists, return true
         core.debug(`branch '${branchName}' exists`);
-        return data;
+        return true;
     }
     catch (error) {
         core.debug(`checkBranch() error.status: ${error.status}`);
@@ -34846,8 +34846,6 @@ async function run() {
                     else {
                         core.debug(`Branch already exists: ${branchName}`);
                     }
-                    // If the branch already exists we need to provide the sha of the latest commit
-                    const { commit: { sha }, } = branchExists;
                     await octokit.rest.repos.createOrUpdateFileContents({
                         owner: owner,
                         repo: repo,
