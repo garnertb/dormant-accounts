@@ -1,9 +1,10 @@
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { processNotifications } from './index';
 import {
   GithubIssueNotifier,
   LastActivityRecord,
 } from '@dormant-accounts/github';
+import { NotificationContext } from './utils/getNotificationContext';
 
 // Mock GithubIssueNotifier
 vi.mock('@dormant-accounts/github', async () => {
@@ -25,17 +26,23 @@ vi.mock('@dormant-accounts/github', async () => {
 
 describe('Notification Processing', () => {
   const mockOctokit = {} as any;
-  const notificationDuration = '7d';
-  const notificationRepoOrg = 'test-org';
-  const notificationRepo = 'test-repo';
-  const checkType = 'copilot-dormancy';
-  const notificationBody = 'Test notification body';
-
   const mockDormantAccounts: LastActivityRecord[] = [
     { login: 'user1', lastActivity: new Date('2023-01-01'), type: 'user' },
     { login: 'user2', lastActivity: new Date('2023-01-10'), type: 'user' },
     { login: 'user3', lastActivity: new Date('2023-01-20'), type: 'user' },
   ];
+
+  // Create notification context
+  const notificationContext: NotificationContext = {
+    repo: {
+      owner: 'test-org',
+      repo: 'test-repo',
+    },
+    duration: '7d',
+    body: 'Test notification body',
+    baseLabels: ['copilot-dormancy'],
+    dryRun: false,
+  };
 
   beforeEach(() => {
     vi.clearAllMocks();
@@ -44,37 +51,26 @@ describe('Notification Processing', () => {
   it('should create notifier with correct configuration', async () => {
     await processNotifications(
       mockOctokit,
-      notificationDuration,
-      notificationRepoOrg,
-      notificationRepo,
-      checkType,
-      notificationBody,
-      false,
+      notificationContext,
       mockDormantAccounts,
     );
 
     expect(GithubIssueNotifier).toHaveBeenCalledWith({
       githubClient: mockOctokit,
-      gracePeriod: notificationDuration,
+      gracePeriod: notificationContext.duration,
       repository: {
-        owner: notificationRepoOrg,
-        repo: notificationRepo,
-        baseLabels: [checkType],
+        ...notificationContext.repo,
+        baseLabels: notificationContext.baseLabels,
       },
-      notificationBody: notificationBody,
-      dryRun: false,
+      notificationBody: notificationContext.body,
+      dryRun: notificationContext.dryRun,
     });
   });
 
   it('should return results from processDormantUsers', async () => {
     const result = await processNotifications(
       mockOctokit,
-      notificationDuration,
-      notificationRepoOrg,
-      notificationRepo,
-      checkType,
-      notificationBody,
-      false,
+      notificationContext,
       mockDormantAccounts,
     );
 

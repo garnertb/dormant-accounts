@@ -10,7 +10,10 @@ import { createBranch } from './utils/createBranch';
 import { getActivityLog } from './utils/getActivityLog';
 import { writeFile } from 'fs/promises';
 import { checkBranch } from './utils/checkBranch';
-import { getNotificationContext } from './utils/getNotificationContext';
+import {
+  getNotificationContext,
+  NotificationContext,
+} from './utils/getNotificationContext';
 
 // Function to safely stringify data for output
 const safeStringify = (data: unknown): string => {
@@ -26,24 +29,18 @@ const safeStringify = (data: unknown): string => {
 
 export async function processNotifications(
   octokit: OctokitClient,
-  notificationDuration: string,
-  notificationRepoOrg: string,
-  notificationRepo: string,
-  checkType: string,
-  notificationBody: string,
-  dryRun: boolean,
+  context: NotificationContext,
   dormantAccounts: LastActivityRecord[],
 ) {
   const notifier = new GithubIssueNotifier({
     githubClient: octokit,
-    gracePeriod: notificationDuration,
+    gracePeriod: context.duration,
     repository: {
-      owner: notificationRepoOrg,
-      repo: notificationRepo,
-      baseLabels: [checkType],
+      ...context.repo,
+      baseLabels: context.baseLabels,
     },
-    notificationBody: notificationBody,
-    dryRun,
+    notificationBody: context.body,
+    dryRun: context.dryRun,
   });
   return notifier.processDormantUsers(dormantAccounts);
 }
@@ -56,11 +53,11 @@ async function run(): Promise<void> {
     const duration = core.getInput('duration');
     const token = core.getInput('token');
     const dryRun = core.getInput('dry-run') === 'true';
+    const checkType = 'copilot-dormancy';
 
     const notificationsContext = getNotificationContext();
     const sendNotifications = notificationsContext !== false;
 
-    const checkType = 'copilot-dormancy';
     const branchName = checkType;
 
     const [owner, repo] = activityLogRepo.split('/');
@@ -212,12 +209,7 @@ async function run(): Promise<void> {
     if (sendNotifications) {
       const notifications = await processNotifications(
         octokit,
-        notificationDuration,
-        notificationRepoOrg,
-        notificationRepo,
-        checkType,
-        notificationBody,
-        dryRun,
+        notificationsContext,
         dormantAccounts,
       );
 

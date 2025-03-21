@@ -6,39 +6,38 @@ const notificationSchema = z
     repo: z.string().includes('/'),
     duration: z.string(),
     body: z.string(),
+    baseLabels: z.array(z.string()).default(['copilot-dormancy']),
+    dryRun: z.boolean().optional().default(false),
   })
   .transform((data) => {
-    const [owner, repo] = data.repo.split('/');
+    const { repo: ownerAndRepo, ...rest } = data;
+    const [owner, repo] = ownerAndRepo.split('/');
     return {
       repo: {
         owner: owner as string,
         repo: repo as string,
       },
-      duration: data.duration,
-      body: data.body,
+      ...rest,
     };
   });
+
+export type NotificationContext = z.infer<typeof notificationSchema>;
 
 /**
  * Retrieves the notification context from the action inputs.
  * @returns An object containing the notification context or false if notifications are disabled
  */
-export function getNotificationContext():
-  | { repo: { owner: string; repo: string }; duration: string; body: string }
-  | false {
+export function getNotificationContext(): NotificationContext | false {
   if (!core.getInput('notifications-enabled')) {
+    core.debug('Notifications are disabled');
     return false;
   }
 
-  const notificationRepo = core.getInput('notifications-repo');
-  const notificationDuration = core.getInput('notifications-duration');
-  const notificationBody = core.getInput('notifications-body');
-
-  // Validate the notification inputs
   const parsedNotification = notificationSchema.safeParse({
-    repo: notificationRepo,
-    duration: notificationDuration,
-    body: notificationBody,
+    repo: core.getInput('notifications-repo'),
+    duration: core.getInput('notifications-duration'),
+    body: core.getInput('notifications-body'),
+    dryRun: core.getInput('notifications-dry-run') === 'true',
   });
 
   if (!parsedNotification.success) {
