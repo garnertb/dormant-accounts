@@ -33,7 +33,7 @@
   ],
   "scripts": {
     "build": "rimraf dist && ncc build src/index.ts -o dist",
-    "dev": "tsup --watch --clean=false",
+    "dev": "npx nodemon --watch '.src/*' --exec 'pnpm build'",
     "eslint": "eslint-runner",
     "eslint:fix": "eslint-runner --fix",
     "test": "vitest --run",
