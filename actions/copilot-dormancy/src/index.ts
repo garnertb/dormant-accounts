@@ -207,6 +207,10 @@ async function run(): Promise<void> {
 
     // Send notifications if enabled
     if (sendNotifications) {
+      core.debug(
+        'Notification context: ' + safeStringify(notificationsContext),
+      );
+
       const notifications = await processNotifications(
         octokit,
         notificationsContext,

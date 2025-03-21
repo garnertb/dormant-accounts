@@ -39317,6 +39317,7 @@ async function run() {
         }
         // Send notifications if enabled
         if (sendNotifications) {
+            core.debug('Notification context: ' + safeStringify(notificationsContext));
             const notifications = await processNotifications(octokit, notificationsContext, dormantAccounts);
             core.setOutput('notification-results', safeStringify(notifications));
             core.info(`Created notifications for ${notifications.notified} dormant accounts`);
