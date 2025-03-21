@@ -34667,15 +34667,15 @@ async function getActivityLog(octokit, context, branchName, path) {
         const activityLog = Buffer.from(
         // @ts-ignore
         data?.content, 'base64').toString('utf8');
-        return activityLog;
+        // @ts-ignore
+        return { content: activityLog, sha: data?.sha };
     }
     catch (error) {
         core.error(`getActivityLog() error: ${error}`);
         core.debug(`getActivityLog() error.status: ${error.status}`);
         // If the activity log doesn't exist, return false
         if (error.status === 404) {
-            const activityLogNotFoundMsg = `🔍 activity log does not exist on branch: ${branchName}`;
-            core.info('Activity log not found');
+            core.info(`🔍 activity log does not exist on branch: ${branchName}`);
             return false;
         }
         // If some other error occurred, throw it
@@ -34794,12 +34794,13 @@ async function run() {
         const activityLog = await getActivityLog(octokit, activityLogContext.repo, branchName, activityLogContext.path);
         if (activityLog) {
             core.info('Activity log exists, fetching latest activity...');
-            await (0,external_fs_promises_namespaceObject.writeFile)(activityLogContext.path, activityLog);
+            await (0,external_fs_promises_namespaceObject.writeFile)(activityLogContext.path, activityLog.content);
             core.info(`Activity log fetched and saved to ${activityLogContext.path}`);
         }
         else {
             core.info('Activity log does not exist, creating new one...');
         }
+        const existingActivityLogSha = activityLog ? activityLog.sha : undefined;
         // Run dormancy check
         const check = await copilotDormancy({
             type: checkType,
@@ -34852,7 +34853,7 @@ async function run() {
                         repo: repo,
                         branch: branchName,
                         path: activityLogContext.path,
-                        sha,
+                        sha: existingActivityLogSha,
                         message: `Update Copilot dormancy log for ${dateStamp}`,
                         content: contentBase64,
                         committer: {

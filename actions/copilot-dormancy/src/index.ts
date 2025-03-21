@@ -107,11 +107,13 @@ async function run(): Promise<void> {
 
     if (activityLog) {
       core.info('Activity log exists, fetching latest activity...');
-      await writeFile(activityLogContext.path, activityLog);
+      await writeFile(activityLogContext.path, activityLog.content);
       core.info(`Activity log fetched and saved to ${activityLogContext.path}`);
     } else {
       core.info('Activity log does not exist, creating new one...');
     }
+
+    const existingActivityLogSha = activityLog ? activityLog.sha : undefined;
 
     // Run dormancy check
     const check = await copilotDormancy({
@@ -189,7 +191,7 @@ async function run(): Promise<void> {
             repo: repo as string,
             branch: branchName,
             path: activityLogContext.path,
-            sha,
+            sha: existingActivityLogSha,
             message: `Update Copilot dormancy log for ${dateStamp}`,
             content: contentBase64,
             committer: {

@@ -12,7 +12,7 @@ export async function getActivityLog(
   context: { owner: string; repo: string },
   branchName: string,
   path: string,
-): Promise<string | false> {
+): Promise<{ content: string; sha: string } | false> {
   core.debug(`checking if activity log exists on branch: ${branchName}`);
   core.debug(`checking if activity log exists on path: ${path}`);
 
@@ -31,14 +31,14 @@ export async function getActivityLog(
       'base64',
     ).toString('utf8');
 
-    return activityLog;
+    // @ts-ignore
+    return { content: activityLog, sha: data?.sha };
   } catch (error: any) {
     core.error(`getActivityLog() error: ${error}`);
     core.debug(`getActivityLog() error.status: ${error.status}`);
     // If the activity log doesn't exist, return false
     if (error.status === 404) {
-      const activityLogNotFoundMsg = `🔍 activity log does not exist on branch: ${branchName}`;
-      core.info('Activity log not found');
+      core.info(`🔍 activity log does not exist on branch: ${branchName}`);
       return false;
     }
 
