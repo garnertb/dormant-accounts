@@ -33898,7 +33898,7 @@ function JSONFileSyncPreset(filename, defaultData) {
 
 
 
-;// CONCATENATED MODULE: ../../packages/dormant-accounts/dist/chunk-DJGYVQQO.js
+;// CONCATENATED MODULE: ../../packages/dormant-accounts/dist/chunk-LOVSBR3C.js
 
 
 // src/database.ts
@@ -33990,7 +33990,7 @@ var Database = class {
 };
 
 
-//# sourceMappingURL=chunk-DJGYVQQO.js.map
+//# sourceMappingURL=chunk-LOVSBR3C.js.map
 ;// CONCATENATED MODULE: ../../packages/dormant-accounts/dist/index.js
 
 
@@ -34685,7 +34685,43 @@ async function getActivityLog(octokit, context, branchName, path) {
 
 ;// CONCATENATED MODULE: external "fs/promises"
 const external_fs_promises_namespaceObject = __WEBPACK_EXTERNAL_createRequire(import.meta.url)("fs/promises");
+;// CONCATENATED MODULE: ./src/utils/checkBranch.ts
+
+/**
+ * Checks if a branch exists in the specified repository.
+ * @param octokit - The Octokit client instance.
+ * @param context - The context containing the owner and repo information.
+ * @param branchName - The name of the branch to check.
+ * @returns A promise that resolves to true if the branch exists, false otherwise.
+ */
+async function checkBranch(octokit, context, branchName) {
+    core.debug(`checking if branch ${branchName} exists...`);
+    // Check if the activity log branch already exists
+    try {
+        await octokit.rest.repos.getBranch({
+            ...context,
+            branch: branchName,
+        });
+        // If the branch exists, return true
+        core.debug(`branch '${branchName}' exists`);
+        return true;
+    }
+    catch (error) {
+        core.debug(`checkBranch() error.status: ${error.status}`);
+        // Check if the error was due to the activity log branch not existing
+        if (error.status === 404) {
+            core.debug(`activity log branch ${branchName} does not exist`);
+            return false;
+        }
+        else {
+            core.error('an unexpected status code was returned while checking for the activity log branch');
+            throw new Error(error);
+        }
+    }
+}
+
 ;// CONCATENATED MODULE: ./src/index.ts
+
 
 
 
@@ -34800,7 +34836,15 @@ async function run() {
                 const content = await check.getDatabaseData();
                 const contentBase64 = Buffer.from(JSON.stringify(content, null, 2)).toString('base64');
                 if (!dryRun) {
-                    await createBranch(octokit, activityLogContext.repo, checkType);
+                    // Check if the branch exists
+                    const branchExists = await checkBranch(octokit, activityLogContext.repo, branchName);
+                    if (!branchExists) {
+                        core.info(`Creating branch: ${branchName}`);
+                        await createBranch(octokit, activityLogContext.repo, checkType);
+                    }
+                    else {
+                        core.debug(`Branch already exists: ${branchName}`);
+                    }
                     await octokit.rest.repos.createOrUpdateFileContents({
                         owner: owner,
                         repo: repo,

@@ -9,6 +9,7 @@ import {
 import { createBranch } from './utils/createBranch';
 import { getActivityLog } from './utils/getActivityLog';
 import { writeFile } from 'fs/promises';
+import { checkBranch } from './utils/checkBranch';
 
 // Function to safely stringify data for output
 const safeStringify = (data: unknown): string => {
@@ -164,7 +165,19 @@ async function run(): Promise<void> {
         ).toString('base64');
 
         if (!dryRun) {
-          await createBranch(octokit, activityLogContext.repo, checkType);
+          // Check if the branch exists
+          const branchExists = await checkBranch(
+            octokit,
+            activityLogContext.repo,
+            branchName,
+          );
+
+          if (!branchExists) {
+            core.info(`Creating branch: ${branchName}`);
+            await createBranch(octokit, activityLogContext.repo, checkType);
+          } else {
+            core.debug(`Branch already exists: ${branchName}`);
+          }
 
           await octokit.rest.repos.createOrUpdateFileContents({
             owner: owner as string,
