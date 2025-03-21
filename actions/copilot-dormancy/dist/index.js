@@ -33600,9 +33600,21 @@ var compareDatesAgainstDuration = (duration, start, end) => {
     actualDurationString
   };
 };
+var enrichLastActivityRecord = (record, endDate) => {
+  if (!record.lastActivity) {
+    return record;
+  }
+  const duration = msBetweenDates(record.lastActivity, endDate ? new Date(endDate) : /* @__PURE__ */ new Date());
+  const lastActivityLocalized = record.lastActivity.toLocaleDateString("en-US", {
+    year: "numeric",
+    month: "long",
+    day: "numeric"
+  });
+  return { ...record, duration, humanFriendlyDuration: node_modules_ms(duration, { long: true }), lastActivityLocalized };
+};
 
 
-//# sourceMappingURL=chunk-4PGKOSCD.js.map
+//# sourceMappingURL=chunk-7U4DXCAX.js.map
 ;// CONCATENATED MODULE: ../../node_modules/.pnpm/lowdb@7.0.1/node_modules/lowdb/lib/core/Low.js
 function checkArgs(adapter, defaultData) {
     if (adapter === undefined)
@@ -33898,7 +33910,7 @@ function JSONFileSyncPreset(filename, defaultData) {
 
 
 
-;// CONCATENATED MODULE: ../../packages/dormant-accounts/dist/chunk-LOVSBR3C.js
+;// CONCATENATED MODULE: ../../packages/dormant-accounts/dist/chunk-YMC5YC5W.js
 
 
 // src/database.ts
@@ -33990,7 +34002,7 @@ var Database = class {
 };
 
 
-//# sourceMappingURL=chunk-LOVSBR3C.js.map
+//# sourceMappingURL=chunk-YMC5YC5W.js.map
 ;// CONCATENATED MODULE: ../../packages/dormant-accounts/dist/index.js
 
 
@@ -34199,7 +34211,7 @@ function dist_dormancyCheck(config) {
 }
 
 //# sourceMappingURL=index.js.map
-;// CONCATENATED MODULE: ../../packages/github/dist/chunk-HCMRPENM.js
+;// CONCATENATED MODULE: ../../packages/github/dist/chunk-3REUOMSO.js
 // src/provider/audit-log.ts
 
 
@@ -34441,7 +34453,10 @@ var GithubIssueNotifier = class {
    */
   async notifyUser(user) {
     console.log(`Creating notification for ${user.login}`);
-    const notificationBody = typeof this.config.notificationBody === "function" ? this.config.notificationBody({ lastActivityRecord: user, gracePeriod: this.config.gracePeriod }) : this.config.notificationBody;
+    const notificationBody = typeof this.config.notificationBody === "function" ? this.config.notificationBody({
+      lastActivityRecord: enrichLastActivityRecord(user),
+      gracePeriod: this.config.gracePeriod
+    }) : createDefaultNotificationBodyHandler(this.config.notificationBody);
     const { data } = await this.octokit.rest.issues.create({
       owner: this.config.repository.owner,
       repo: this.config.repository.repo,
@@ -34604,9 +34619,14 @@ ${notificationBody}`,
     );
   }
 };
+function createDefaultNotificationBodyHandler(notificationTemplate) {
+  return ({ lastActivityRecord: { login, lastActivityLocalized, humanFriendlyDuration }, gracePeriod }) => {
+    return notificationTemplate.replace("{{lastActivity}}", lastActivityLocalized || "None").replace("{{gracePeriod}}", gracePeriod).replace("{{timeSinceLastActivity}}", humanFriendlyDuration || "N/A").replace("{{account}}", login);
+  };
+}
 
 
-//# sourceMappingURL=chunk-HCMRPENM.js.map
+//# sourceMappingURL=chunk-3REUOMSO.js.map
 ;// CONCATENATED MODULE: ./src/utils/createBranch.ts
 
 /**

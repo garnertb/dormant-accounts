@@ -1,5 +1,9 @@
 import { getOctokit } from '@actions/github';
-import { compareDatesAgainstDuration } from 'dormant-accounts/utils';
+import {
+  compareDatesAgainstDuration,
+  enrichLastActivityRecord,
+  EnrichedLastActivityRecord,
+} from 'dormant-accounts/utils';
 import { LastActivityRecord } from 'dormant-accounts';
 import { OctokitClient } from './types';
 import { GetResponseDataTypeFromEndpointMethod } from '@octokit/types';
@@ -13,7 +17,7 @@ type CreateNotificationParams = Exclude<
 >;
 
 type NotificationHandlerContext = {
-  lastActivityRecord: LastActivityRecord;
+  lastActivityRecord: EnrichedLastActivityRecord;
   gracePeriod: string;
 };
 
@@ -237,10 +241,10 @@ export class GithubIssueNotifier implements DormantAccountNotifier {
     const notificationBody =
       typeof this.config.notificationBody === 'function'
         ? this.config.notificationBody({
-            lastActivityRecord: user,
+            lastActivityRecord: enrichLastActivityRecord(user),
             gracePeriod: this.config.gracePeriod,
           })
-        : this.config.notificationBody;
+        : createDefaultNotificationBodyHandler(this.config.notificationBody);
 
     const { data } = await this.octokit.rest.issues.create({
       owner: this.config.repository.owner,
@@ -466,4 +470,22 @@ export class GithubIssueNotifier implements DormantAccountNotifier {
       typeof l === 'string' ? l === label : l.name === label,
     );
   }
+}
+
+/**
+ * Creates a default notification body handler that includes last activity date
+ */
+export function createDefaultNotificationBodyHandler(
+  notificationTemplate: string,
+): NotificationBodyHandler {
+  return ({
+    lastActivityRecord: { login, lastActivityLocalized, humanFriendlyDuration },
+    gracePeriod,
+  }): string => {
+    return notificationTemplate
+      .replace('{{lastActivity}}', lastActivityLocalized || 'None')
+      .replace('{{gracePeriod}}', gracePeriod)
+      .replace('{{timeSinceLastActivity}}', humanFriendlyDuration || 'N/A')
+      .replace('{{account}}', login);
+  };
 }
