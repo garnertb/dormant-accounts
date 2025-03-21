@@ -34199,7 +34199,7 @@ function dist_dormancyCheck(config) {
 }
 
 //# sourceMappingURL=index.js.map
-;// CONCATENATED MODULE: ../../packages/github/dist/chunk-N3P7UCPY.js
+;// CONCATENATED MODULE: ../../packages/github/dist/chunk-HCMRPENM.js
 // src/provider/audit-log.ts
 
 
@@ -34441,7 +34441,7 @@ var GithubIssueNotifier = class {
    */
   async notifyUser(user) {
     console.log(`Creating notification for ${user.login}`);
-    const notificationBody = typeof this.config.notificationBody === "function" ? this.config.notificationBody(user) : this.config.notificationBody;
+    const notificationBody = typeof this.config.notificationBody === "function" ? this.config.notificationBody({ lastActivityRecord: user, gracePeriod: this.config.gracePeriod }) : this.config.notificationBody;
     const { data } = await this.octokit.rest.issues.create({
       owner: this.config.repository.owner,
       repo: this.config.repository.repo,
@@ -34604,19 +34604,9 @@ ${notificationBody}`,
     );
   }
 };
-function createDefaultNotificationBodyHandler(notificationTemplate, gracePeriod) {
-  return (user) => {
-    const lastActivityDate = user.lastActivity ? new Date(user.lastActivity).toLocaleDateString("en-US", {
-      year: "numeric",
-      month: "long",
-      day: "numeric"
-    }) : "an unknown date";
-    return notificationTemplate.replace("{{lastActivity}}", lastActivityDate).replace("{{gracePeriod}}", gracePeriod);
-  };
-}
 
 
-//# sourceMappingURL=chunk-N3P7UCPY.js.map
+//# sourceMappingURL=chunk-HCMRPENM.js.map
 ;// CONCATENATED MODULE: ./src/utils/createBranch.ts
 
 /**

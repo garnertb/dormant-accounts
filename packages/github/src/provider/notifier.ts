@@ -12,10 +12,17 @@ type CreateNotificationParams = Exclude<
   'owner' | 'repo'
 >;
 
+type NotificationHandlerContext = {
+  lastActivityRecord: LastActivityRecord;
+  gracePeriod: string;
+};
+
 /**
  * Function type that generates notification body text based on user information
  */
-export type NotificationBodyHandler = (user: LastActivityRecord) => string;
+export type NotificationBodyHandler = (
+  context: NotificationHandlerContext,
+) => string;
 
 /**
  * Status labels for notification issues
@@ -229,7 +236,10 @@ export class GithubIssueNotifier implements DormantAccountNotifier {
     // Generate notification body based on whether it's a string or function
     const notificationBody =
       typeof this.config.notificationBody === 'function'
-        ? this.config.notificationBody(user)
+        ? this.config.notificationBody({
+            lastActivityRecord: user,
+            gracePeriod: this.config.gracePeriod,
+          })
         : this.config.notificationBody;
 
     const { data } = await this.octokit.rest.issues.create({
@@ -457,49 +467,3 @@ export class GithubIssueNotifier implements DormantAccountNotifier {
     );
   }
 }
-
-/**
- * Creates a default notification body handler that includes last activity date
- */
-export function createDefaultNotificationBodyHandler(
-  notificationTemplate: string,
-  gracePeriod: string,
-): NotificationBodyHandler {
-  return (user: LastActivityRecord): string => {
-    const lastActivityDate = user.lastActivity
-      ? new Date(user.lastActivity).toLocaleDateString('en-US', {
-          year: 'numeric',
-          month: 'long',
-          day: 'numeric',
-        })
-      : 'an unknown date';
-
-    return notificationTemplate
-      .replace('{{lastActivity}}', lastActivityDate)
-      .replace('{{gracePeriod}}', gracePeriod);
-  };
-}
-
-/**
- * Example usage:
- *
- * const notifier = new GithubIssueNotifier();
- * await notifier.initialize({
- *   gracePeriod: '7d',
- *   notificationBody: createDefaultNotificationBodyHandler(
- *     'Your account has been inactive since {{lastActivity}} and will be removed in {{gracePeriod}}.',
- *     '7 days'
- *   ),
- *   repository: {
- *     owner: 'org-name',
- *     repo: 'notifications-repo',
- *     baseLabels: ['inactive-user'],
- *   },
- *   githubClient: octokit,
- *   dryRun: true  // Set to false when ready to apply changes
- * });
- *
- * const dormantUsers = [...]; // List of dormant users
- * const result = await notifier.processDormantUsers(dormantUsers);
- * console.log(result);
- */

@@ -93,7 +93,8 @@ describe('GithubIssueNotifier', () => {
           repo: 'test-repo',
           baseLabels: ['dormant-account'],
         },
-        notificationBody: (user) => `Custom message for ${user.login}`,
+        notificationBody: ({ lastActivityRecord: { login } }) =>
+          `Custom message for ${login}`,
         dryRun: false,
       });
 
