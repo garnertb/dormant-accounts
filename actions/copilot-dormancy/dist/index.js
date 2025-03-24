@@ -39388,30 +39388,42 @@ async function run() {
         // Create a human-friendly job summary
         core.summary
             .addHeading('Copilot Dormancy Check Summary')
-            .addRaw(`**Last Activity Fetch:** ${formatDate(summary.lastActivityFetch)}`)
-            .addRaw(`**Dormancy Threshold:** ${summary.duration}`)
-            .addRaw('---')
+            .addRaw(`**Last Activity Fetch:** ${formatDate(summary.lastActivityFetch)}`, true)
+            .addRaw(`**Dormancy Threshold:** ${summary.duration}`, true)
+            .addBreak()
             .addHeading('Account Status Summary', 3)
             .addTable([
-            [{ data: 'Account Type', header: true }, { data: 'Count', header: true }, { data: 'Percentage', header: true }],
+            [
+                { data: 'Count', header: true },
+                { data: 'Percentage', header: true },
+                { data: 'Account Type', header: true },
+            ],
+            [
+                'Active Accounts',
+                summary.activeAccounts.toString(),
+                `${summary.activeAccountPercentage.toFixed(1)}%`,
+            ],
+            [
+                'Dormant Accounts',
+                summary.dormantAccounts.toString(),
+                `${summary.dormantAccountPercentage.toFixed(1)}%`,
+            ],
             ['Total Accounts', summary.totalAccounts.toString(), '100%'],
-            ['Active Accounts', summary.activeAccounts.toString(), `${summary.activeAccountPercentage.toFixed(1)}%`],
-            ['Dormant Accounts', summary.dormantAccounts.toString(), `${summary.dormantAccountPercentage.toFixed(1)}%`],
         ])
             .addHeading('Activity Distribution', 3)
-            .addRaw('Active: ' + createPercentageBar(summary.activeAccountPercentage))
-            .addRaw('Dormant: ' + createPercentageBar(summary.dormantAccountPercentage))
-            .addRaw('---');
+            .addEOL()
+            .addRaw('Active: ' + createPercentageBar(summary.activeAccountPercentage), true)
+            .addRaw('Dormant: ' + createPercentageBar(summary.dormantAccountPercentage), true);
         // If there are dormant accounts, add a section about them
         if (dormantAccounts.length > 0) {
             core.summary
                 .addHeading('Dormant Accounts', 3)
-                .addRaw(`${dormantAccounts.length} accounts have been inactive for at least ${summary.duration}.`);
+                .addRaw(`${dormantAccounts.length} accounts have been inactive for at least ${summary.duration}.`, true);
             if (sendNotifications) {
-                core.summary.addRaw('Notifications are being sent to these accounts.');
+                core.summary.addRaw('Notifications are being sent to these accounts.', true);
             }
             else {
-                core.summary.addRaw('No notifications are being sent (notifications disabled).');
+                core.summary.addRaw('No notifications are being sent (notifications disabled).', true);
             }
         }
         await core.summary.write();
