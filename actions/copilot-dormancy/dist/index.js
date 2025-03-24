@@ -39345,7 +39345,7 @@ const formatDate = (isoString) => {
         return isoString;
     }
 };
-async function processNotifications(octokit, context, dormantAccounts, removalFunction) {
+async function processNotifications(octokit, context, dormantAccounts, removeAccount) {
     const notifier = new GithubIssueNotifier({
         githubClient: octokit,
         gracePeriod: context.duration,
@@ -39355,20 +39355,8 @@ async function processNotifications(octokit, context, dormantAccounts, removalFu
         },
         notificationBody: createDefaultNotificationBodyHandler(context.body),
         dryRun: context.dryRun,
-        // Add the removeAccountHandler to handle account removal
-        removeAccount: async ({ lastActivityRecord, }) => {
-            // This is where we would implement the actual user removal logic
-            const success = removalFunction
-                ? await removalFunction({ lastActivityRecord })
-                : false;
-            if (success) {
-                core.info(`🚀 Successfully removed user ${lastActivityRecord.login} from organization`);
-            }
-            else {
-                core.warning(`⚠️ Failed to remove user ${lastActivityRecord.login} from organization`);
-            }
-            return success;
-        },
+        // Add the removeAccountHandler to handle account removal,
+        removeAccount
     });
     return notifier.processDormantUsers(dormantAccounts);
 }

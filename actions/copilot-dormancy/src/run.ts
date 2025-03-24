@@ -49,7 +49,7 @@ export async function processNotifications(
   octokit: OctokitClient,
   context: NotificationContext,
   dormantAccounts: LastActivityRecord[],
-  removalFunction?: ({
+  removeAccount?: ({
     lastActivityRecord,
   }: {
     lastActivityRecord: LastActivityRecord;
@@ -64,27 +64,8 @@ export async function processNotifications(
     },
     notificationBody: createDefaultNotificationBodyHandler(context.body),
     dryRun: context.dryRun,
-    // Add the removeAccountHandler to handle account removal
-    removeAccount: async ({
-      lastActivityRecord,
-    }: {
-      lastActivityRecord: LastActivityRecord;
-    }) => {
-      // This is where we would implement the actual user removal logic
-      const success = removalFunction
-        ? await removalFunction({ lastActivityRecord })
-        : false;
-      if (success) {
-        core.info(
-          `🚀 Successfully removed user ${lastActivityRecord.login} from organization`,
-        );
-      } else {
-        core.warning(
-          `⚠️ Failed to remove user ${lastActivityRecord.login} from organization`,
-        );
-      }
-      return success;
-    },
+    // Add the removeAccountHandler to handle account removal,
+    removeAccount,
   });
   return notifier.processDormantUsers(dormantAccounts);
 }
