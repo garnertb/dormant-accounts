@@ -39245,6 +39245,28 @@ const safeStringify = (data) => {
         });
     }
 };
+// Helper function to format date for human readability
+const formatDate = (isoString) => {
+    try {
+        const date = new Date(isoString);
+        return date.toLocaleString('en-US', {
+            year: 'numeric',
+            month: 'long',
+            day: 'numeric',
+            hour: '2-digit',
+            minute: '2-digit',
+        });
+    }
+    catch (e) {
+        return isoString;
+    }
+};
+// Helper function to create a visual percentage bar
+const createPercentageBar = (percentage, width = 20) => {
+    const filledChars = Math.round((percentage / 100) * width);
+    const emptyChars = width - filledChars;
+    return `[${'█'.repeat(filledChars)}${' '.repeat(emptyChars)}] ${percentage.toFixed(1)}%`;
+};
 async function processNotifications(octokit, context, dormantAccounts) {
     const notifier = new GithubIssueNotifier({
         githubClient: octokit,
@@ -39363,6 +39385,36 @@ async function run() {
                 core.setFailed(`Failed to save activity log: ${error instanceof Error ? error.message : String(error)}`);
             }
         }
+        // Create a human-friendly job summary
+        core.summary
+            .addHeading('Copilot Dormancy Check Summary')
+            .addRaw(`**Last Activity Fetch:** ${formatDate(summary.lastActivityFetch)}`)
+            .addRaw(`**Dormancy Threshold:** ${summary.duration}`)
+            .addRaw('---')
+            .addHeading('Account Status Summary', 3)
+            .addTable([
+            [{ data: 'Account Type', header: true }, { data: 'Count', header: true }, { data: 'Percentage', header: true }],
+            ['Total Accounts', summary.totalAccounts.toString(), '100%'],
+            ['Active Accounts', summary.activeAccounts.toString(), `${summary.activeAccountPercentage.toFixed(1)}%`],
+            ['Dormant Accounts', summary.dormantAccounts.toString(), `${summary.dormantAccountPercentage.toFixed(1)}%`],
+        ])
+            .addHeading('Activity Distribution', 3)
+            .addRaw('Active: ' + createPercentageBar(summary.activeAccountPercentage))
+            .addRaw('Dormant: ' + createPercentageBar(summary.dormantAccountPercentage))
+            .addRaw('---');
+        // If there are dormant accounts, add a section about them
+        if (dormantAccounts.length > 0) {
+            core.summary
+                .addHeading('Dormant Accounts', 3)
+                .addRaw(`${dormantAccounts.length} accounts have been inactive for at least ${summary.duration}.`);
+            if (sendNotifications) {
+                core.summary.addRaw('Notifications are being sent to these accounts.');
+            }
+            else {
+                core.summary.addRaw('No notifications are being sent (notifications disabled).');
+            }
+        }
+        await core.summary.write();
         // Send notifications if enabled
         if (sendNotifications) {
             core.debug('Notification context: ' + safeStringify(notificationsContext));
