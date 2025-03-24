@@ -39409,11 +39409,7 @@ async function run() {
                 `${summary.dormantAccountPercentage.toFixed(1)}%`,
             ],
             ['Total Accounts', summary.totalAccounts.toString(), '100%'],
-        ])
-            .addHeading('Activity Distribution', 3)
-            .addEOL()
-            .addRaw('Active: ' + createPercentageBar(summary.activeAccountPercentage), true)
-            .addRaw('Dormant: ' + createPercentageBar(summary.dormantAccountPercentage), true);
+        ]);
         // If there are dormant accounts, add a section about them
         if (dormantAccounts.length > 0) {
             core.summary
@@ -39426,19 +39422,40 @@ async function run() {
                 core.summary.addRaw('No notifications are being sent (notifications disabled).', true);
             }
         }
-        await core.summary.write();
-        // Send notifications if enabled
         if (sendNotifications) {
             core.debug('Notification context: ' + safeStringify(notificationsContext));
             const notifications = await processNotifications(octokit, notificationsContext, dormantAccounts);
             core.setOutput('notification-results', safeStringify(notifications));
-            core.info(`Created notifications for ${notifications.notified} dormant accounts`);
-            core.info(`Closed notifications for ${notifications.reactivated} no longer dormant accounts`);
-            core.info(`Removed ${notifications.removed} dormant accounts`);
+            core.info(`Created notifications for ${notifications.notified.length} dormant accounts`);
+            core.info(`Closed notifications for ${notifications.reactivated.length} no longer dormant accounts`);
+            core.info(`Removed ${notifications.removed.length} dormant accounts`);
+            // Add notification results to summary
+            core.summary
+                .addHeading('Notification Results', 3)
+                .addTable([
+                [{ data: 'Action', header: true }, { data: 'Count', header: true }],
+                ['New notifications created', notifications.notified.length.toString()],
+                ['Notifications closed (reactivated users)', notifications.reactivated.length.toString()],
+                ['Users removed after grace period', notifications.removed.length.toString()],
+                ['Users with admin exclusions', notifications.excluded.length.toString()],
+                ['Users in grace period', notifications.inGracePeriod.length.toString()],
+                ['Errors encountered', notifications.errors.length.toString()],
+            ]);
+            // If there were any errors, show details
+            if (notifications.errors.length > 0) {
+                core.summary
+                    .addHeading('Notification Errors', 4)
+                    .addRaw('The following errors occurred during notification processing:')
+                    .addEOL();
+                notifications.errors.forEach(({ user, error }, index) => {
+                    core.summary.addRaw(`${index + 1}. **${user}**: ${error.message}`, true);
+                });
+            }
         }
         else {
             core.info('Notifications are disabled');
         }
+        await core.summary.write();
         core.info('Copilot dormancy check completed successfully');
     }
     catch (error) {

@@ -251,17 +251,7 @@ async function run(): Promise<void> {
           `${summary.dormantAccountPercentage.toFixed(1)}%`,
         ],
         ['Total Accounts', summary.totalAccounts.toString(), '100%'],
-      ])
-      .addHeading('Activity Distribution', 3)
-      .addEOL()
-      .addRaw(
-        'Active: ' + createPercentageBar(summary.activeAccountPercentage),
-        true,
-      )
-      .addRaw(
-        'Dormant: ' + createPercentageBar(summary.dormantAccountPercentage),
-        true,
-      );
+      ]);
 
     // If there are dormant accounts, add a section about them
     if (dormantAccounts.length > 0) {
@@ -285,9 +275,6 @@ async function run(): Promise<void> {
       }
     }
 
-    await core.summary.write();
-
-    // Send notifications if enabled
     if (sendNotifications) {
       core.debug(
         'Notification context: ' + safeStringify(notificationsContext),
@@ -302,15 +289,117 @@ async function run(): Promise<void> {
       core.setOutput('notification-results', safeStringify(notifications));
 
       core.info(
-        `Created notifications for ${notifications.notified} dormant accounts`,
+        `Created notifications for ${notifications.notified.length} dormant accounts`,
       );
       core.info(
-        `Closed notifications for ${notifications.reactivated} no longer dormant accounts`,
+        `Closed notifications for ${notifications.reactivated.length} no longer dormant accounts`,
       );
-      core.info(`Removed ${notifications.removed} dormant accounts`);
+      core.info(`Removed ${notifications.removed.length} dormant accounts`);
+
+      // Add notification results to summary
+      core.summary.addHeading('Notification Results', 3).addTable([
+        [
+          { data: 'Action', header: true },
+          { data: 'Count', header: true },
+        ],
+        ['New notifications created', notifications.notified.length.toString()],
+        [
+          'Notifications closed (reactivated users)',
+          notifications.reactivated.length.toString(),
+        ],
+        [
+          'Users removed after grace period',
+          notifications.removed.length.toString(),
+        ],
+        [
+          'Users with admin exclusions',
+          notifications.excluded.length.toString(),
+        ],
+        [
+          'Users in grace period',
+          notifications.inGracePeriod.length.toString(),
+        ],
+        ['Errors encountered', notifications.errors.length.toString()],
+      ]);
+
+      // Create links to the notification issues
+      const repoOwner = notificationsContext.repo.owner;
+      const repoName = notificationsContext.repo.repo;
+
+      // Function to generate a link list for notification issues
+      const generateIssueLinkList = (
+        notificationItems: Array<{ user: string; notification: any }>,
+        title: string,
+      ) => {
+        if (notificationItems.length === 0) return;
+
+        core.summary.addHeading(title, 4);
+
+        notificationItems.forEach(({ user, notification }) => {
+          const issueUrl = `https://github.com/${repoOwner}/${repoName}/issues/${notification.number}`;
+          core.summary.addRaw(
+            `- [${user}](${issueUrl}) - Issue #${notification.number}`,
+            true,
+          );
+        });
+
+        core.summary.addEOL();
+      };
+
+      // Add issue links for each notification category
+      if (notifications.notified.length > 0) {
+        generateIssueLinkList(
+          notifications.notified,
+          'Newly Created Notifications',
+        );
+      }
+
+      if (notifications.reactivated.length > 0) {
+        generateIssueLinkList(
+          notifications.reactivated,
+          'Closed Notifications (Users Became Active)',
+        );
+      }
+
+      if (notifications.removed.length > 0) {
+        generateIssueLinkList(
+          notifications.removed,
+          'Users Removed (Grace Period Expired)',
+        );
+      }
+
+      if (notifications.excluded.length > 0) {
+        generateIssueLinkList(notifications.excluded, 'Admin Exclusions');
+      }
+
+      if (notifications.inGracePeriod.length > 0) {
+        generateIssueLinkList(
+          notifications.inGracePeriod,
+          'Users in Grace Period',
+        );
+      }
+
+      // If there were any errors, show details
+      if (notifications.errors.length > 0) {
+        core.summary
+          .addHeading('Notification Errors', 4)
+          .addRaw(
+            'The following errors occurred during notification processing:',
+          )
+          .addEOL();
+
+        notifications.errors.forEach(({ user, error }, index) => {
+          core.summary.addRaw(
+            `${index + 1}. **${user}**: ${error.message}`,
+            true,
+          );
+        });
+      }
     } else {
       core.info('Notifications are disabled');
     }
+
+    await core.summary.write();
 
     core.info('Copilot dormancy check completed successfully');
   } catch (error) {
