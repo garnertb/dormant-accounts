@@ -5,6 +5,7 @@ import {
   GithubIssueNotifier,
   OctokitClient,
   LastActivityRecord,
+  createDefaultNotificationBodyHandler,
 } from '@dormant-accounts/github';
 import { createBranch } from './utils/createBranch';
 import { getActivityLog } from './utils/getActivityLog';
@@ -40,7 +41,7 @@ export async function processNotifications(
       ...context.repo,
       baseLabels: context.baseLabels,
     },
-    notificationBody: context.body,
+    notificationBody: createDefaultNotificationBodyHandler(context.body),
     dryRun: context.dryRun,
   });
   return notifier.processDormantUsers(dormantAccounts);

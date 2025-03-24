@@ -39258,7 +39258,7 @@ async function processNotifications(octokit, context, dormantAccounts) {
             ...context.repo,
             baseLabels: context.baseLabels,
         },
-        notificationBody: context.body,
+        notificationBody: createDefaultNotificationBodyHandler(context.body),
         dryRun: context.dryRun,
     });
     return notifier.processDormantUsers(dormantAccounts);
