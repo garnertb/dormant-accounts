@@ -39460,7 +39460,7 @@ async function run() {
                 if (notificationItems.length === 0)
                     return;
                 core.summary.addHeading(title, 4);
-                core.summary.addList(notificationItems.map(({ notification }) => `<a href="${notification.url}">${notification.title}</a>`));
+                core.summary.addList(notificationItems.map(({ notification }) => `<a href="${notification.html_url}">${notification.title}</a>`));
                 core.summary.addEOL();
             };
             // Add issue links for each notification category
