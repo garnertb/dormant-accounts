@@ -301,7 +301,6 @@ export class GithubIssueNotifier implements DormantAccountNotifier {
           `Account removal handler executed for ${user.login}: ${Boolean(removed) ? 'success' : 'failure'}`,
         );
         if (!removed) {
-          console.warn(`Account ${user.login} removal handler returned false`);
           return;
         }
       } catch (error) {

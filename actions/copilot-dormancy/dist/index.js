@@ -34255,7 +34255,7 @@ function dist_dormancyCheck(config) {
 }
 
 //# sourceMappingURL=index.js.map
-;// CONCATENATED MODULE: ../../packages/github/dist/chunk-K6HWSWGV.js
+;// CONCATENATED MODULE: ../../packages/github/dist/chunk-TFJJJGWZ.js
 // src/provider/audit-log.ts
 
 
@@ -34564,7 +34564,6 @@ ${notificationBody}`,
           `Account removal handler executed for ${user.login}: ${Boolean(removed) ? "success" : "failure"}`
         );
         if (!removed) {
-          console.warn(`Account ${user.login} removal handler returned false`);
           return;
         }
       } catch (error) {
@@ -34720,7 +34719,7 @@ function createDefaultNotificationBodyHandler(notificationTemplate) {
 }
 
 
-//# sourceMappingURL=chunk-K6HWSWGV.js.map
+//# sourceMappingURL=chunk-TFJJJGWZ.js.map
 ;// CONCATENATED MODULE: ./src/utils/createBranch.ts
 
 /**
@@ -39359,7 +39358,9 @@ async function processNotifications(octokit, context, dormantAccounts, removalFu
         // Add the removeAccountHandler to handle account removal
         removeAccount: async ({ lastActivityRecord, }) => {
             // This is where we would implement the actual user removal logic
-            const success = await removalFunction({ lastActivityRecord });
+            const success = removalFunction
+                ? await removalFunction({ lastActivityRecord })
+                : false;
             if (success) {
                 core.info(`🚀 Successfully removed user ${lastActivityRecord.login} from organization`);
             }
@@ -39516,7 +39517,7 @@ async function run() {
         }
         if (sendNotifications) {
             core.debug('Notification context: ' + safeStringify(notificationsContext));
-            const notifications = await processNotifications(octokit, notificationsContext, dormantAccounts, check.removeUser.bind(check));
+            const notifications = await processNotifications(octokit, notificationsContext, dormantAccounts);
             core.setOutput('notification-results', safeStringify(notifications));
             core.info(`Created notifications for ${notifications.notified.length} dormant accounts`);
             core.info(`Closed notifications for ${notifications.reactivated.length} no longer dormant accounts`);

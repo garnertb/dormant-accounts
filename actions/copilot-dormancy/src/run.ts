@@ -49,7 +49,7 @@ export async function processNotifications(
   octokit: OctokitClient,
   context: NotificationContext,
   dormantAccounts: LastActivityRecord[],
-  removalFunction: ({
+  removalFunction?: ({
     lastActivityRecord,
   }: {
     lastActivityRecord: LastActivityRecord;
@@ -71,7 +71,9 @@ export async function processNotifications(
       lastActivityRecord: LastActivityRecord;
     }) => {
       // This is where we would implement the actual user removal logic
-      const success = await removalFunction({ lastActivityRecord });
+      const success = removalFunction
+        ? await removalFunction({ lastActivityRecord })
+        : false;
       if (success) {
         core.info(
           `🚀 Successfully removed user ${lastActivityRecord.login} from organization`,
@@ -303,7 +305,7 @@ async function run(): Promise<void> {
         octokit,
         notificationsContext,
         dormantAccounts,
-        check.removeUser.bind(check),
+        //check.removeUser.bind(check),
       );
 
       core.setOutput('notification-results', safeStringify(notifications));
