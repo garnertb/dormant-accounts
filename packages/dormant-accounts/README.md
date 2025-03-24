@@ -40,9 +40,7 @@ const dormantUsers = dormancyCheck({
   },
 });
 
-dormantUsers.fetchActivity(); // Fetches and stores latest activity data
-
-checkDormancy();
+await dormantUsers.fetchActivity(); // Fetches and stores latest activity data
 ```
 
 ## Advanced Configuration
