@@ -36,8 +36,7 @@ inputs:
   notifications-body:
     description: 'Custom message template for user notifications'
     required: false
-    default: 'This organization automatically removes inactive GitHub Copilot users. Your account has been inactive for more than {{duration}} and is pending removal. You have {{gracePeriod}} to take action before removal.'
-
+    default: 'This organization automatically revokes GitHub Copilot licenses for inactive users. Your account is inactive and pending removal.\n\nYou can maintain your Copilot license by using Copilot within {{gracePeriod}}.'
 outputs:
   dormant-users:
     description: 'JSON string containing list of dormant accounts'
