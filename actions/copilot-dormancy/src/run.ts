@@ -322,10 +322,6 @@ async function run(): Promise<void> {
         ['Errors encountered', notifications.errors.length.toString()],
       ]);
 
-      // Create links to the notification issues
-      const repoOwner = notificationsContext.repo.owner;
-      const repoName = notificationsContext.repo.repo;
-
       // Function to generate a link list for notification issues
       const generateIssueLinkList = (
         notificationItems: Array<{ user: string; notification: any }>,
@@ -338,9 +334,8 @@ async function run(): Promise<void> {
         core.summary.addList(
           notificationItems.map(
             ({ notification }) =>
-              `[${notification.title}](${notification.issueUrl})`,
+              `[${notification.title}](${notification.url})`,
           ),
-          true,
         );
 
         core.summary.addEOL();

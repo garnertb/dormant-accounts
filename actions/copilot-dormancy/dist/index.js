@@ -39454,15 +39454,12 @@ async function run() {
                 ],
                 ['Errors encountered', notifications.errors.length.toString()],
             ]);
-            // Create links to the notification issues
-            const repoOwner = notificationsContext.repo.owner;
-            const repoName = notificationsContext.repo.repo;
             // Function to generate a link list for notification issues
             const generateIssueLinkList = (notificationItems, title) => {
                 if (notificationItems.length === 0)
                     return;
                 core.summary.addHeading(title, 4);
-                core.summary.addList(notificationItems.map(({ notification }) => `[${notification.title}](${notification.issueUrl})`), true);
+                core.summary.addList(notificationItems.map(({ notification }) => `[${notification.title}](${notification.url})`));
                 core.summary.addEOL();
             };
             // Add issue links for each notification category
