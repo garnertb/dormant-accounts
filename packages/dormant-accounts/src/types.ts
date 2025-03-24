@@ -127,9 +127,19 @@ export type IsDormantHandler<T> = (
  * @param args - Combined LastActivityRecord and implementation config
  * @returns Promise<void>
  */
-export type InactivityHandler<T> = (
+export type InactivityHandler<T, V = void> = (
   args: LastActivityRecord & T & PassedDormancyCheckConfiguration<T>,
-) => Promise<void>;
+) => Promise<V>;
+
+/**
+ * Handler for processing dormant users
+ * @template T - Type of extended configuration
+ * @param args - Combined LastActivityRecord and implementation config
+ * @returns Promise<void>
+ */
+export type RemoveUserHandler<T, V = boolean> = (
+  args: LastActivityRecord & T & PassedDormancyCheckConfiguration<T>,
+) => Promise<V>;
 
 /**
  * Handler for determining if a user should be whitelisted from dormancy checks
@@ -213,6 +223,12 @@ export type DormancyCheckConfig<CheckType> = {
    * @param args - Activity record and implementation config
    */
   inactivityHandler?: InactivityHandler<CheckType>;
+
+  /**
+   * Optional handler used to remove a user from the system. Not called automatically.
+   * @param args - Activity record and implementation config
+   */
+  removeUser?: RemoveUserHandler<CheckType>;
 };
 
 export type PassedDormancyCheckConfiguration<T> = RequireAllOrNone<

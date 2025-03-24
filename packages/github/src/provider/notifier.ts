@@ -58,7 +58,11 @@ export interface NotificationConfig {
 /**
  * Handler function type for account removal
  */
-export type RemoveAccountHandler = (user: LastActivityRecord) => Promise<void>;
+export type RemoveAccountHandler = ({
+  lastActivityRecord,
+}: {
+  lastActivityRecord: LastActivityRecord;
+}) => Promise<boolean>;
 
 /**
  * Results from processing dormant users
@@ -290,8 +294,16 @@ export class GithubIssueNotifier implements DormantAccountNotifier {
     // Execute the account removal handler if provided
     if (this.config.removeAccount) {
       try {
-        await this.config.removeAccount(user);
-        console.log(`Account removal handler executed for ${user.login}`);
+        const removed = await this.config.removeAccount({
+          lastActivityRecord: user,
+        });
+        console.log(
+          `Account removal handler executed for ${user.login}: ${Boolean(removed) ? 'success' : 'failure'}`,
+        );
+        if (!removed) {
+          console.warn(`Account ${user.login} removal handler returned false`);
+          return;
+        }
       } catch (error) {
         console.error(
           `Error executing account removal handler for ${user.login}:`,

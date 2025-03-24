@@ -334,7 +334,7 @@ describe('GithubIssueNotifier', () => {
 
   describe('removeAccount', () => {
     it('handles user removal with a custom handler', async () => {
-      const mockRemoveHandler = vi.fn().mockResolvedValue(undefined);
+      const mockRemoveHandler = vi.fn().mockResolvedValue(true);
 
       const handlerNotifier = new GithubIssueNotifier({
         githubClient: mockOctokit,
@@ -367,7 +367,9 @@ describe('GithubIssueNotifier', () => {
       await handlerNotifier.removeAccount(user, notification);
 
       // Verify handler was called with correct parameters
-      expect(mockRemoveHandler).toHaveBeenCalledWith(user, mockOctokit);
+      expect(mockRemoveHandler).toHaveBeenCalledWith({
+        lastActivityRecord: user,
+      });
 
       // Verify issue was updated correctly
       expect(mockOctokit.rest.issues.createComment).toHaveBeenCalledWith(

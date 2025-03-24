@@ -2,6 +2,7 @@ import { dormancyCheck } from 'dormant-accounts';
 import type {
   FetchActivityHandler,
   LastActivityRecord,
+  RemoveUserHandler,
 } from 'dormant-accounts';
 import { GitHubHandlerConfig, GitHubHandlerArgs } from './types';
 import ms from 'ms';
@@ -94,6 +95,35 @@ const fetchLatestActivityFromCoPilot: FetchActivityHandler<
 };
 
 /**
+ * Removes a list of users from GitHub Copilot in a given organization.
+ *
+ * @param octokit - The Octokit instance for making API calls.
+ * @param org - The organization to remove users from.
+ * @param accounts - The list of users to remove.
+ * @param dryRun - If true, only logs the actions without executing them.
+ * @returns A promise true if the user was removed, false otherwise.
+ *
+ */
+export const removeAccount: RemoveUserHandler<
+  GitHubHandlerConfig,
+  boolean
+> = async ({ login, octokit, org, dryRun, logger }) => {
+  if (dryRun) {
+    logger.info(`DRY RUN: Removing ${login} from ${org}`);
+  } else {
+    const {
+      data: { seats_cancelled },
+    } = await octokit.rest.copilot.cancelCopilotSeatAssignmentForUsers({
+      org,
+      selected_usernames: [login],
+    });
+    logger.info(`Removed ${seats_cancelled} license from ${org}`);
+    return seats_cancelled === 1;
+  }
+  return false;
+};
+
+/**
  * Configures a dormancy check for GitHub user inactivity based on Copilot usage.
  *
  * @param config  - The configuration object for the dormancy check.
@@ -104,6 +134,7 @@ export const copilotDormancy = (config: GitHubHandlerArgs) => {
   const {
     type = 'github-copilot-dormancy',
     fetchLatestActivity = fetchLatestActivityFromCoPilot,
+    removeUser = removeAccount,
     ...rest
   } = config;
 
@@ -111,5 +142,6 @@ export const copilotDormancy = (config: GitHubHandlerArgs) => {
     type,
     ...rest,
     fetchLatestActivity,
+    removeUser,
   });
 };

@@ -49,6 +49,11 @@ export async function processNotifications(
   octokit: OctokitClient,
   context: NotificationContext,
   dormantAccounts: LastActivityRecord[],
+  removalFunction: ({
+    lastActivityRecord,
+  }: {
+    lastActivityRecord: LastActivityRecord;
+  }) => Promise<boolean>,
 ) {
   const notifier = new GithubIssueNotifier({
     githubClient: octokit,
@@ -60,9 +65,23 @@ export async function processNotifications(
     notificationBody: createDefaultNotificationBodyHandler(context.body),
     dryRun: context.dryRun,
     // Add the removeAccountHandler to handle account removal
-    removeAccount: async ({ login }) => {
+    removeAccount: async ({
+      lastActivityRecord,
+    }: {
+      lastActivityRecord: LastActivityRecord;
+    }) => {
       // This is where we would implement the actual user removal logic
-      core.info(`🚀 Removing user ${login} from organization`);
+      const success = await removalFunction({ lastActivityRecord });
+      if (success) {
+        core.info(
+          `🚀 Successfully removed user ${lastActivityRecord.login} from organization`,
+        );
+      } else {
+        core.warning(
+          `⚠️ Failed to remove user ${lastActivityRecord.login} from organization`,
+        );
+      }
+      return success;
     },
   });
   return notifier.processDormantUsers(dormantAccounts);
@@ -284,6 +303,7 @@ async function run(): Promise<void> {
         octokit,
         notificationsContext,
         dormantAccounts,
+        check.removeUser,
       );
 
       core.setOutput('notification-results', safeStringify(notifications));

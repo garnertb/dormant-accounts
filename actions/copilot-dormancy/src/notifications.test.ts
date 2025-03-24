@@ -53,6 +53,7 @@ describe('Notification Processing', () => {
       mockOctokit,
       notificationContext,
       mockDormantAccounts,
+      vi.fn(),
     );
 
     expect(GithubIssueNotifier).toHaveBeenCalledWith({
@@ -63,6 +64,7 @@ describe('Notification Processing', () => {
         baseLabels: notificationContext.baseLabels,
       },
       notificationBody: expect.any(Function),
+      removeAccount: expect.any(Function),
       dryRun: notificationContext.dryRun,
     });
   });
@@ -72,6 +74,7 @@ describe('Notification Processing', () => {
       mockOctokit,
       notificationContext,
       mockDormantAccounts,
+      vi.fn(),
     );
 
     expect(result).toEqual({

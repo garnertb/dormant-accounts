@@ -34061,6 +34061,28 @@ var DormantAccountCheck = class {
     this.durationMillis = durationToMillis(this.duration);
     this.isDormant = this.config.isDormant ? this.config.isDormant : this.defaultDormancyHandler;
   }
+  async removeUser({
+    lastActivityRecord
+  }) {
+    const context = this.buildHandlerContext(lastActivityRecord);
+    if (this.config.removeUser) {
+      const result = await this.config.removeUser(context);
+      logger.info(`User ${lastActivityRecord.login} removal result: ${result}`);
+      if (result) {
+        if (!this.dryRun) {
+          await this.db.removeUserActivityRecord(lastActivityRecord);
+        }
+        logger.success(`Removed user ${lastActivityRecord.login}`);
+      } else {
+        logger.warn(`Failed to remove user ${lastActivityRecord.login}`);
+      }
+      return result;
+    }
+    logger.warn(
+      `No removeUser handler provided, skipping removal of ${lastActivityRecord.login}`
+    );
+    return false;
+  }
   /**
    * Consola logger instance for logging messages
    */
@@ -34233,11 +34255,11 @@ function dist_dormancyCheck(config) {
 }
 
 //# sourceMappingURL=index.js.map
-;// CONCATENATED MODULE: ../../packages/github/dist/chunk-2YBKHTPS.js
+;// CONCATENATED MODULE: ../../packages/github/dist/chunk-K6HWSWGV.js
 // src/provider/audit-log.ts
 
 
-var fetchAuditLogActivity = async ({ lastFetchTime, octokit, org, logger: logger2 }) => {
+var fetchAuditLogActivity = async ({ lastFetchTime, octokit, org, logger }) => {
   const lastFetchTimeAsDate = new Date(lastFetchTime);
   const payload = {
     org,
@@ -34246,7 +34268,7 @@ var fetchAuditLogActivity = async ({ lastFetchTime, octokit, org, logger: logger
     per_page: 100,
     order: "desc"
   };
-  logger2.debug(`Fetching audit log for ${org} since ${lastFetchTimeAsDate}`);
+  logger.debug(`Fetching audit log for ${org} since ${lastFetchTimeAsDate}`);
   try {
     const processed = {};
     try {
@@ -34265,7 +34287,7 @@ var fetchAuditLogActivity = async ({ lastFetchTime, octokit, org, logger: logger
           if (!processed[actor]?.lastActivity || lastActivity && lastActivity > processed[actor].lastActivity) {
             processed[actor] = record;
             const log = lastActivity ? `${ms(Date.now() - lastActivity.getTime())} ago` : "unknown";
-            logger2.debug(
+            logger.debug(
               `Activity record found for ${actor} - ${log}${record.type ? ` - ${record.type}` : ""}`
             );
           }
@@ -34273,7 +34295,7 @@ var fetchAuditLogActivity = async ({ lastFetchTime, octokit, org, logger: logger
       }
     } catch (err) {
       if (err.status === 404) {
-        logger2.error(
+        logger.error(
           `Audit log not found for organization ${org}. The organization may not have audit log access.`
         );
         return [];
@@ -34282,7 +34304,7 @@ var fetchAuditLogActivity = async ({ lastFetchTime, octokit, org, logger: logger
     }
     return Object.values(processed);
   } catch (error) {
-    logger2.error("Failed to fetch audit log", { error });
+    logger.error("Failed to fetch audit log", { error });
     throw error;
   }
 };
@@ -34302,9 +34324,8 @@ var githubDormancy = (config) => {
 // src/provider/copilot.ts
 
 
-var chunk_2YBKHTPS_logger = (/* unused pure expression or super */ null && (console));
-var fetchLatestActivityFromCoPilot = async ({ octokit, org, checkType, logger: logger2 }) => {
-  logger2.debug(checkType, `Fetching audit log for ${org}`);
+var fetchLatestActivityFromCoPilot = async ({ octokit, org, checkType, logger }) => {
+  logger.debug(checkType, `Fetching audit log for ${org}`);
   const payload = {
     org,
     per_page: 100
@@ -34318,7 +34339,7 @@ var fetchLatestActivityFromCoPilot = async ({ octokit, org, checkType, logger: l
     for await (const {
       data: { seats, total_seats }
     } of iterator) {
-      logger2.debug(
+      logger.debug(
         checkType,
         `Found ${total_seats} total copilot seats in ${org} org`
       );
@@ -34329,7 +34350,7 @@ var fetchLatestActivityFromCoPilot = async ({ octokit, org, checkType, logger: l
         if (!actor)
           continue;
         if (seat.pending_cancellation_date) {
-          logger2.debug(
+          logger.debug(
             checkType,
             `Skipping activity record for ${actor} due to pending cancellation`
           );
@@ -34344,7 +34365,7 @@ var fetchLatestActivityFromCoPilot = async ({ octokit, org, checkType, logger: l
         if (!processed[actor]?.lastActivity || lastActivity && lastActivity > processed[actor].lastActivity) {
           processed[actor] = record;
           const log = lastActivity ? `${node_modules_ms(Date.now() - lastActivity.getTime())} ago` : "never";
-          logger2.debug(
+          logger.debug(
             `Activity record found for ${actor} - ${log}${record.type ? ` - ${record.type}` : ""}`
           );
         }
@@ -34352,39 +34373,38 @@ var fetchLatestActivityFromCoPilot = async ({ octokit, org, checkType, logger: l
     }
     return Object.values(processed);
   } catch (error) {
-    logger2.error(checkType, "Failed to fetch audit log", { error });
+    logger.error(checkType, "Failed to fetch audit log", { error });
     throw error;
   }
+};
+var removeAccount = async ({ login, octokit, org, dryRun, logger }) => {
+  if (dryRun) {
+    logger.info(`DRY RUN: Removing ${login} from ${org}`);
+  } else {
+    const {
+      data: { seats_cancelled }
+    } = await octokit.rest.copilot.cancelCopilotSeatAssignmentForUsers({
+      org,
+      selected_usernames: [login]
+    });
+    logger.info(`Removed ${seats_cancelled} license from ${org}`);
+    return seats_cancelled === 1;
+  }
+  return false;
 };
 var copilotDormancy = (config) => {
   const {
     type = "github-copilot-dormancy",
     fetchLatestActivity = fetchLatestActivityFromCoPilot,
+    removeUser = removeAccount,
     ...rest
   } = config;
   return dist_dormancyCheck({
     type,
     ...rest,
-    fetchLatestActivity
+    fetchLatestActivity,
+    removeUser
   });
-};
-var removeAccount = async (octokit, org, accounts, dryRun) => {
-  const { data: { total_seats } } = await octokit.rest.copilot.listCopilotSeats({
-    org,
-    per_page: 1
-  });
-  chunk_2YBKHTPS_logger.info(`Found ${total_seats} total copilot seats in ${org} org`);
-  for (const user of accounts) {
-    if (dryRun) {
-      chunk_2YBKHTPS_logger.info(`DRY RUN: Removing ${user} from ${org}`);
-    } else {
-      const { data: { seats_cancelled } } = await octokit.rest.copilot.cancelCopilotSeatAssignmentForUsers({
-        org,
-        selected_usernames: accounts
-      });
-      chunk_2YBKHTPS_logger.info(`Removed ${seats_cancelled} users from ${org}`);
-    }
-  }
 };
 
 // src/provider/notifier.ts
@@ -34537,8 +34557,16 @@ ${notificationBody}`,
     console.log(`Removing account ${user.login}`);
     if (this.config.removeAccount) {
       try {
-        await this.config.removeAccount(user);
-        console.log(`Account removal handler executed for ${user.login}`);
+        const removed = await this.config.removeAccount({
+          lastActivityRecord: user
+        });
+        console.log(
+          `Account removal handler executed for ${user.login}: ${Boolean(removed) ? "success" : "failure"}`
+        );
+        if (!removed) {
+          console.warn(`Account ${user.login} removal handler returned false`);
+          return;
+        }
       } catch (error) {
         console.error(
           `Error executing account removal handler for ${user.login}:`,
@@ -34692,7 +34720,7 @@ function createDefaultNotificationBodyHandler(notificationTemplate) {
 }
 
 
-//# sourceMappingURL=chunk-2YBKHTPS.js.map
+//# sourceMappingURL=chunk-K6HWSWGV.js.map
 ;// CONCATENATED MODULE: ./src/utils/createBranch.ts
 
 /**
@@ -39318,7 +39346,7 @@ const formatDate = (isoString) => {
         return isoString;
     }
 };
-async function processNotifications(octokit, context, dormantAccounts) {
+async function processNotifications(octokit, context, dormantAccounts, removalFunction) {
     const notifier = new GithubIssueNotifier({
         githubClient: octokit,
         gracePeriod: context.duration,
@@ -39329,9 +39357,16 @@ async function processNotifications(octokit, context, dormantAccounts) {
         notificationBody: createDefaultNotificationBodyHandler(context.body),
         dryRun: context.dryRun,
         // Add the removeAccountHandler to handle account removal
-        removeAccount: async ({ login }) => {
+        removeAccount: async ({ lastActivityRecord, }) => {
             // This is where we would implement the actual user removal logic
-            core.info(`🚀 Removing user ${login} from organization`);
+            const success = await removalFunction({ lastActivityRecord });
+            if (success) {
+                core.info(`🚀 Successfully removed user ${lastActivityRecord.login} from organization`);
+            }
+            else {
+                core.warning(`⚠️ Failed to remove user ${lastActivityRecord.login} from organization`);
+            }
+            return success;
         },
     });
     return notifier.processDormantUsers(dormantAccounts);
@@ -39481,7 +39516,7 @@ async function run() {
         }
         if (sendNotifications) {
             core.debug('Notification context: ' + safeStringify(notificationsContext));
-            const notifications = await processNotifications(octokit, notificationsContext, dormantAccounts);
+            const notifications = await processNotifications(octokit, notificationsContext, dormantAccounts, check.removeUser);
             core.setOutput('notification-results', safeStringify(notifications));
             core.info(`Created notifications for ${notifications.notified.length} dormant accounts`);
             core.info(`Closed notifications for ${notifications.reactivated.length} no longer dormant accounts`);

@@ -18,6 +18,7 @@ export type {
   DormancyCheckConfig,
   DormantAccountCheckSummary,
   DormantAccountStatusMap,
+  RemoveUserHandler,
 } from './types';
 
 /**
@@ -46,6 +47,34 @@ export class DormantAccountCheck<TConfig> {
     this.isDormant = this.config.isDormant
       ? this.config.isDormant
       : this.defaultDormancyHandler;
+  }
+
+  async removeUser({
+    lastActivityRecord,
+  }: {
+    lastActivityRecord: LastActivityRecord;
+  }) {
+    const context = this.buildHandlerContext(lastActivityRecord);
+
+    if (this.config.removeUser) {
+      const result = await this.config.removeUser(context);
+      logger.info(`User ${lastActivityRecord.login} removal result: ${result}`);
+      if (result) {
+        if (!this.dryRun) {
+          await this.db.removeUserActivityRecord(lastActivityRecord);
+        }
+        logger.success(`Removed user ${lastActivityRecord.login}`);
+      } else {
+        logger.warn(`Failed to remove user ${lastActivityRecord.login}`);
+      }
+      return result;
+    }
+
+    logger.warn(
+      `No removeUser handler provided, skipping removal of ${lastActivityRecord.login}`,
+    );
+
+    return false;
   }
 
   private defaultDormancyHandler: IsDormantHandler<TConfig> = async ({

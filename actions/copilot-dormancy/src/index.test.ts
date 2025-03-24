@@ -55,9 +55,6 @@ describe('Copilot Dormancy Action', () => {
     vi.resetModules();
     vi.resetAllMocks();
 
-    // Make sure CI is false to prevent auto-execution of run()
-    process.env = { ...originalEnv, CI: 'false' };
-
     // Setup GitHub mocks
     vi.mocked(github.getOctokit).mockReturnValue({
       rest: {
@@ -70,7 +67,6 @@ describe('Copilot Dormancy Action', () => {
 
   afterEach(() => {
     vi.clearAllMocks();
-    process.env = originalEnv;
   });
 
   it('should run the dormancy check and set outputs', async () => {
