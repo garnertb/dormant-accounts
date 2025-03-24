@@ -335,6 +335,7 @@ export class GithubIssueNotifier implements DormantAccountNotifier {
       repo: this.config.repository.repo,
       issue_number: notification.number,
       state: 'closed',
+      state_reason: 'not_planned',
     });
 
     console.log(`Notification closed for active user ${user.login}`);

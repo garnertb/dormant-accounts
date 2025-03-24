@@ -34216,7 +34216,7 @@ function dist_dormancyCheck(config) {
 }
 
 //# sourceMappingURL=index.js.map
-;// CONCATENATED MODULE: ../../packages/github/dist/chunk-5UIKV4QC.js
+;// CONCATENATED MODULE: ../../packages/github/dist/chunk-7EO4KYXE.js
 // src/provider/audit-log.ts
 
 
@@ -34523,7 +34523,8 @@ ${notificationBody}`,
       owner: this.config.repository.owner,
       repo: this.config.repository.repo,
       issue_number: notification.number,
-      state: "closed"
+      state: "closed",
+      state_reason: "not_planned"
     });
     console.log(`Notification closed for active user ${user.login}`);
   }
@@ -34634,7 +34635,7 @@ function createDefaultNotificationBodyHandler(notificationTemplate) {
 }
 
 
-//# sourceMappingURL=chunk-5UIKV4QC.js.map
+//# sourceMappingURL=chunk-7EO4KYXE.js.map
 ;// CONCATENATED MODULE: ./src/utils/createBranch.ts
 
 /**
