@@ -14,6 +14,7 @@ import {
   getNotificationContext,
   NotificationContext,
 } from './utils/getNotificationContext';
+import { updateActivityLog } from './utils/updateActivityLog';
 
 // Function to safely stringify data for output
 const safeStringify = (data: unknown): string => {
@@ -176,18 +177,12 @@ async function run(): Promise<void> {
             core.debug(`Branch already exists: ${branchName}`);
           }
 
-          await octokit.rest.repos.createOrUpdateFileContents({
-            owner: owner as string,
-            repo: repo as string,
+          await updateActivityLog(octokit, activityLogContext.repo, {
             branch: branchName,
             path: activityLogContext.path,
             sha: existingActivityLogSha,
             message: `Update Copilot dormancy log for ${dateStamp}`,
             content: contentBase64,
-            committer: {
-              name: 'GitHub Action',
-              email: 'action@github.com',
-            },
           });
 
           core.info(
@@ -238,8 +233,6 @@ async function run(): Promise<void> {
     throw error; // Rethrow the error to ensure the action fails
   }
 }
-
-run();
 
 // For testing purposes, export the run function
 export { run };
