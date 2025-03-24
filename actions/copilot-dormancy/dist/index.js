@@ -39516,7 +39516,7 @@ async function run() {
         }
         if (sendNotifications) {
             core.debug('Notification context: ' + safeStringify(notificationsContext));
-            const notifications = await processNotifications(octokit, notificationsContext, dormantAccounts, check.removeUser);
+            const notifications = await processNotifications(octokit, notificationsContext, dormantAccounts, check.removeUser.bind(check));
             core.setOutput('notification-results', safeStringify(notifications));
             core.info(`Created notifications for ${notifications.notified.length} dormant accounts`);
             core.info(`Closed notifications for ${notifications.reactivated.length} no longer dormant accounts`);
