@@ -76,7 +76,7 @@ export interface DormantAccountNotifier {
   ): Promise<string[]>;
   notifyUser(user: LastActivityRecord): Promise<NotificationIssue>;
   hasGracePeriodExpired(notification: NotificationIssue): boolean;
-  removeUser(
+  removeAccount(
     user: LastActivityRecord,
     notification: NotificationIssue,
   ): Promise<void>;
@@ -148,7 +148,7 @@ export class GithubIssueNotifier implements DormantAccountNotifier {
           // Check if grace period expired
           if (this.hasGracePeriodExpired(notification)) {
             if (!this.config.dryRun) {
-              await this.removeUser(user, notification);
+              await this.removeAccount(user, notification);
             }
             result.removed.push({ user: user.login, notification });
           } else {
@@ -275,16 +275,16 @@ export class GithubIssueNotifier implements DormantAccountNotifier {
   /**
    * Remove a user after grace period expiration
    */
-  async removeUser(
+  async removeAccount(
     user: LastActivityRecord,
     notification: NotificationIssue,
   ): Promise<void> {
-    console.log(`Removing user ${user.login}`);
+    console.log(`Removing account ${user.login}`);
 
     // Add comment and label before closing
     await this.addCommentToIssue(
       notification.number,
-      `User ${user.login} removed due to inactivity after ${this.config.gracePeriod} grace period.`,
+      `Account ${user.login} removed due to inactivity after ${this.config.gracePeriod} grace period.`,
     );
 
     await this.addLabelToIssue(notification.number, NotificationStatus.REMOVED);
