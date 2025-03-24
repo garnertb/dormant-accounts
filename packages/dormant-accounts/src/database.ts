@@ -92,6 +92,29 @@ export class Database {
     await this.writeWithSort();
   }
 
+  /**
+   * Removes a user record from the database
+   * @param user Either a LastActivityRecord object or a string login
+   * @returns Promise<boolean> true if the user was found and removed, false if not found
+   */
+  async removeUserActivityRecord(
+    user: LastActivityRecord | string,
+  ): Promise<boolean> {
+    await this.validateCheckType();
+
+    const login = typeof user === 'string' ? user : user.login;
+
+    if (!this.db.data[login] || login === '_state') {
+      logger.debug(`User ${login} not found in database, nothing to remove`);
+      return false;
+    }
+
+    delete this.db.data[login];
+    logger.debug(`User ${login} removed from database`);
+    await this.writeWithSort();
+    return true;
+  }
+
   async getActivityRecords(): Promise<LastActivityRecord[]> {
     await this.validateCheckType();
     return Object.entries(this.db.data)

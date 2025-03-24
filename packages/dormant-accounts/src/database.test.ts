@@ -150,5 +150,118 @@ describe('Database', () => {
       expect(data).toEqual(mockData);
       expect(mockAdapter.read).toHaveBeenCalled();
     });
+
+    it('removes user when given activity record', async () => {
+      const testUser = 'test-user';
+      const mockData = {
+        _state: {
+          'check-type': TEST_CHECK_TYPE,
+          lastRun: new Date().toISOString(),
+          lastUpdated: new Date().toISOString(),
+        },
+        [testUser]: {
+          lastActivity: new Date().toISOString(),
+          type: 'test',
+        },
+      };
+
+      const mockDb = {
+        data: mockData,
+        read: mockAdapter.read,
+        write: mockAdapter.write,
+      };
+
+      vi.mocked(Low).mockImplementationOnce(() => mockDb as any);
+      db = new Database(TEST_CHECK_TYPE);
+
+      const result = await db.removeUserActivityRecord({
+        login: testUser,
+        lastActivity: new Date(),
+        type: 'test',
+      });
+
+      expect(result).toBe(true);
+      expect(mockDb.data[testUser]).toBeUndefined();
+      expect(mockAdapter.write).toHaveBeenCalled();
+    });
+
+    it('removes user when given login string', async () => {
+      const testUser = 'test-user';
+      const mockData = {
+        _state: {
+          'check-type': TEST_CHECK_TYPE,
+          lastRun: new Date().toISOString(),
+          lastUpdated: new Date().toISOString(),
+        },
+        [testUser]: {
+          lastActivity: new Date().toISOString(),
+          type: 'test',
+        },
+      };
+
+      const mockDb = {
+        data: mockData,
+        read: mockAdapter.read,
+        write: mockAdapter.write,
+      };
+
+      vi.mocked(Low).mockImplementationOnce(() => mockDb as any);
+      db = new Database(TEST_CHECK_TYPE);
+
+      const result = await db.removeUserActivityRecord(testUser);
+
+      expect(result).toBe(true);
+      expect(mockDb.data[testUser]).toBeUndefined();
+      expect(mockAdapter.write).toHaveBeenCalled();
+    });
+
+    it('returns false when removing user that does not exist', async () => {
+      const mockData = {
+        _state: {
+          'check-type': TEST_CHECK_TYPE,
+          lastRun: new Date().toISOString(),
+          lastUpdated: new Date().toISOString(),
+        },
+      };
+
+      const mockDb = {
+        data: mockData,
+        read: mockAdapter.read,
+        write: mockAdapter.write,
+      };
+
+      vi.mocked(Low).mockImplementationOnce(() => mockDb as any);
+      db = new Database(TEST_CHECK_TYPE);
+
+      const result = await db.removeUserActivityRecord('non-existent-user');
+
+      expect(result).toBe(false);
+      expect(mockAdapter.write).not.toHaveBeenCalled();
+    });
+
+    it('prevents removal of _state metadata', async () => {
+      const mockData = {
+        _state: {
+          'check-type': TEST_CHECK_TYPE,
+          lastRun: new Date().toISOString(),
+          lastUpdated: new Date().toISOString(),
+        },
+      };
+
+      const mockDb = {
+        data: mockData,
+        read: mockAdapter.read,
+        write: mockAdapter.write,
+      };
+
+      vi.mocked(Low).mockImplementationOnce(() => mockDb as any);
+      db = new Database(TEST_CHECK_TYPE);
+
+      const result = await db.removeUserActivityRecord('_state');
+
+      expect(result).toBe(false);
+      expect(mockDb.data._state).toBeDefined();
+      expect(mockAdapter.write).not.toHaveBeenCalled();
+    });
   });
 });
