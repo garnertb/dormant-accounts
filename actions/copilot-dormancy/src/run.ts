@@ -334,7 +334,7 @@ async function run(): Promise<void> {
         core.summary.addList(
           notificationItems.map(
             ({ notification }) =>
-              `[${notification.title}](${notification.url})`,
+              `<a href="${notification.url}">${notification.title}</a>`,
           ),
         );
 
