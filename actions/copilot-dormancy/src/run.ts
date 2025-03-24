@@ -45,13 +45,6 @@ const formatDate = (isoString: string): string => {
   }
 };
 
-// Helper function to create a visual percentage bar
-const createPercentageBar = (percentage: number, width = 20): string => {
-  const filledChars = Math.round((percentage / 100) * width);
-  const emptyChars = width - filledChars;
-  return `[${'█'.repeat(filledChars)}${' '.repeat(emptyChars)}] ${percentage.toFixed(1)}%`;
-};
-
 export async function processNotifications(
   octokit: OctokitClient,
   context: NotificationContext,
@@ -66,6 +59,11 @@ export async function processNotifications(
     },
     notificationBody: createDefaultNotificationBodyHandler(context.body),
     dryRun: context.dryRun,
+    // Add the removeAccountHandler to handle account removal
+    removeAccountHandler: async ({ login }) => {
+      // This is where we would implement the actual user removal logic
+      core.info(`🚀 Removing user ${login} from organization`);
+    },
   });
   return notifier.processDormantUsers(dormantAccounts);
 }

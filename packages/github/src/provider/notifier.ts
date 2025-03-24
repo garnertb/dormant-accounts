@@ -52,7 +52,13 @@ export interface NotificationConfig {
   githubClient: ReturnType<typeof getOctokit>; // Octokit client instance
   dryRun?: boolean; // Optional flag for running without making changes
   assignUserToIssue?: boolean; // Optional flag to assign user to the issue
+  removeAccountHandler?: RemoveAccountHandler; // Optional handler for account removal
 }
+
+/**
+ * Handler function type for account removal
+ */
+export type RemoveAccountHandler = (user: LastActivityRecord) => Promise<void>;
 
 /**
  * Results from processing dormant users
@@ -281,6 +287,22 @@ export class GithubIssueNotifier implements DormantAccountNotifier {
   ): Promise<void> {
     console.log(`Removing account ${user.login}`);
 
+    // Execute the account removal handler if provided
+    if (this.config.removeAccountHandler) {
+      try {
+        await this.config.removeAccountHandler(user);
+        console.log(`Account removal handler executed for ${user.login}`);
+      } catch (error) {
+        console.error(
+          `Error executing account removal handler for ${user.login}:`,
+          error,
+        );
+        throw error;
+      }
+    } else {
+      console.log(`No account removal handler provided for ${user.login}`);
+    }
+
     // Add comment and label before closing
     await this.addCommentToIssue(
       notification.number,
@@ -303,13 +325,6 @@ export class GithubIssueNotifier implements DormantAccountNotifier {
     );
 
     console.log(`Notification closed for removed user ${user.login}`);
-
-    // Here you would add code to actually remove the user from your organization
-    // For example:
-    // await this.octokit.rest.orgs.removeMembershipForUser({
-    //   org: "yourOrg",
-    //   username: user.login
-    // });
   }
 
   /**
