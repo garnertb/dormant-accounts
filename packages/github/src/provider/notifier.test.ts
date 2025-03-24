@@ -331,4 +331,92 @@ describe('GithubIssueNotifier', () => {
       expect(mockOctokit.rest.issues.update).not.toHaveBeenCalled();
     });
   });
+
+  describe('removeAccount', () => {
+    it('handles user removal with a custom handler', async () => {
+      const mockRemoveHandler = vi.fn().mockResolvedValue(undefined);
+
+      const handlerNotifier = new GithubIssueNotifier({
+        githubClient: mockOctokit,
+        gracePeriod: '7d',
+        repository: {
+          owner: 'test-owner',
+          repo: 'test-repo',
+          baseLabels: ['dormant-account'],
+        },
+        notificationBody: 'Test notification body',
+        dryRun: false,
+        removeAccount: mockRemoveHandler,
+      });
+
+      const user: LastActivityRecord = {
+        login: 'test-user',
+        lastActivity: new Date('2023-01-01'),
+        type: 'user',
+      };
+
+      const notification = {
+        id: 123,
+        number: 1,
+        title: 'test-user',
+        created_at: new Date().toISOString(),
+        labels: [],
+        state: 'open',
+      };
+
+      await handlerNotifier.removeAccount(user, notification);
+
+      // Verify handler was called with correct parameters
+      expect(mockRemoveHandler).toHaveBeenCalledWith(user, mockOctokit);
+
+      // Verify issue was updated correctly
+      expect(mockOctokit.rest.issues.createComment).toHaveBeenCalledWith(
+        expect.objectContaining({
+          issue_number: 1,
+          body: expect.stringContaining('removed due to inactivity'),
+        }),
+      );
+
+      expect(mockOctokit.rest.issues.addLabels).toHaveBeenCalledWith(
+        expect.objectContaining({
+          issue_number: 1,
+          labels: [NotificationStatus.REMOVED],
+        }),
+      );
+
+      expect(mockOctokit.rest.issues.update).toHaveBeenCalledWith(
+        expect.objectContaining({
+          issue_number: 1,
+          state: 'closed',
+        }),
+      );
+    });
+
+    it('works without a custom handler', async () => {
+      const user: LastActivityRecord = {
+        login: 'test-user',
+        lastActivity: new Date('2023-01-01'),
+        type: 'user',
+      };
+
+      const notification = {
+        id: 123,
+        number: 1,
+        title: 'test-user',
+        created_at: new Date().toISOString(),
+        labels: [],
+        state: 'open',
+      };
+
+      await notifier.removeAccount(user, notification);
+
+      // Just verify the issue was updated correctly
+      expect(mockOctokit.rest.issues.update).toHaveBeenCalledWith(
+        expect.objectContaining({
+          issue_number: 1,
+          state: 'closed',
+        }),
+      );
+    });
+  });
 });

@@ -34233,7 +34233,7 @@ function dist_dormancyCheck(config) {
 }
 
 //# sourceMappingURL=index.js.map
-;// CONCATENATED MODULE: ../../packages/github/dist/chunk-LMJKZVFA.js
+;// CONCATENATED MODULE: ../../packages/github/dist/chunk-2YBKHTPS.js
 // src/provider/audit-log.ts
 
 
@@ -34302,7 +34302,7 @@ var githubDormancy = (config) => {
 // src/provider/copilot.ts
 
 
-var chunk_LMJKZVFA_logger = (/* unused pure expression or super */ null && (console));
+var chunk_2YBKHTPS_logger = (/* unused pure expression or super */ null && (console));
 var fetchLatestActivityFromCoPilot = async ({ octokit, org, checkType, logger: logger2 }) => {
   logger2.debug(checkType, `Fetching audit log for ${org}`);
   const payload = {
@@ -34373,16 +34373,16 @@ var removeAccount = async (octokit, org, accounts, dryRun) => {
     org,
     per_page: 1
   });
-  chunk_LMJKZVFA_logger.info(`Found ${total_seats} total copilot seats in ${org} org`);
+  chunk_2YBKHTPS_logger.info(`Found ${total_seats} total copilot seats in ${org} org`);
   for (const user of accounts) {
     if (dryRun) {
-      chunk_LMJKZVFA_logger.info(`DRY RUN: Removing ${user} from ${org}`);
+      chunk_2YBKHTPS_logger.info(`DRY RUN: Removing ${user} from ${org}`);
     } else {
       const { data: { seats_cancelled } } = await octokit.rest.copilot.cancelCopilotSeatAssignmentForUsers({
         org,
         selected_usernames: accounts
       });
-      chunk_LMJKZVFA_logger.info(`Removed ${seats_cancelled} users from ${org}`);
+      chunk_2YBKHTPS_logger.info(`Removed ${seats_cancelled} users from ${org}`);
     }
   }
 };
@@ -34535,9 +34535,9 @@ ${notificationBody}`,
    */
   async removeAccount(user, notification) {
     console.log(`Removing account ${user.login}`);
-    if (this.config.removeAccountHandler) {
+    if (this.config.removeAccount) {
       try {
-        await this.config.removeAccountHandler(user);
+        await this.config.removeAccount(user);
         console.log(`Account removal handler executed for ${user.login}`);
       } catch (error) {
         console.error(
@@ -34692,7 +34692,7 @@ function createDefaultNotificationBodyHandler(notificationTemplate) {
 }
 
 
-//# sourceMappingURL=chunk-LMJKZVFA.js.map
+//# sourceMappingURL=chunk-2YBKHTPS.js.map
 ;// CONCATENATED MODULE: ./src/utils/createBranch.ts
 
 /**
@@ -39329,7 +39329,7 @@ async function processNotifications(octokit, context, dormantAccounts) {
         notificationBody: createDefaultNotificationBodyHandler(context.body),
         dryRun: context.dryRun,
         // Add the removeAccountHandler to handle account removal
-        removeAccountHandler: async ({ login }) => {
+        removeAccount: async ({ login }) => {
             // This is where we would implement the actual user removal logic
             core.info(`🚀 Removing user ${login} from organization`);
         },

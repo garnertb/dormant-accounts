@@ -52,7 +52,7 @@ export interface NotificationConfig {
   githubClient: ReturnType<typeof getOctokit>; // Octokit client instance
   dryRun?: boolean; // Optional flag for running without making changes
   assignUserToIssue?: boolean; // Optional flag to assign user to the issue
-  removeAccountHandler?: RemoveAccountHandler; // Optional handler for account removal
+  removeAccount?: RemoveAccountHandler; // Optional handler for account removal
 }
 
 /**
@@ -288,9 +288,9 @@ export class GithubIssueNotifier implements DormantAccountNotifier {
     console.log(`Removing account ${user.login}`);
 
     // Execute the account removal handler if provided
-    if (this.config.removeAccountHandler) {
+    if (this.config.removeAccount) {
       try {
-        await this.config.removeAccountHandler(user);
+        await this.config.removeAccount(user);
         console.log(`Account removal handler executed for ${user.login}`);
       } catch (error) {
         console.error(

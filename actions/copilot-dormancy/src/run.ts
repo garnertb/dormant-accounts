@@ -60,7 +60,7 @@ export async function processNotifications(
     notificationBody: createDefaultNotificationBodyHandler(context.body),
     dryRun: context.dryRun,
     // Add the removeAccountHandler to handle account removal
-    removeAccountHandler: async ({ login }) => {
+    removeAccount: async ({ login }) => {
       // This is where we would implement the actual user removal logic
       core.info(`🚀 Removing user ${login} from organization`);
     },
