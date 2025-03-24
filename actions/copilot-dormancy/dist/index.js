@@ -32018,12 +32018,6 @@ module.exports = parseParams
 /************************************************************************/
 var __webpack_exports__ = {};
 
-// EXPORTS
-__nccwpck_require__.d(__webpack_exports__, {
-  Y: () => (/* binding */ processNotifications),
-  e: () => (/* binding */ run)
-});
-
 // EXTERNAL MODULE: ../../node_modules/.pnpm/@actions+core@1.11.1/node_modules/@actions/core/lib/core.js
 var core = __nccwpck_require__(99);
 // EXTERNAL MODULE: ../../node_modules/.pnpm/@actions+github@6.0.0/node_modules/@actions/github/lib/github.js
@@ -34222,7 +34216,7 @@ function dist_dormancyCheck(config) {
 }
 
 //# sourceMappingURL=index.js.map
-;// CONCATENATED MODULE: ../../packages/github/dist/chunk-YPPHETYO.js
+;// CONCATENATED MODULE: ../../packages/github/dist/chunk-5UIKV4QC.js
 // src/provider/audit-log.ts
 
 
@@ -34640,7 +34634,7 @@ function createDefaultNotificationBodyHandler(notificationTemplate) {
 }
 
 
-//# sourceMappingURL=chunk-YPPHETYO.js.map
+//# sourceMappingURL=chunk-5UIKV4QC.js.map
 ;// CONCATENATED MODULE: ./src/utils/createBranch.ts
 
 /**
@@ -39228,7 +39222,7 @@ async function updateActivityLog(octokit, context, options) {
     }
 }
 
-;// CONCATENATED MODULE: ./src/index.ts
+;// CONCATENATED MODULE: ./src/run.ts
 
 
 
@@ -39392,6 +39386,7 @@ async function run() {
 // For testing purposes, export the run function
 
 
-var __webpack_exports__processNotifications = __webpack_exports__.Y;
-var __webpack_exports__run = __webpack_exports__.e;
-export { __webpack_exports__processNotifications as processNotifications, __webpack_exports__run as run };
+;// CONCATENATED MODULE: ./src/index.ts
+
+run();
+

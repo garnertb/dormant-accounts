@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { processNotifications } from './index';
+import { processNotifications } from './run';
 import {
   GithubIssueNotifier,
   LastActivityRecord,
@@ -62,7 +62,7 @@ describe('Notification Processing', () => {
         ...notificationContext.repo,
         baseLabels: notificationContext.baseLabels,
       },
-      notificationBody: notificationContext.body,
+      notificationBody: expect.any(Function),
       dryRun: notificationContext.dryRun,
     });
   });

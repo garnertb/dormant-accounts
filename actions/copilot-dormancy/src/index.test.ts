@@ -92,7 +92,7 @@ describe('Copilot Dormancy Action', () => {
     });
 
     // Import and execute the run function directly
-    const { run } = await import('./index');
+    const { run } = await import('./run');
     await run();
 
     const { updateActivityLog } = await import('./utils/updateActivityLog');
@@ -158,7 +158,7 @@ describe('Copilot Dormancy Action', () => {
     });
 
     // Import and execute the run function directly
-    const { run } = await import('./index');
+    const { run } = await import('./run');
     await run();
 
     const { updateActivityLog } = await import('./utils/updateActivityLog');
@@ -192,7 +192,7 @@ describe('Copilot Dormancy Action', () => {
     vi.mocked(copilotDormancy).mockRejectedValueOnce(new Error('Test error'));
 
     // Import the run function
-    const { run } = await import('./index');
+    const { run } = await import('./run');
 
     // Run and expect it to throw
     await expect(run()).rejects.toThrow('Test error');
