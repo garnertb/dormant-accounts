@@ -8,6 +8,17 @@ import ms from 'ms';
 
 const logger = console;
 
+/**
+ * Fetches the latest activity from GitHub Copilot for a given organization and returns the
+ * users last activity or the date they were added to Copilot if no activity is found.
+ *
+ * @param octokit - The Octokit instance for making API calls.
+ * @param org - The organization to fetch activity for.
+ * @param checkType - The type of check being performed.
+ * @param logger - The logger instance for logging messages.
+ *
+ * @returns A promise that resolves to an array of LastActivityRecord objects.
+ */
 const fetchLatestActivityFromCoPilot: FetchActivityHandler<
   GitHubHandlerConfig
 > = async ({ octokit, org, checkType, logger }) => {
@@ -42,10 +53,11 @@ const fetchLatestActivityFromCoPilot: FetchActivityHandler<
 
         if (!actor) continue;
 
-        // default date to 0 if not present
         const lastActivity = seat.last_activity_at
           ? new Date(seat.last_activity_at)
-          : null;
+          : seat.created_at
+            ? new Date(seat.created_at)
+            : null;
         const record = {
           type: seat.last_activity_editor,
           login: actor,
