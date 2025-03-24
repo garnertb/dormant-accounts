@@ -39462,10 +39462,7 @@ async function run() {
                 if (notificationItems.length === 0)
                     return;
                 core.summary.addHeading(title, 4);
-                notificationItems.forEach(({ user, notification }) => {
-                    const issueUrl = `https://github.com/${repoOwner}/${repoName}/issues/${notification.number}`;
-                    core.summary.addRaw(`- [${user}](${issueUrl}) - Issue #${notification.number}`, true);
-                });
+                core.summary.addList(notificationItems.map(({ notification }) => `[${notification.title}](${notification.issueUrl})`), true);
                 core.summary.addEOL();
             };
             // Add issue links for each notification category

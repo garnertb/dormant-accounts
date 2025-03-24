@@ -335,13 +335,13 @@ async function run(): Promise<void> {
 
         core.summary.addHeading(title, 4);
 
-        notificationItems.forEach(({ user, notification }) => {
-          const issueUrl = `https://github.com/${repoOwner}/${repoName}/issues/${notification.number}`;
-          core.summary.addRaw(
-            `- [${user}](${issueUrl}) - Issue #${notification.number}`,
-            true,
-          );
-        });
+        core.summary.addList(
+          notificationItems.map(
+            ({ notification }) =>
+              `[${notification.title}](${notification.issueUrl})`,
+          ),
+          true,
+        );
 
         core.summary.addEOL();
       };
