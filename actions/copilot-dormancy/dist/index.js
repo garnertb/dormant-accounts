@@ -34233,7 +34233,7 @@ function dist_dormancyCheck(config) {
 }
 
 //# sourceMappingURL=index.js.map
-;// CONCATENATED MODULE: ../../packages/github/dist/chunk-PHDHEYEU.js
+;// CONCATENATED MODULE: ../../packages/github/dist/chunk-LMJKZVFA.js
 // src/provider/audit-log.ts
 
 
@@ -34302,7 +34302,7 @@ var githubDormancy = (config) => {
 // src/provider/copilot.ts
 
 
-var chunk_PHDHEYEU_logger = (/* unused pure expression or super */ null && (console));
+var chunk_LMJKZVFA_logger = (/* unused pure expression or super */ null && (console));
 var fetchLatestActivityFromCoPilot = async ({ octokit, org, checkType, logger: logger2 }) => {
   logger2.debug(checkType, `Fetching audit log for ${org}`);
   const payload = {
@@ -34373,16 +34373,16 @@ var removeAccount = async (octokit, org, accounts, dryRun) => {
     org,
     per_page: 1
   });
-  chunk_PHDHEYEU_logger.info(`Found ${total_seats} total copilot seats in ${org} org`);
+  chunk_LMJKZVFA_logger.info(`Found ${total_seats} total copilot seats in ${org} org`);
   for (const user of accounts) {
     if (dryRun) {
-      chunk_PHDHEYEU_logger.info(`DRY RUN: Removing ${user} from ${org}`);
+      chunk_LMJKZVFA_logger.info(`DRY RUN: Removing ${user} from ${org}`);
     } else {
       const { data: { seats_cancelled } } = await octokit.rest.copilot.cancelCopilotSeatAssignmentForUsers({
         org,
         selected_usernames: accounts
       });
-      chunk_PHDHEYEU_logger.info(`Removed ${seats_cancelled} users from ${org}`);
+      chunk_LMJKZVFA_logger.info(`Removed ${seats_cancelled} users from ${org}`);
     }
   }
 };
@@ -34535,6 +34535,20 @@ ${notificationBody}`,
    */
   async removeAccount(user, notification) {
     console.log(`Removing account ${user.login}`);
+    if (this.config.removeAccountHandler) {
+      try {
+        await this.config.removeAccountHandler(user);
+        console.log(`Account removal handler executed for ${user.login}`);
+      } catch (error) {
+        console.error(
+          `Error executing account removal handler for ${user.login}:`,
+          error
+        );
+        throw error;
+      }
+    } else {
+      console.log(`No account removal handler provided for ${user.login}`);
+    }
     await this.addCommentToIssue(
       notification.number,
       `Account ${user.login} removed due to inactivity after ${this.config.gracePeriod} grace period.`
@@ -34551,17 +34565,6 @@ ${notificationBody}`,
       "pending-removal" /* PENDING */
     );
     console.log(`Notification closed for removed user ${user.login}`);
-    if (this.config.removeAccountHandler) {
-      try {
-        await this.config.removeAccountHandler(user);
-        console.log(`Account removal handler executed for ${user.login}`);
-      } catch (error) {
-        console.error(`Error executing account removal handler for ${user.login}:`, error);
-        throw error;
-      }
-    } else {
-      console.log(`No account removal handler provided for ${user.login}`);
-    }
   }
   /**
    * Close notification for a user who became active
@@ -34689,7 +34692,7 @@ function createDefaultNotificationBodyHandler(notificationTemplate) {
 }
 
 
-//# sourceMappingURL=chunk-PHDHEYEU.js.map
+//# sourceMappingURL=chunk-LMJKZVFA.js.map
 ;// CONCATENATED MODULE: ./src/utils/createBranch.ts
 
 /**
@@ -39315,12 +39318,6 @@ const formatDate = (isoString) => {
         return isoString;
     }
 };
-// Helper function to create a visual percentage bar
-const createPercentageBar = (percentage, width = 20) => {
-    const filledChars = Math.round((percentage / 100) * width);
-    const emptyChars = width - filledChars;
-    return `[${'█'.repeat(filledChars)}${' '.repeat(emptyChars)}] ${percentage.toFixed(1)}%`;
-};
 async function processNotifications(octokit, context, dormantAccounts) {
     const notifier = new GithubIssueNotifier({
         githubClient: octokit,
@@ -39334,8 +39331,8 @@ async function processNotifications(octokit, context, dormantAccounts) {
         // Add the removeAccountHandler to handle account removal
         removeAccountHandler: async ({ login }) => {
             // This is where we would implement the actual user removal logic
-            core.info(`Removing user ${login} from organization`);
-        }
+            core.info(`🚀 Removing user ${login} from organization`);
+        },
     });
     return notifier.processDormantUsers(dormantAccounts);
 }
