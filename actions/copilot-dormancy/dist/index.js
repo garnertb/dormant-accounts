@@ -34216,7 +34216,7 @@ function dist_dormancyCheck(config) {
 }
 
 //# sourceMappingURL=index.js.map
-;// CONCATENATED MODULE: ../../packages/github/dist/chunk-WGZAPFHI.js
+;// CONCATENATED MODULE: ../../packages/github/dist/chunk-XUTMCHMP.js
 // src/provider/audit-log.ts
 
 
@@ -34310,6 +34310,13 @@ var fetchLatestActivityFromCoPilot = async ({ octokit, org, checkType, logger })
         const actor = seat.assignee.login.toLowerCase();
         if (!actor)
           continue;
+        if (seat.pending_cancellation_date) {
+          logger.debug(
+            checkType,
+            `Skipping activity record for ${actor} due to pending cancellation`
+          );
+          continue;
+        }
         const lastActivity = seat.last_activity_at ? new Date(seat.last_activity_at) : seat.created_at ? new Date(seat.created_at) : null;
         const record = {
           type: seat.last_activity_editor,
@@ -34635,7 +34642,7 @@ function createDefaultNotificationBodyHandler(notificationTemplate) {
 }
 
 
-//# sourceMappingURL=chunk-WGZAPFHI.js.map
+//# sourceMappingURL=chunk-XUTMCHMP.js.map
 ;// CONCATENATED MODULE: ./src/utils/createBranch.ts
 
 /**

@@ -47,11 +47,18 @@ const fetchLatestActivityFromCoPilot: FetchActivityHandler<
 
       if (!seats?.length) continue;
 
-      // @todo filter out pending_cancellation_date?
       for (const seat of seats) {
         const actor = (seat.assignee.login as string).toLowerCase();
 
         if (!actor) continue;
+
+        if (seat.pending_cancellation_date) {
+          logger.debug(
+            checkType,
+            `Skipping activity record for ${actor} due to pending cancellation`,
+          );
+          continue;
+        }
 
         const lastActivity = seat.last_activity_at
           ? new Date(seat.last_activity_at)
