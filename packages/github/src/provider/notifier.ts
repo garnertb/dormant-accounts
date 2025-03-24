@@ -473,7 +473,24 @@ export class GithubIssueNotifier implements DormantAccountNotifier {
 }
 
 /**
- * Creates a default notification body handler that includes last activity date
+ * Creates a handler for generating notification bodies.
+ * @param notificationTemplate - Template string for the notification body
+ * @returns handler function that receives a context object and returns the formatted notification body
+ *
+ * The template string can include placeholders for user information:
+ * - `{{account}}`: The account identification
+ * - `{{lastActivity}}`: The last activity date (localized)
+ * - `{{gracePeriod}}`: The grace period for reactivation
+ * - `{{timeSinceLastActivity}}`: The time since the last activity
+ *
+ * @example
+ * ```ts
+ * const handler = createDefaultNotificationBodyHandler(
+ *  'Hello {{account}}, your last activity was on {{lastActivity}}. ' +
+ *  'You have {{gracePeriod}} to reactivate your account. ' +
+ *  'Time since last activity: {{timeSinceLastActivity}}'
+ * );
+ * ```
  */
 export function createDefaultNotificationBodyHandler(
   notificationTemplate: string,
