@@ -39415,6 +39415,7 @@ async function run() {
             core.summary
                 .addHeading('Dormant Accounts', 3)
                 .addRaw(`${dormantAccounts.length} accounts have been inactive for at least ${summary.duration}.`, true);
+            core.summary.addEOL();
             if (sendNotifications) {
                 core.summary.addRaw('Notifications are being sent to these accounts.', true);
             }

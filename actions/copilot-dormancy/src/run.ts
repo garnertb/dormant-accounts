@@ -262,6 +262,8 @@ async function run(): Promise<void> {
           true,
         );
 
+      core.summary.addEOL();
+
       if (sendNotifications) {
         core.summary.addRaw(
           'Notifications are being sent to these accounts.',
