@@ -76,6 +76,7 @@ describe('Copilot Dormancy Action', () => {
   it('should run the dormancy check and set outputs', async () => {
     // Setup a fresh mock for the check object
     const { copilotDormancy } = await import('@dormant-accounts/github');
+    //@ts-expect-error
     vi.mocked(copilotDormancy).mockResolvedValue(createMockCheckObject());
 
     // Setup input mocks
@@ -141,6 +142,7 @@ describe('Copilot Dormancy Action', () => {
   it('should handle dry run mode correctly', async () => {
     // Setup a fresh mock for the check object
     const { copilotDormancy } = await import('@dormant-accounts/github');
+    // @ts-expect-error
     vi.mocked(copilotDormancy).mockResolvedValue(createMockCheckObject());
 
     // Setup input mocks
