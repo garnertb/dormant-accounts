@@ -144,6 +144,10 @@ async function run(): Promise<void> {
         octokit,
         org,
       },
+      removeUser: async ({ login }) => {
+        core.info(`Fake removal of user ${login} (dry run mode)`);
+        return true;
+      },
     });
 
     // Fetch latest activity if needed
