@@ -290,7 +290,7 @@ async function run(): Promise<void> {
         octokit,
         notificationsContext,
         dormantAccounts,
-        //check.removeUser.bind(check),
+        check.removeUser.bind(check),
       );
 
       core.setOutput('notification-results', safeStringify(notifications));

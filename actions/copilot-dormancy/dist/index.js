@@ -39415,7 +39415,7 @@ async function run() {
             removeUser: async ({ login }) => {
                 core.info(`Fake removal of user ${login} (dry run mode)`);
                 return true;
-            }
+            },
         });
         // Fetch latest activity if needed
         await check.fetchActivity();
@@ -39509,7 +39509,7 @@ async function run() {
         }
         if (sendNotifications) {
             core.debug('Notification context: ' + safeStringify(notificationsContext));
-            const notifications = await processNotifications(octokit, notificationsContext, dormantAccounts);
+            const notifications = await processNotifications(octokit, notificationsContext, dormantAccounts, check.removeUser.bind(check));
             core.setOutput('notification-results', safeStringify(notifications));
             core.info(`Created notifications for ${notifications.notified.length} dormant accounts`);
             core.info(`Closed notifications for ${notifications.reactivated.length} no longer dormant accounts`);
