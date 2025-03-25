@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import * as core from '@actions/core';
 import * as github from '@actions/github';
+import { getNotificationContext } from './utils/getNotificationContext';
 
 // Mock dependencies
 vi.mock('@actions/core');
@@ -20,9 +21,21 @@ vi.mock('./utils/getActivityLog', () => ({
     content: '{}',
   }),
 }));
+vi.mock('./utils/getNotificationContext');
 vi.mock('@dormant-accounts/github', () => {
   return {
     copilotDormancy: vi.fn(),
+    GithubIssueNotifier: vi.fn().mockImplementation(() => ({
+      processDormantUsers: vi.fn().mockResolvedValue({
+        notified: [],
+        reactivated: [],
+        removed: [],
+        excluded: [],
+        inGracePeriod: [],
+        errors: [],
+      }),
+    })),
+    createDefaultNotificationBodyHandler: vi.fn(),
   };
 });
 
@@ -63,6 +76,18 @@ describe('Copilot Dormancy Action', () => {
         },
       },
     } as any);
+
+    // Setup core.summary mock methods
+    vi.mocked(core.summary).addHeading = vi.fn().mockReturnValue(core.summary);
+    vi.mocked(core.summary).addRaw = vi.fn().mockReturnValue(core.summary);
+    vi.mocked(core.summary).addBreak = vi.fn().mockReturnValue(core.summary);
+    vi.mocked(core.summary).addTable = vi.fn().mockReturnValue(core.summary);
+    vi.mocked(core.summary).addList = vi.fn().mockReturnValue(core.summary);
+    vi.mocked(core.summary).addEOL = vi.fn().mockReturnValue(core.summary);
+    vi.mocked(core.summary).write = vi.fn().mockResolvedValue(core.summary);
+
+    // Setup mock for isDebug
+    vi.mocked(core.isDebug).mockReturnValue(false);
   });
 
   afterEach(() => {
@@ -70,6 +95,18 @@ describe('Copilot Dormancy Action', () => {
   });
 
   it('should run the dormancy check and set outputs', async () => {
+    // Setup notification context mock
+    vi.mocked(getNotificationContext).mockReturnValue({
+      repo: {
+        owner: 'test-owner',
+        repo: 'test-repo',
+      },
+      duration: '30d',
+      body: 'Test notification body',
+      baseLabels: ['copilot-dormancy'],
+      dryRun: false,
+    });
+
     // Setup a fresh mock for the check object
     const { copilotDormancy } = await import('@dormant-accounts/github');
     //@ts-expect-error
@@ -83,6 +120,11 @@ describe('Copilot Dormancy Action', () => {
         duration: '90d',
         token: 'mock-token',
         'dry-run': 'false',
+        'notifications-enabled': 'true',
+        'notifications-repo': 'test-owner/test-repo',
+        'notifications-duration': '30d',
+        'notifications-body': 'Test notification body',
+        'notifications-dry-run': 'false',
       };
       return inputs[name] || '';
     });
@@ -133,9 +175,17 @@ describe('Copilot Dormancy Action', () => {
       'check-stats',
       expect.any(String),
     );
+
+    // Verify core.summary methods were called
+    expect(core.summary.addHeading).toHaveBeenCalled();
+    expect(core.summary.addRaw).toHaveBeenCalled();
+    expect(core.summary.write).toHaveBeenCalled();
   });
 
   it('should handle dry run mode correctly', async () => {
+    // For dry run test, disable notifications
+    vi.mocked(getNotificationContext).mockReturnValue(false);
+
     // Setup a fresh mock for the check object
     const { copilotDormancy } = await import('@dormant-accounts/github');
     // @ts-expect-error
@@ -149,6 +199,7 @@ describe('Copilot Dormancy Action', () => {
         duration: '90d',
         token: 'mock-token',
         'dry-run': 'true',
+        'notifications-enabled': '', // Disable notifications
       };
       return inputs[name] || '';
     });
@@ -171,6 +222,9 @@ describe('Copilot Dormancy Action', () => {
   });
 
   it('should handle errors gracefully', async () => {
+    // For error test, disable notifications
+    vi.mocked(getNotificationContext).mockReturnValue(false);
+
     // Setup input mocks for this test
     vi.mocked(core.getInput).mockImplementation((name) => {
       const inputs: Record<string, string> = {
@@ -179,6 +233,7 @@ describe('Copilot Dormancy Action', () => {
         duration: '90d',
         token: 'mock-token',
         'dry-run': 'false',
+        'notifications-enabled': '', // Disable notifications
       };
       return inputs[name] || '';
     });

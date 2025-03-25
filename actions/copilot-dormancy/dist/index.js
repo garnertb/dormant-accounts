@@ -39356,7 +39356,7 @@ async function processNotifications(octokit, context, dormantAccounts, removeAcc
         notificationBody: createDefaultNotificationBodyHandler(context.body),
         dryRun: context.dryRun,
         // Add the removeAccountHandler to handle account removal,
-        removeAccount
+        removeAccount,
     });
     return notifier.processDormantUsers(dormantAccounts);
 }
