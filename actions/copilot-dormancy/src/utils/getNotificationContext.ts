@@ -8,6 +8,7 @@ const notificationSchema = z
     body: z.string(),
     baseLabels: z.array(z.string()).default(['copilot-dormancy']),
     dryRun: z.boolean().optional().default(false),
+    removeDormantAccounts: z.boolean().optional().default(false),
   })
   .transform((data) => {
     const { repo: ownerAndRepo, ...rest } = data;
@@ -38,6 +39,7 @@ export function getNotificationContext(): NotificationContext | false {
     duration: core.getInput('notifications-duration'),
     body: core.getInput('notifications-body'),
     dryRun: core.getInput('notifications-dry-run') === 'true',
+    removeDormantAccounts: core.getInput('remove-dormant-accounts') === 'true',
   });
 
   if (!parsedNotification.success) {

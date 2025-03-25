@@ -105,6 +105,7 @@ describe('Copilot Dormancy Action', () => {
       body: 'Test notification body',
       baseLabels: ['copilot-dormancy'],
       dryRun: false,
+      removeDormantAccounts: false,
     });
 
     // Setup a fresh mock for the check object

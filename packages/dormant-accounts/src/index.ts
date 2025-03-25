@@ -49,33 +49,42 @@ export class DormantAccountCheck<TConfig> {
       : this.defaultDormancyHandler;
   }
 
-  async removeUser({
-    lastActivityRecord,
-  }: {
-    lastActivityRecord: LastActivityRecord;
-  }) {
-    const context = this.buildHandlerContext(lastActivityRecord);
-
-    if (this.config.removeUser) {
-      const result = await this.config.removeUser(context);
-      logger.info(`User ${lastActivityRecord.login} removal result: ${result}`);
-      if (result) {
-        if (!this.dryRun) {
-          await this.db.removeUserActivityRecord(lastActivityRecord);
-        }
-        logger.success(`Removed user ${lastActivityRecord.login}`);
-      } else {
-        logger.warn(`Failed to remove user ${lastActivityRecord.login}`);
-      }
-      return result;
-    }
-
-    logger.warn(
-      `No removeUser handler provided, skipping removal of ${lastActivityRecord.login}`,
-    );
-
-    return false;
+  /**
+   * Removes a user activity record from the database
+   * @param account - The account to remove
+   * @returns Promise<boolean> true if the user was removed successfully
+   */
+  async removeUserActivity(account: string): Promise<boolean> {
+    return this.db.removeUserActivityRecord(account);
   }
+
+  // async removeUser({
+  //   lastActivityRecord,
+  // }: {
+  //   lastActivityRecord: LastActivityRecord;
+  // }) {
+  //   const context = this.buildHandlerContext(lastActivityRecord);
+
+  //   if (this.config.removeUser) {
+  //     const result = await this.config.removeUser(context);
+  //     logger.info(`User ${lastActivityRecord.login} removal result: ${result}`);
+  //     if (result) {
+  //       if (!this.dryRun) {
+  //         await this.db.removeUserActivityRecord(lastActivityRecord);
+  //       }
+  //       logger.success(`Removed user ${lastActivityRecord.login}`);
+  //     } else {
+  //       logger.warn(`Failed to remove user ${lastActivityRecord.login}`);
+  //     }
+  //     return result;
+  //   }
+
+  //   logger.warn(
+  //     `No removeUser handler provided, skipping removal of ${lastActivityRecord.login}`,
+  //   );
+
+  //   return false;
+  // }
 
   private defaultDormancyHandler: IsDormantHandler<TConfig> = async ({
     checkTime,

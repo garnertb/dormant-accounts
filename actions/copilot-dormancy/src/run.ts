@@ -64,8 +64,14 @@ export async function processNotifications(
     },
     notificationBody: createDefaultNotificationBodyHandler(context.body),
     dryRun: context.dryRun,
-    // Add the removeAccountHandler to handle account removal,
-    removeAccount,
+    removeAccount: context.removeDormantAccounts
+      ? removeAccount
+      : async ({ lastActivityRecord }) => {
+          core.info(
+            `removeDormantAccounts is false, skipping removal for: ${lastActivityRecord.login}`,
+          );
+          return false;
+        },
   });
   return notifier.processDormantUsers(dormantAccounts);
 }
@@ -143,10 +149,6 @@ async function run(): Promise<void> {
       conf: {
         octokit,
         org,
-      },
-      removeUser: async ({ login }) => {
-        core.info(`Fake removal of user ${login} (dry run mode)`);
-        return true;
       },
     });
 
@@ -240,7 +242,16 @@ async function run(): Promise<void> {
         octokit,
         notificationsContext,
         dormantAccounts,
-        check.removeUser.bind(check),
+        async ({ lastActivityRecord }) => {
+          core.info(`Real removal account: ${lastActivityRecord.login}`);
+          return true;
+        },
+        // ({ lastActivityRecord }) => revokeCopilotLicense({
+        //   logins: lastActivityRecord.login,
+        //   octokit,
+        //   org,
+        //   dryRun: notificationsContext.dryRun,
+        // })
       );
 
       core.setOutput('notification-results', safeStringify(notifications));

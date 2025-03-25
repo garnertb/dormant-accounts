@@ -33,6 +33,10 @@ inputs:
     description: 'Grace period before removing users after notification (e.g., 7d, 2w, 1m)'
     required: false
     default: '7d'
+  remove-dormant-accounts:
+    description: 'Remove dormant accounts after the grace period'
+    required: false
+    default: 'false'
   notifications-body:
     description: 'Custom message template for user notifications'
     required: false

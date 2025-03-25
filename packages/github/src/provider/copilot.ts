@@ -4,7 +4,7 @@ import type {
   LastActivityRecord,
   RemoveUserHandler,
 } from 'dormant-accounts';
-import { GitHubHandlerConfig, GitHubHandlerArgs } from './types';
+import { GitHubHandlerConfig, GitHubHandlerArgs, OctokitClient } from './types';
 import ms from 'ms';
 
 const logger = console;
@@ -95,7 +95,7 @@ const fetchLatestActivityFromCoPilot: FetchActivityHandler<
 };
 
 /**
- * Removes a list of users from GitHub Copilot in a given organization.
+ * Remove user handler meant to be configured as part of a dormancy check.
  *
  * @param octokit - The Octokit instance for making API calls.
  * @param org - The organization to remove users from.
@@ -107,15 +107,47 @@ const fetchLatestActivityFromCoPilot: FetchActivityHandler<
 export const removeAccount: RemoveUserHandler<
   GitHubHandlerConfig,
   boolean
-> = async ({ login, octokit, org, dryRun, logger }) => {
+> = async ({ login, octokit, org, dryRun }) => {
+  return revokeCopilotLicense({
+    logins: login,
+    octokit,
+    org,
+    dryRun: dryRun == true,
+  });
+};
+
+/**
+ * Removes a list of users from GitHub Copilot in a given organization.
+ *
+ * @param logins - The list of users to remove.
+ * @param octokit - The Octokit instance for making API calls.
+ * @param org - The organization to remove users from.
+ * @param dryRun - If true, only logs the actions without executing them.
+ * @returns A promise true if the user was removed, false otherwise.
+ *
+ */
+export const revokeCopilotLicense = async (config: {
+  logins: string | string[];
+  octokit: OctokitClient;
+  org: string;
+  dryRun?: boolean;
+}) => {
+  const { octokit, org, logins, dryRun } = config;
+
+  let selected_usernames = logins;
+
+  if (typeof selected_usernames === 'string') {
+    selected_usernames = [selected_usernames];
+  }
+
   if (dryRun) {
-    logger.info(`DRY RUN: Removing ${login} from ${org}`);
+    logger.info(`DRY RUN: Removing ${selected_usernames} from ${org}`);
   } else {
     const {
       data: { seats_cancelled },
     } = await octokit.rest.copilot.cancelCopilotSeatAssignmentForUsers({
       org,
-      selected_usernames: [login],
+      selected_usernames,
     });
     logger.info(`Removed ${seats_cancelled} license from ${org}`);
     return seats_cancelled === 1;
@@ -134,7 +166,6 @@ export const copilotDormancy = (config: GitHubHandlerArgs) => {
   const {
     type = 'github-copilot-dormancy',
     fetchLatestActivity = fetchLatestActivityFromCoPilot,
-    removeUser = removeAccount,
     ...rest
   } = config;
 
@@ -142,6 +173,5 @@ export const copilotDormancy = (config: GitHubHandlerArgs) => {
     type,
     ...rest,
     fetchLatestActivity,
-    removeUser,
   });
 };

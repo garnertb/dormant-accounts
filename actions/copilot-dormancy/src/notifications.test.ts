@@ -42,6 +42,7 @@ describe('Notification Processing', () => {
     body: 'Test notification body',
     baseLabels: ['copilot-dormancy'],
     dryRun: false,
+    removeDormantAccounts: false,
   };
 
   beforeEach(() => {
