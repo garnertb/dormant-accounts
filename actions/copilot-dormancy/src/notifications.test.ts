@@ -54,7 +54,6 @@ describe('Notification Processing', () => {
       mockOctokit,
       notificationContext,
       mockDormantAccounts,
-      vi.fn(),
     );
 
     expect(GithubIssueNotifier).toHaveBeenCalledWith({
@@ -75,7 +74,6 @@ describe('Notification Processing', () => {
       mockOctokit,
       notificationContext,
       mockDormantAccounts,
-      vi.fn(),
     );
 
     expect(result).toEqual({

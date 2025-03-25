@@ -6,6 +6,7 @@ import {
   OctokitClient,
   LastActivityRecord,
   createDefaultNotificationBodyHandler,
+  revokeCopilotLicense,
 } from '@dormant-accounts/github';
 import { createBranch } from './utils/createBranch';
 import { getActivityLog } from './utils/getActivityLog';
@@ -49,11 +50,6 @@ export async function processNotifications(
   octokit: OctokitClient,
   context: NotificationContext,
   dormantAccounts: LastActivityRecord[],
-  removeAccount?: ({
-    lastActivityRecord,
-  }: {
-    lastActivityRecord: LastActivityRecord;
-  }) => Promise<boolean>,
 ) {
   const notifier = new GithubIssueNotifier({
     githubClient: octokit,
@@ -64,14 +60,21 @@ export async function processNotifications(
     },
     notificationBody: createDefaultNotificationBodyHandler(context.body),
     dryRun: context.dryRun,
-    removeAccount: context.removeDormantAccounts
-      ? removeAccount
-      : async ({ lastActivityRecord }) => {
-          core.info(
-            `removeDormantAccounts is false, skipping removal for: ${lastActivityRecord.login}`,
-          );
-          return false;
-        },
+    removeAccount: async ({ lastActivityRecord }) => {
+      if (!context.removeDormantAccounts) {
+        core.info(
+          `removeDormantAccounts is false, skipping removal for: ${lastActivityRecord.login}`,
+        );
+        return true;
+      }
+
+      return revokeCopilotLicense({
+        logins: lastActivityRecord.login,
+        octokit,
+        org: context.repo.owner,
+        dryRun: context.dryRun,
+      });
+    },
   });
   return notifier.processDormantUsers(dormantAccounts);
 }
@@ -242,16 +245,6 @@ async function run(): Promise<void> {
         octokit,
         notificationsContext,
         dormantAccounts,
-        async ({ lastActivityRecord }) => {
-          core.info(`Real removal account: ${lastActivityRecord.login}`);
-          return true;
-        },
-        // ({ lastActivityRecord }) => revokeCopilotLicense({
-        //   logins: lastActivityRecord.login,
-        //   octokit,
-        //   org,
-        //   dryRun: notificationsContext.dryRun,
-        // })
       );
 
       core.setOutput('notification-results', safeStringify(notifications));

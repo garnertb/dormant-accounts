@@ -34265,7 +34265,7 @@ function dist_dormancyCheck(config) {
 }
 
 //# sourceMappingURL=index.js.map
-;// CONCATENATED MODULE: ../../packages/github/dist/chunk-N4UMKKAV.js
+;// CONCATENATED MODULE: ../../packages/github/dist/chunk-ZDJNUDFK.js
 // src/provider/audit-log.ts
 
 
@@ -34334,7 +34334,7 @@ var githubDormancy = (config) => {
 // src/provider/copilot.ts
 
 
-var chunk_N4UMKKAV_logger = (/* unused pure expression or super */ null && (console));
+var chunk_ZDJNUDFK_logger = console;
 var fetchLatestActivityFromCoPilot = async ({ octokit, org, checkType, logger: logger2 }) => {
   logger2.debug(checkType, `Fetching audit log for ${org}`);
   const payload = {
@@ -34403,7 +34403,7 @@ var revokeCopilotLicense = async (config) => {
     selected_usernames = [selected_usernames];
   }
   if (dryRun) {
-    chunk_N4UMKKAV_logger.info(`DRY RUN: Removing ${selected_usernames} from ${org}`);
+    chunk_ZDJNUDFK_logger.info(`DRY RUN: Removing ${selected_usernames} from ${org}`);
   } else {
     const {
       data: { seats_cancelled }
@@ -34411,7 +34411,7 @@ var revokeCopilotLicense = async (config) => {
       org,
       selected_usernames
     });
-    chunk_N4UMKKAV_logger.info(`Removed ${seats_cancelled} license from ${org}`);
+    chunk_ZDJNUDFK_logger.info(`Removed ${seats_cancelled} license from ${org}`);
     return seats_cancelled === 1;
   }
   return false;
@@ -34741,7 +34741,7 @@ function createDefaultNotificationBodyHandler(notificationTemplate) {
 }
 
 
-//# sourceMappingURL=chunk-N4UMKKAV.js.map
+//# sourceMappingURL=chunk-ZDJNUDFK.js.map
 ;// CONCATENATED MODULE: ./src/utils/createBranch.ts
 
 /**
@@ -39369,7 +39369,7 @@ const formatDate = (isoString) => {
         return isoString;
     }
 };
-async function processNotifications(octokit, context, dormantAccounts, removeAccount) {
+async function processNotifications(octokit, context, dormantAccounts) {
     const notifier = new GithubIssueNotifier({
         githubClient: octokit,
         gracePeriod: context.duration,
@@ -39379,9 +39379,17 @@ async function processNotifications(octokit, context, dormantAccounts, removeAcc
         },
         notificationBody: createDefaultNotificationBodyHandler(context.body),
         dryRun: context.dryRun,
-        removeAccount: context.removeDormantAccounts ? removeAccount : async ({ lastActivityRecord }) => {
-            core.info(`removeDormantAccounts is false, skipping removal for: ${lastActivityRecord.login}`);
-            return false;
+        removeAccount: async ({ lastActivityRecord }) => {
+            if (!context.removeDormantAccounts) {
+                core.info(`removeDormantAccounts is false, skipping removal for: ${lastActivityRecord.login}`);
+                return true;
+            }
+            return revokeCopilotLicense({
+                logins: lastActivityRecord.login,
+                octokit,
+                org: context.repo.owner,
+                dryRun: context.dryRun,
+            });
         },
     });
     return notifier.processDormantUsers(dormantAccounts);
@@ -39437,7 +39445,7 @@ async function run() {
             conf: {
                 octokit,
                 org,
-            }
+            },
         });
         // Fetch latest activity if needed
         await check.fetchActivity();
@@ -39497,10 +39505,7 @@ async function run() {
         }
         if (sendNotifications) {
             core.debug('Notification context: ' + safeStringify(notificationsContext));
-            const notifications = await processNotifications(octokit, notificationsContext, dormantAccounts, async ({ lastActivityRecord }) => {
-                core.info(`Real removal account: ${lastActivityRecord.login}`);
-                return true;
-            });
+            const notifications = await processNotifications(octokit, notificationsContext, dormantAccounts);
             core.setOutput('notification-results', safeStringify(notifications));
             core.info(`Created notifications for ${notifications.notified.length} dormant accounts`);
             core.info(`Closed notifications for ${notifications.reactivated.length} no longer dormant accounts`);
