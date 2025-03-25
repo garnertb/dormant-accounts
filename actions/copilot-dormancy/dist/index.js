@@ -39435,40 +39435,6 @@ async function run() {
         core.setOutput('check-stats', safeStringify(summary));
         // Log the summary statistics
         core.info(`Check summary: ${safeStringify(summary)}`);
-        // Save activity log if repo info is provided
-        if (activityLogRepo) {
-            core.info(`Saving activity log to ${activityLogRepo}`);
-            try {
-                const dateStamp = new Date().toISOString().split('T')[0];
-                const content = await check.getDatabaseData();
-                const contentBase64 = Buffer.from(JSON.stringify(content, null, 2)).toString('base64');
-                if (!dryRun) {
-                    // Check if the branch exists
-                    const branchExists = await checkBranch(octokit, activityLogContext.repo, branchName);
-                    if (!branchExists) {
-                        core.info(`Creating branch: ${branchName}`);
-                        await createBranch(octokit, activityLogContext.repo, checkType);
-                    }
-                    else {
-                        core.debug(`Branch already exists: ${branchName}`);
-                    }
-                    await updateActivityLog(octokit, activityLogContext.repo, {
-                        branch: branchName,
-                        path: activityLogContext.path,
-                        sha: existingActivityLogSha,
-                        message: `Update Copilot dormancy log for ${dateStamp}`,
-                        content: contentBase64,
-                    });
-                    core.info(`Activity log saved to ${org}/${activityLogRepo}/${activityLogContext.path}`);
-                }
-                else {
-                    core.info(`Dry run: Activity log would be saved to ${org}/${activityLogRepo}/${activityLogContext.path}`);
-                }
-            }
-            catch (error) {
-                core.setFailed(`Failed to save activity log: ${error instanceof Error ? error.message : String(error)}`);
-            }
-        }
         // Create a human-friendly job summary
         core.summary
             .addHeading('Copilot Dormancy Check Summary')
@@ -39578,6 +39544,40 @@ async function run() {
             core.info('Notifications are disabled');
         }
         await core.summary.write();
+        // Save activity log if repo info is provided
+        if (activityLogRepo) {
+            core.info(`Saving activity log to ${activityLogRepo}`);
+            try {
+                const dateStamp = new Date().toISOString().split('T')[0];
+                const content = await check.getDatabaseData();
+                const contentBase64 = Buffer.from(JSON.stringify(content, null, 2)).toString('base64');
+                if (!dryRun) {
+                    // Check if the branch exists
+                    const branchExists = await checkBranch(octokit, activityLogContext.repo, branchName);
+                    if (!branchExists) {
+                        core.info(`Creating branch: ${branchName}`);
+                        await createBranch(octokit, activityLogContext.repo, checkType);
+                    }
+                    else {
+                        core.debug(`Branch already exists: ${branchName}`);
+                    }
+                    await updateActivityLog(octokit, activityLogContext.repo, {
+                        branch: branchName,
+                        path: activityLogContext.path,
+                        sha: existingActivityLogSha,
+                        message: `Update Copilot dormancy log for ${dateStamp}`,
+                        content: contentBase64,
+                    });
+                    core.info(`Activity log saved to ${org}/${activityLogRepo}/${activityLogContext.path}`);
+                }
+                else {
+                    core.info(`Dry run: Activity log would be saved to ${org}/${activityLogRepo}/${activityLogContext.path}`);
+                }
+            }
+            catch (error) {
+                core.setFailed(`Failed to save activity log: ${error instanceof Error ? error.message : String(error)}`);
+            }
+        }
         core.info('Copilot dormancy check completed successfully');
     }
     catch (error) {
