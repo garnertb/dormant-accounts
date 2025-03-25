@@ -38,7 +38,7 @@ inputs:
     required: false
     default: >+
       This organization automatically revokes GitHub Copilot licenses for inactive users. Your account is inactive and pending removal.  
-      <br/>
+      <br/><br/>
       You can maintain your Copilot license by using Copilot within {{gracePeriod}}.
 outputs:
   dormant-users:
