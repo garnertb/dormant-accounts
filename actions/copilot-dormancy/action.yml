@@ -37,8 +37,8 @@ inputs:
     description: 'Custom message template for user notifications'
     required: false
     default: >+
-      This organization automatically revokes GitHub Copilot licenses for inactive users. Your account is inactive and pending removal.   
-
+      This organization automatically revokes GitHub Copilot licenses for inactive users. Your account is inactive and pending removal.  
+      <br/>
       You can maintain your Copilot license by using Copilot within {{gracePeriod}}.
 outputs:
   dormant-users:
