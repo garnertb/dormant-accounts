@@ -34032,30 +34032,6 @@ var Database = class {
 // src/index.ts
 var DormantAccountCheck = class {
   constructor(config) {
-    // async removeUser({
-    //   lastActivityRecord,
-    // }: {
-    //   lastActivityRecord: LastActivityRecord;
-    // }) {
-    //   const context = this.buildHandlerContext(lastActivityRecord);
-    //   if (this.config.removeUser) {
-    //     const result = await this.config.removeUser(context);
-    //     logger.info(`User ${lastActivityRecord.login} removal result: ${result}`);
-    //     if (result) {
-    //       if (!this.dryRun) {
-    //         await this.db.removeUserActivityRecord(lastActivityRecord);
-    //       }
-    //       logger.success(`Removed user ${lastActivityRecord.login}`);
-    //     } else {
-    //       logger.warn(`Failed to remove user ${lastActivityRecord.login}`);
-    //     }
-    //     return result;
-    //   }
-    //   logger.warn(
-    //     `No removeUser handler provided, skipping removal of ${lastActivityRecord.login}`,
-    //   );
-    //   return false;
-    // }
     this.defaultDormancyHandler = async ({
       checkTime,
       login,
@@ -34084,14 +34060,6 @@ var DormantAccountCheck = class {
     this.duration = this.config.duration || "30d";
     this.durationMillis = durationToMillis(this.duration);
     this.isDormant = this.config.isDormant ? this.config.isDormant : this.defaultDormancyHandler;
-  }
-  /**
-   * Removes a user activity record from the database
-   * @param account - The account to remove
-   * @returns Promise<boolean> true if the user was removed successfully
-   */
-  async removeUserActivity(account) {
-    return this.db.removeUserActivityRecord(account);
   }
   /**
    * Consola logger instance for logging messages
@@ -34250,6 +34218,20 @@ var DormantAccountCheck = class {
       activeAccountPercentage: totalAccounts > 0 ? parseFloat((active.length / totalAccounts * 100).toFixed(2)) : 0,
       dormantAccountPercentage: totalAccounts > 0 ? parseFloat((dormant.length / totalAccounts * 100).toFixed(2)) : 0,
       duration: this.duration
+    };
+  }
+  get activity() {
+    return {
+      all: async () => this.db.getRawData(),
+      remove: async (user) => {
+        const result = await this.db.removeUserActivityRecord(user);
+        if (result) {
+          this.logger.success(`Removed user ${user} from database`);
+        } else {
+          this.logger.warn(`User ${user} not found in database`);
+        }
+        return result;
+      }
     };
   }
   /**
@@ -39369,7 +39351,7 @@ const formatDate = (isoString) => {
         return isoString;
     }
 };
-async function processNotifications(octokit, context, dormantAccounts) {
+async function processNotifications(octokit, context, dormantAccounts, check) {
     const notifier = new GithubIssueNotifier({
         githubClient: octokit,
         gracePeriod: context.duration,
@@ -39384,12 +39366,17 @@ async function processNotifications(octokit, context, dormantAccounts) {
                 core.info(`removeDormantAccounts is false, skipping removal for: ${lastActivityRecord.login}`);
                 return true;
             }
-            return revokeCopilotLicense({
+            const accountRemoved = await revokeCopilotLicense({
                 logins: lastActivityRecord.login,
                 octokit,
                 org: context.repo.owner,
                 dryRun: context.dryRun,
             });
+            if (accountRemoved) {
+                core.info(`Successfully removed Copilot license for ${lastActivityRecord.login}`);
+                await check.activity.remove(lastActivityRecord.login);
+            }
+            return accountRemoved;
         },
     });
     return notifier.processDormantUsers(dormantAccounts);
@@ -39450,7 +39437,7 @@ async function run() {
         // Fetch latest activity if needed
         await check.fetchActivity();
         if (core.isDebug()) {
-            core.debug(`Fetched activity: ${safeStringify(await check.getDatabaseData())}`);
+            core.debug(`Fetched activity: ${safeStringify(await check.activity.all())}`);
         }
         // Get dormant and active accounts
         const dormantAccounts = await check.listDormantAccounts();
@@ -39505,7 +39492,7 @@ async function run() {
         }
         if (sendNotifications) {
             core.debug('Notification context: ' + safeStringify(notificationsContext));
-            const notifications = await processNotifications(octokit, notificationsContext, dormantAccounts);
+            const notifications = await processNotifications(octokit, notificationsContext, dormantAccounts, check);
             core.setOutput('notification-results', safeStringify(notifications));
             core.info(`Created notifications for ${notifications.notified.length} dormant accounts`);
             core.info(`Closed notifications for ${notifications.reactivated.length} no longer dormant accounts`);
@@ -39579,7 +39566,7 @@ async function run() {
             core.info(`Saving activity log to ${activityLogRepo}`);
             try {
                 const dateStamp = new Date().toISOString().split('T')[0];
-                const content = await check.getDatabaseData();
+                const content = await check.activity.all();
                 const contentBase64 = Buffer.from(JSON.stringify(content, null, 2)).toString('base64');
                 if (!dryRun) {
                     // Check if the branch exists

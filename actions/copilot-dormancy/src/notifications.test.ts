@@ -6,6 +6,28 @@ import {
 } from '@dormant-accounts/github';
 import { NotificationContext } from './utils/getNotificationContext';
 
+const createMockCheckObject = () => ({
+  fetchActivity: vi.fn().mockResolvedValue(undefined),
+  listDormantAccounts: vi.fn().mockResolvedValue([{ login: 'dormant-user' }]),
+  listActiveAccounts: vi.fn().mockResolvedValue([{ login: 'active-user' }]),
+  summarize: vi.fn().mockResolvedValue({
+    lastActivityFetch: '2023-01-01T00:00:00.000Z',
+    totalAccounts: 2,
+    activeAccounts: 1,
+    dormantAccounts: 1,
+    activeAccountPercentage: 50,
+    dormantAccountPercentage: 50,
+    duration: '30d',
+  }),
+  activity: {
+    all: vi.fn().mockResolvedValue({
+      _state: { lastRun: '2023-01-01T00:00:00.000Z' },
+      users: { 'active-user': {}, 'dormant-user': {} },
+    }),
+    remove: vi.fn(),
+  },
+});
+
 // Mock GithubIssueNotifier
 vi.mock('@dormant-accounts/github', async () => {
   const actual = await vi.importActual('@dormant-accounts/github');
@@ -54,6 +76,7 @@ describe('Notification Processing', () => {
       mockOctokit,
       notificationContext,
       mockDormantAccounts,
+      createMockCheckObject(),
     );
 
     expect(GithubIssueNotifier).toHaveBeenCalledWith({
@@ -74,6 +97,7 @@ describe('Notification Processing', () => {
       mockOctokit,
       notificationContext,
       mockDormantAccounts,
+      createMockCheckObject(),
     );
 
     expect(result).toEqual({

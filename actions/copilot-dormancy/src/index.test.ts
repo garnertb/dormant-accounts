@@ -57,10 +57,12 @@ describe('Copilot Dormancy Action', () => {
       dormantAccountPercentage: 50,
       duration: '30d',
     }),
-    getDatabaseData: vi.fn().mockResolvedValue({
-      _state: { lastRun: '2023-01-01T00:00:00.000Z' },
-      users: { 'active-user': {}, 'dormant-user': {} },
-    }),
+    activity: {
+      all: vi.fn().mockResolvedValue({
+        _state: { lastRun: '2023-01-01T00:00:00.000Z' },
+        users: { 'active-user': {}, 'dormant-user': {} },
+      }),
+    },
   });
 
   beforeEach(() => {

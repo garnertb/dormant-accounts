@@ -269,3 +269,18 @@ export interface DormantAccountStatusMap {
   /** Array of activity records for dormant users */
   dormant: LastActivityRecord[];
 }
+
+export interface Activity {
+  /**
+   * Retrieves all activity records from the database
+   * @returns Promise<unknown>
+   */
+  all: () => Promise<unknown>;
+
+  /**
+   * Removes a user from the activity records
+   * @param user - User's login or activity record to be removed
+   * @returns Promise<void>
+   */
+  remove: (user: LastActivityRecord | string) => Promise<boolean>;
+}

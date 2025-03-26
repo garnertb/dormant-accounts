@@ -17,6 +17,7 @@ import {
   NotificationContext,
 } from './utils/getNotificationContext';
 import { updateActivityLog } from './utils/updateActivityLog';
+import { Activity } from 'dormant-accounts';
 
 // Function to safely stringify data for output
 const safeStringify = (data: unknown): string => {
@@ -50,6 +51,9 @@ export async function processNotifications(
   octokit: OctokitClient,
   context: NotificationContext,
   dormantAccounts: LastActivityRecord[],
+  check: {
+    activity: Activity;
+  },
 ) {
   const notifier = new GithubIssueNotifier({
     githubClient: octokit,
@@ -68,12 +72,21 @@ export async function processNotifications(
         return true;
       }
 
-      return revokeCopilotLicense({
+      const accountRemoved = await revokeCopilotLicense({
         logins: lastActivityRecord.login,
         octokit,
         org: context.repo.owner,
         dryRun: context.dryRun,
       });
+
+      if (accountRemoved) {
+        core.info(
+          `Successfully removed Copilot license for ${lastActivityRecord.login}`,
+        );
+        await check.activity.remove(lastActivityRecord.login);
+      }
+
+      return accountRemoved;
     },
   });
   return notifier.processDormantUsers(dormantAccounts);
@@ -160,7 +173,7 @@ async function run(): Promise<void> {
 
     if (core.isDebug()) {
       core.debug(
-        `Fetched activity: ${safeStringify(await check.getDatabaseData())}`,
+        `Fetched activity: ${safeStringify(await check.activity.all())}`,
       );
     }
 
@@ -245,6 +258,7 @@ async function run(): Promise<void> {
         octokit,
         notificationsContext,
         dormantAccounts,
+        check,
       );
 
       core.setOutput('notification-results', safeStringify(notifications));
@@ -363,7 +377,7 @@ async function run(): Promise<void> {
 
       try {
         const dateStamp = new Date().toISOString().split('T')[0];
-        const content = await check.getDatabaseData();
+        const content = await check.activity.all();
 
         const contentBase64 = Buffer.from(
           JSON.stringify(content, null, 2),
