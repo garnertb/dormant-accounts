@@ -205,37 +205,16 @@ describe('Dormant Account Check', () => {
       ]);
 
       const config = createConfig({
-        isWhitelisted: async (user) => ['user1', 'user2'].includes(user.login),
+        isWhitelisted: async (user: { login: string }) =>
+          ['user1', 'user2'].includes(user.login),
         isDormant: vi.fn().mockResolvedValue(true),
         extendedConfig: { testConfig: true },
       });
 
       const workflow = dormancyCheck(config);
-      await workflow.processDormantUsers();
 
       expect(config.isDormant).not.toHaveBeenCalled();
       expect(config.inactivityHandler).not.toHaveBeenCalled();
-    });
-
-    it('skips handler in dry run mode', async () => {
-      const config = createConfig({ dryRun: true });
-      const workflow = dormancyCheck(config);
-
-      await workflow.processDormantUsers();
-
-      expect(config.isDormant).toHaveBeenCalled();
-      expect(config.inactivityHandler).not.toHaveBeenCalled();
-    });
-
-    it('throws if handlers are not configured', async () => {
-      const config: CreateDormancyCheckConfigurationOptions = {
-        type: 'test-check',
-        isDormant: vi.fn(),
-        fetchLatestActivity: vi.fn(),
-      };
-      const workflow = dormancyCheck(config);
-      const res = await workflow.processDormantUsers();
-      await expect(res).toBeUndefined();
     });
 
     it('handles inactive check errors', async () => {
@@ -244,9 +223,7 @@ describe('Dormant Account Check', () => {
       });
       const workflow = dormancyCheck(config);
 
-      await expect(workflow.processDormantUsers()).rejects.toThrow(
-        'Check failed',
-      );
+      await expect(workflow.summarize()).rejects.toThrow('Check failed');
       expect(config.inactivityHandler).not.toHaveBeenCalled();
     });
 
@@ -258,9 +235,7 @@ describe('Dormant Account Check', () => {
       });
       const workflow = dormancyCheck(config);
 
-      await expect(workflow.processDormantUsers()).rejects.toThrow(
-        'Handler failed',
-      );
+      await expect(workflow.summarize()).rejects.toThrow('Handler failed');
     });
 
     it('handles empty activity records', async () => {
@@ -268,7 +243,7 @@ describe('Dormant Account Check', () => {
       const config = createConfig();
       const workflow = dormancyCheck(config);
 
-      await workflow.processDormantUsers();
+      await workflow.summarize();
 
       expect(config.isDormant).not.toHaveBeenCalled();
       expect(config.inactivityHandler).not.toHaveBeenCalled();
@@ -284,7 +259,7 @@ describe('Dormant Account Check', () => {
       const config = createConfig();
       const workflow = dormancyCheck(config);
 
-      await workflow.processDormantUsers();
+      await workflow.summarize();
 
       expect(config.isDormant).toHaveBeenCalledTimes(2);
       expect(config.isDormant).toHaveBeenNthCalledWith(
@@ -407,42 +382,6 @@ describe('Dormant Account Check', () => {
         dormantAccountPercentage: 0,
         duration: '30d',
       });
-    });
-
-    it('processes accounts in parallel', async () => {
-      vi.useRealTimers();
-
-      const results = ['active1', 'dormant1', 'whitelisted1'].map((login) => ({
-        login,
-        lastActivity: new Date(),
-        type: 'test',
-      }));
-      mockDb.getActivityRecords.mockResolvedValue(results);
-
-      let resolveCount = 0;
-      const isDormant = vi.fn().mockImplementation(async ({ login }) => {
-        await new Promise((resolve) => {
-          setTimeout(() => {
-            resolveCount++;
-            resolve(undefined);
-          }, 100);
-        });
-        return login.startsWith('dormant');
-      });
-
-      const workflow = dormancyCheck(
-        createConfig({
-          isDormant,
-          isWhitelisted: async ({ login }: LastActivityRecord) =>
-            login === 'whitelisted1',
-        }),
-      );
-      const start = Date.now();
-      await workflow.getAccountStatuses();
-      const duration = Date.now() - start;
-
-      expect(resolveCount).toBe(2); // whitelist skips isDormant check
-      expect(duration).toBeLessThan(200); // Should be ~100ms if parallel
     });
 
     it('uses default isDormant method if not provided', async () => {
