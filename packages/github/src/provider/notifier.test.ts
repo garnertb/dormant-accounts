@@ -1,10 +1,33 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { GithubIssueNotifier, NotificationStatus } from './notifier';
+import {
+  GithubIssueNotifier,
+  NotificationConfig,
+  NotificationStatus,
+} from './notifier';
 import { LastActivityRecord } from 'dormant-accounts';
+import { create } from 'domain';
 
 describe('GithubIssueNotifier', () => {
   let mockOctokit: any;
   let notifier: GithubIssueNotifier;
+
+  const createNotifier = (options?: Partial<NotificationConfig>) => {
+    const defaults = {
+      githubClient: mockOctokit,
+      gracePeriod: '7d',
+      repository: {
+        owner: 'test-owner',
+        repo: 'test-repo',
+        baseLabels: ['dormant-account'],
+      },
+      notificationBody: 'Test notification body',
+      dryRun: false,
+    };
+    return new GithubIssueNotifier({
+      ...defaults,
+      ...options,
+    });
+  };
 
   const createMockOctokit = () => ({
     rest: {
@@ -36,17 +59,7 @@ describe('GithubIssueNotifier', () => {
   beforeEach(() => {
     mockOctokit = createMockOctokit();
 
-    notifier = new GithubIssueNotifier({
-      githubClient: mockOctokit,
-      gracePeriod: '7d',
-      repository: {
-        owner: 'test-owner',
-        repo: 'test-repo',
-        baseLabels: ['dormant-account'],
-      },
-      notificationBody: 'Test notification body',
-      dryRun: false,
-    });
+    notifier = createNotifier();
   });
 
   describe('constructor', () => {
@@ -71,7 +84,37 @@ describe('GithubIssueNotifier', () => {
         title: 'test-user',
         body: expect.stringContaining('@test-user'),
         labels: ['dormant-account', NotificationStatus.PENDING],
-        assignees: ['garnertb'],
+      });
+
+      expect(result).toEqual(
+        expect.objectContaining({
+          id: 123,
+          number: 1,
+          title: 'test-user',
+        }),
+      );
+    });
+
+    it('assignes the dormant user if configured', async () => {
+      const user: LastActivityRecord = {
+        login: 'test-user',
+        lastActivity: new Date('2023-01-01'),
+        type: 'user',
+      };
+
+      const notifier = createNotifier({
+        assignUserToIssue: true,
+      });
+
+      const result = await notifier.notifyUser(user);
+
+      expect(mockOctokit.rest.issues.create).toHaveBeenCalledWith({
+        owner: 'test-owner',
+        repo: 'test-repo',
+        title: 'test-user',
+        body: expect.stringContaining('@test-user'),
+        labels: ['dormant-account', NotificationStatus.PENDING],
+        assignees: ['test-user'],
       });
 
       expect(result).toEqual(

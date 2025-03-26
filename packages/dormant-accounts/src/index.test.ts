@@ -1,8 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import {
-  dormancyCheck,
-  CreateCreateDormancyCheckConfigurationOptionsurationOptions,
-} from '.';
+import { dormancyCheck } from '.';
 import {
   LastActivityRecord,
   CreateDormancyCheckConfigurationOptions,
@@ -59,12 +56,11 @@ describe('Dormant Account Check', () => {
         type: 'test',
       };
 
-      const config: CreateCreateDormancyCheckConfigurationOptionsurationOptions =
-        {
-          type: 'test-check',
-          isDormant: vi.fn(),
-          fetchLatestActivity: vi.fn().mockResolvedValue([mockActivity]),
-        };
+      const config = {
+        type: 'test-check',
+        isDormant: vi.fn(),
+        fetchLatestActivity: vi.fn().mockResolvedValue([mockActivity]),
+      };
 
       const workflow = dormancyCheck(config);
       await workflow.fetchActivity();
@@ -88,14 +84,13 @@ describe('Dormant Account Check', () => {
         type: 'test',
       };
 
-      const config: CreateCreateDormancyCheckConfigurationOptionsurationOptions =
-        {
-          type: 'test-check',
-          fetchLatestActivity: vi.fn().mockResolvedValue([mockActivity]),
-          logActivityForUser: vi.fn(),
-          isDormant: vi.fn(),
-          duration: '30d',
-        };
+      const config = {
+        type: 'test-check',
+        fetchLatestActivity: vi.fn().mockResolvedValue([mockActivity]),
+        logActivityForUser: vi.fn(),
+        isDormant: vi.fn(),
+        duration: '30d',
+      };
 
       const workflow = dormancyCheck(config);
       await workflow.fetchActivity();
@@ -113,7 +108,7 @@ describe('Dormant Account Check', () => {
     });
 
     it('handles fetch activity errors', async () => {
-      const config: CreateDormancyCheckConfigurationOptions = {
+      const config = {
         type: 'test-check',
         isDormant: vi.fn(),
         fetchLatestActivity: vi
@@ -133,7 +128,7 @@ describe('Dormant Account Check', () => {
         { login: 'user2', lastActivity: new Date('2024-01-02'), type: 'test1' },
       ];
 
-      const config: CreateDormancyCheckConfigurationOptions = {
+      const config = {
         type: 'test-check',
         isDormant: vi.fn(),
         fetchLatestActivity: vi.fn().mockResolvedValue(activities),
@@ -155,7 +150,7 @@ describe('Dormant Account Check', () => {
         metadata: { customField: 'value' },
       };
 
-      const config: CreateDormancyCheckConfigurationOptions = {
+      const config = {
         type: 'test-check',
         isDormant: vi.fn(),
         fetchLatestActivity: vi.fn().mockResolvedValue([mockActivity]),
@@ -175,7 +170,7 @@ describe('Dormant Account Check', () => {
   describe.skip('Inactive User Processing', () => {
     const createConfig = (
       overrides?: Partial<CreateDormancyCheckConfigurationOptions>,
-    ): CreateDormancyCheckConfigurationOptions => ({
+    ) => ({
       type: 'test-check',
       duration: '30d',
       fetchLatestActivity: vi.fn(),
@@ -313,7 +308,7 @@ describe('Dormant Account Check', () => {
   describe('Account Status Management', () => {
     const createConfig = (
       overrides?: Partial<CreateDormancyCheckConfigurationOptions>,
-    ): CreateDormancyCheckConfigurationOptions => ({
+    ) => ({
       type: 'test-check',
       fetchLatestActivity: vi.fn(),
       isDormant: vi

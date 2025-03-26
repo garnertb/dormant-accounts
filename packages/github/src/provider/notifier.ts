@@ -265,7 +265,7 @@ export class GithubIssueNotifier implements DormantAccountNotifier {
         ...this.config.repository.baseLabels,
         NotificationStatus.PENDING,
       ],
-      assignees: [this.config.assignUserToIssue ? user.login : 'garnertb'],
+      assignees: this.config.assignUserToIssue ? [user.login] : undefined,
     });
 
     console.log(`Notification created for ${user.login}`);
@@ -275,7 +275,9 @@ export class GithubIssueNotifier implements DormantAccountNotifier {
   /**
    * Check if notification grace period has expired
    */
-  hasGracePeriodExpired(notification: NotificationIssue): boolean {
+  hasGracePeriodExpired(
+    notification: Pick<NotificationIssue, 'created_at'>,
+  ): boolean {
     return compareDatesAgainstDuration(
       this.config.gracePeriod,
       new Date(notification.created_at),
@@ -423,7 +425,7 @@ export class GithubIssueNotifier implements DormantAccountNotifier {
       repo: this.config.repository.repo,
       state: 'open',
       labels: this.config.repository.baseLabels.join(','),
-      assignee: this.config.assignUserToIssue ? username : 'garnertb',
+      assignee: this.config.assignUserToIssue ? username : undefined,
     });
 
     return (
