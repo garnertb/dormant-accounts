@@ -34251,7 +34251,7 @@ function dist_dormancyCheck(config) {
 }
 
 //# sourceMappingURL=index.js.map
-;// CONCATENATED MODULE: ../../packages/github/dist/chunk-ZDJNUDFK.js
+;// CONCATENATED MODULE: ../../packages/github/dist/chunk-LAT55HO6.js
 // src/provider/audit-log.ts
 
 
@@ -34320,7 +34320,7 @@ var githubDormancy = (config) => {
 // src/provider/copilot.ts
 
 
-var chunk_ZDJNUDFK_logger = console;
+var chunk_LAT55HO6_logger = console;
 var fetchLatestActivityFromCoPilot = async ({ octokit, org, checkType, logger: logger2 }) => {
   logger2.debug(checkType, `Fetching audit log for ${org}`);
   const payload = {
@@ -34389,7 +34389,7 @@ var revokeCopilotLicense = async (config) => {
     selected_usernames = [selected_usernames];
   }
   if (dryRun) {
-    chunk_ZDJNUDFK_logger.info(`DRY RUN: Removing ${selected_usernames} from ${org}`);
+    chunk_LAT55HO6_logger.info(`DRY RUN: Removing ${selected_usernames} from ${org}`);
   } else {
     const {
       data: { seats_cancelled }
@@ -34397,7 +34397,7 @@ var revokeCopilotLicense = async (config) => {
       org,
       selected_usernames
     });
-    chunk_ZDJNUDFK_logger.info(`Removed ${seats_cancelled} license from ${org}`);
+    chunk_LAT55HO6_logger.info(`Removed ${seats_cancelled} license from ${org}`);
     return seats_cancelled === 1;
   }
   return false;
@@ -34544,7 +34544,7 @@ ${notificationBody}`,
         ...this.config.repository.baseLabels,
         "pending-removal" /* PENDING */
       ],
-      assignees: [this.config.assignUserToIssue ? user.login : "garnertb"]
+      assignees: this.config.assignUserToIssue ? [user.login] : void 0
     });
     console.log(`Notification created for ${user.login}`);
     return data;
@@ -34660,7 +34660,7 @@ ${notificationBody}`,
       repo: this.config.repository.repo,
       state: "open",
       labels: this.config.repository.baseLabels.join(","),
-      assignee: this.config.assignUserToIssue ? username : "garnertb"
+      assignee: this.config.assignUserToIssue ? username : void 0
     });
     return data.find((issue) => issue.title === username) || null;
   }
@@ -34727,7 +34727,7 @@ function createDefaultNotificationBodyHandler(notificationTemplate) {
 }
 
 
-//# sourceMappingURL=chunk-ZDJNUDFK.js.map
+//# sourceMappingURL=chunk-LAT55HO6.js.map
 ;// CONCATENATED MODULE: ./src/utils/createBranch.ts
 
 /**
@@ -39374,7 +39374,7 @@ async function processNotifications(octokit, context, dormantAccounts, check) {
                 logins: lastActivityRecord.login,
                 octokit,
                 org: context.repo.owner,
-                dryRun: context.dryRun,
+                dryRun: context.removeDormantAccounts,
             });
             if (accountRemoved) {
                 core.info(`Successfully removed Copilot license for ${lastActivityRecord.login}`);

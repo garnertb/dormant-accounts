@@ -76,7 +76,7 @@ export async function processNotifications(
         logins: lastActivityRecord.login,
         octokit,
         org: context.repo.owner,
-        dryRun: context.dryRun,
+        dryRun: context.removeDormantAccounts,
       });
 
       if (accountRemoved) {
