@@ -34220,6 +34220,10 @@ var DormantAccountCheck = class {
       duration: this.duration
     };
   }
+  /**
+   * Provides access to the activity database for raw data retrieval and user removal
+   * @returns interface with methods to interact with the activity database
+   */
   get activity() {
     return {
       all: async () => this.db.getRawData(),
