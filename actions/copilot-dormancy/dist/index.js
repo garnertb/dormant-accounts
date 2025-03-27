@@ -39400,6 +39400,7 @@ async function run() {
         const checkType = 'copilot-dormancy';
         const notificationsContext = getNotificationContext();
         const sendNotifications = notificationsContext !== false;
+        let notificationsResults = null;
         const branchName = checkType;
         const [owner, repo] = activityLogRepo.split('/');
         if (!dryRun && (!owner || !repo)) {
@@ -39500,35 +39501,35 @@ async function run() {
         }
         if (sendNotifications) {
             core.debug('Notification context: ' + safeStringify(notificationsContext));
-            const notifications = await processNotifications(octokit, notificationsContext, dormantAccounts, check);
-            core.setOutput('notification-results', safeStringify(notifications));
-            core.info(`Created notifications for ${notifications.notified.length} dormant accounts`);
-            core.info(`Closed notifications for ${notifications.reactivated.length} no longer dormant accounts`);
-            core.info(`Removed ${notifications.removed.length} dormant accounts`);
+            notificationsResults = await processNotifications(octokit, notificationsContext, dormantAccounts, check);
+            core.setOutput('notification-results', safeStringify(notificationsResults));
+            core.info(`Created notifications for ${notificationsResults.notified.length} dormant accounts`);
+            core.info(`Closed notifications for ${notificationsResults.reactivated.length} no longer dormant accounts`);
+            core.info(`Removed ${notificationsResults.removed.length} dormant accounts`);
             // Add notification results to summary
             core.summary.addHeading('Notification Results', 3).addTable([
                 [
                     { data: 'Action', header: true },
                     { data: 'Count', header: true },
                 ],
-                ['New notifications created', notifications.notified.length.toString()],
+                ['New notifications created', notificationsResults.notified.length.toString()],
                 [
                     'Notifications closed (reactivated users)',
-                    notifications.reactivated.length.toString(),
+                    notificationsResults.reactivated.length.toString(),
                 ],
                 [
                     'Users removed after grace period',
-                    notifications.removed.length.toString(),
+                    notificationsResults.removed.length.toString(),
                 ],
                 [
                     'Users with admin exclusions',
-                    notifications.excluded.length.toString(),
+                    notificationsResults.excluded.length.toString(),
                 ],
                 [
                     'Users in grace period',
-                    notifications.inGracePeriod.length.toString(),
+                    notificationsResults.inGracePeriod.length.toString(),
                 ],
-                ['Errors encountered', notifications.errors.length.toString()],
+                ['Errors encountered', notificationsResults.errors.length.toString()],
             ]);
             // Function to generate a link list for notification issues
             const generateIssueLinkList = (notificationItems, title) => {
@@ -39539,27 +39540,27 @@ async function run() {
                 core.summary.addEOL();
             };
             // Add issue links for each notification category
-            if (notifications.notified.length > 0) {
-                generateIssueLinkList(notifications.notified, 'Newly Created Notifications');
+            if (notificationsResults.notified.length > 0) {
+                generateIssueLinkList(notificationsResults.notified, 'Newly Created Notifications');
             }
-            if (notifications.reactivated.length > 0) {
-                generateIssueLinkList(notifications.reactivated, 'Closed Notifications (Users Became Active)');
+            if (notificationsResults.reactivated.length > 0) {
+                generateIssueLinkList(notificationsResults.reactivated, 'Closed Notifications (Users Became Active)');
             }
-            if (notifications.removed.length > 0) {
-                generateIssueLinkList(notifications.removed, 'Users Removed (Grace Period Expired)');
+            if (notificationsResults.removed.length > 0) {
+                generateIssueLinkList(notificationsResults.removed, 'Users Removed (Grace Period Expired)');
             }
-            if (notifications.excluded.length > 0) {
-                generateIssueLinkList(notifications.excluded, 'Admin Exclusions');
+            if (notificationsResults.excluded.length > 0) {
+                generateIssueLinkList(notificationsResults.excluded, 'Admin Exclusions');
             }
-            if (notifications.inGracePeriod.length > 0) {
-                generateIssueLinkList(notifications.inGracePeriod, 'Users in Grace Period');
+            if (notificationsResults.inGracePeriod.length > 0) {
+                generateIssueLinkList(notificationsResults.inGracePeriod, 'Users in Grace Period');
             }
             // If there were any errors, show details
-            if (notifications.errors.length > 0) {
+            if (notificationsResults.errors.length > 0) {
                 core.summary
                     .addHeading('Notification Errors', 4)
                     .addRaw('The following errors occurred during notification processing:', true);
-                notifications.errors.forEach(({ user, error }, index) => {
+                notificationsResults.errors.forEach(({ user, error }, index) => {
                     core.summary.addRaw(`${index + 1}. **${user}**: ${error.message}  `, true);
                 });
             }
@@ -39603,6 +39604,12 @@ async function run() {
             }
         }
         core.info('Copilot dormancy check completed successfully');
+        if (notificationsResults && notificationsResults.errors) {
+            core.setFailed(`Action failed with errors: ${notificationsResults.errors
+                // @ts-expect-error
+                .map((error) => error.message)
+                .join(', ')}`);
+        }
     }
     catch (error) {
         const errorMessage = error instanceof Error ? error.message : String(error);

@@ -4,6 +4,7 @@ export {
   GithubIssueNotifier,
   createDefaultNotificationBodyHandler,
   revokeCopilotLicense,
+  type ProcessingResult,
 } from './provider';
 
 export type { OctokitClient } from './provider/types';
