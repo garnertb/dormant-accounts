@@ -39608,8 +39608,7 @@ async function run() {
         }
         core.info('Copilot dormancy check completed successfully');
         if (notificationsResults && notificationsResults.errors) {
-            core.setFailed(`Action failed with errors: ${notificationsResults.errors
-                .join(', ')}`);
+            core.setFailed(`Action failed due to errors sending notifications: ${notificationsResults.errors.map(({ error }) => error.message).join(', ')}`);
         }
     }
     catch (error) {
