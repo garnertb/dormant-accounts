@@ -2,6 +2,8 @@
 
 A library for tracking user activity and identifying dormant accounts across various services.
 
+⚠️ **This library is in early development and may not be fully functional.** ⚠️
+
 ## Installation
 
 ```bash
