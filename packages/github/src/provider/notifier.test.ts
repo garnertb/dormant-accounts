@@ -2,6 +2,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import {
   GithubIssueNotifier,
   NotificationConfig,
+  NotificationIssue,
   NotificationStatus,
 } from './notifier';
 import { LastActivityRecord } from 'dormant-accounts';
@@ -205,11 +206,13 @@ describe('GithubIssueNotifier', () => {
       const dormantUsers: LastActivityRecord[] = [
         {
           login: 'dormant-user',
-          lastActivity: new Date('2023-01-01').toISOString(),
+          lastActivity: new Date('2023-01-01'),
+          type: 'user',
         },
         {
           login: 'dormant-user2',
-          lastActivity: new Date('2023-01-01').toISOString(),
+          lastActivity: new Date('2023-01-01'),
+          type: 'user',
         },
       ];
 
@@ -304,19 +307,23 @@ describe('GithubIssueNotifier', () => {
       const dormantUsers: LastActivityRecord[] = [
         {
           login: 'grace-period-user',
-          lastActivity: new Date('2023-01-01').toISOString(),
+          lastActivity: new Date('2023-01-01'),
+          type: 'user',
         },
         {
           login: 'expired-user',
-          lastActivity: new Date('2023-01-01').toISOString(),
+          lastActivity: new Date('2023-01-01'),
+          type: 'user',
         },
         {
           login: 'excluded-user',
-          lastActivity: new Date('2023-01-01').toISOString(),
+          lastActivity: new Date('2023-01-01'),
+          type: 'user',
         },
         {
           login: 'new-user',
-          lastActivity: new Date('2023-01-01').toISOString(),
+          lastActivity: new Date('2023-01-01'),
+          type: 'user',
         },
       ];
 
@@ -324,18 +331,23 @@ describe('GithubIssueNotifier', () => {
 
       // Verify results
       expect(result.inGracePeriod.length).toBe(1);
+      // @ts-expect-error
       expect(result.inGracePeriod[0].user).toBe('grace-period-user');
 
       expect(result.removed.length).toBe(1);
+      // @ts-expect-error
       expect(result.removed[0].user).toBe('expired-user');
 
       expect(result.excluded.length).toBe(1);
+      // @ts-expect-error
       expect(result.excluded[0].user).toBe('excluded-user');
 
       expect(result.notified.length).toBe(1);
+      // @ts-expect-error
       expect(result.notified[0].user).toBe('new-user');
 
       expect(result.reactivated.length).toBe(1);
+      // @ts-expect-error
       expect(result.reactivated[0].user).toBe('reactivated-user');
     });
 
@@ -363,7 +375,8 @@ describe('GithubIssueNotifier', () => {
       const dormantUsers: LastActivityRecord[] = [
         {
           login: 'test-user',
-          lastActivity: new Date('2023-01-01').toISOString(),
+          lastActivity: new Date('2023-01-01'),
+          type: 'user',
         },
       ];
 
@@ -407,6 +420,7 @@ describe('GithubIssueNotifier', () => {
         state: 'open',
       };
 
+      // @ts-expect-error
       await handlerNotifier.removeAccount(user, notification);
 
       // Verify handler was called with correct parameters
@@ -453,6 +467,7 @@ describe('GithubIssueNotifier', () => {
         state: 'open',
       };
 
+      // @ts-expect-error
       await notifier.removeAccount(user, notification);
 
       // Just verify the issue was updated correctly

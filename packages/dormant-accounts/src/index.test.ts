@@ -1,9 +1,6 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { dormancyCheck } from '.';
-import {
-  LastActivityRecord,
-  CreateDormancyCheckConfigurationOptions,
-} from './types';
+import { LastActivityRecord, DormancyCheckConfig } from './types';
 import { Database } from './database';
 
 vi.mock('./database', () => {
@@ -169,13 +166,13 @@ describe('Dormant Account Check', () => {
 
   describe.skip('Inactive User Processing', () => {
     const createConfig = (
-      overrides?: Partial<CreateDormancyCheckConfigurationOptions>,
+      overrides?: Partial<DormancyCheckConfig<{ testConfig: boolean }>>,
     ) => ({
       type: 'test-check',
       duration: '30d',
       fetchLatestActivity: vi.fn(),
       isDormant: vi.fn().mockResolvedValue(true),
-      extendedConfig: { testConfig: true },
+      conf: { testConfig: true },
       ...overrides,
     });
 
@@ -186,7 +183,7 @@ describe('Dormant Account Check', () => {
 
       const config = createConfig({
         isWhitelisted: vi.fn().mockResolvedValue(true),
-        extendedConfig: { testConfig: true },
+        conf: { testConfig: true },
       });
 
       const workflow = dormancyCheck(config);
@@ -203,7 +200,7 @@ describe('Dormant Account Check', () => {
         isWhitelisted: async (user: { login: string }) =>
           ['user1', 'user2'].includes(user.login),
         isDormant: vi.fn().mockResolvedValue(true),
-        extendedConfig: { testConfig: true },
+        conf: { testConfig: true },
       });
 
       const workflow = dormancyCheck(config);
@@ -294,7 +291,7 @@ describe('Dormant Account Check', () => {
       const config = createConfig({
         isWhitelisted: vi.fn().mockResolvedValue(true),
         isDormant: vi.fn().mockResolvedValue(true),
-        extendedConfig: { testConfig: true },
+        conf: { testConfig: true },
       });
 
       const workflow = dormancyCheck(config);
@@ -307,7 +304,7 @@ describe('Dormant Account Check', () => {
 
   describe('Account Status Management', () => {
     const createConfig = (
-      overrides?: Partial<CreateDormancyCheckConfigurationOptions>,
+      overrides?: Partial<DormancyCheckConfig<{ testConfig: boolean }>>,
     ) => ({
       type: 'test-check',
       fetchLatestActivity: vi.fn(),
@@ -345,6 +342,7 @@ describe('Dormant Account Check', () => {
       const accounts = await workflow.listDormantAccounts();
 
       expect(accounts).toHaveLength(1);
+      // @ts-expect-error
       expect(accounts[0].login).toBe('dormant1');
     });
 

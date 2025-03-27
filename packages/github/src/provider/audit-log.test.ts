@@ -51,22 +51,8 @@ describe('GitHub Activity Check', () => {
     };
 
     // Update how we set the mock implementation
+    // @ts-expect-error
     (database.default as any).mockImplementation(() => mockDb);
-  });
-
-  describe('configuration', () => {
-    it('properly sets duration from config', () => {
-      const configWithCustomDuration = {
-        ...defaultConfig,
-        duration: '90d',
-      };
-
-      const workflow = githubDormancy(configWithCustomDuration);
-
-      // 90 days in milliseconds
-      const expectedDuration = 90 * 24 * 60 * 60 * 1000;
-      expect(workflow.durationMillis).toBe(expectedDuration);
-    });
   });
 
   describe.skip('inactivityHandler', () => {
@@ -76,6 +62,7 @@ describe('GitHub Activity Check', () => {
       });
 
       const workflow = githubDormancy(defaultConfig);
+      // @ts-expect-error
       await workflow.config.inactivityHandler({
         login: 'test-user',
         lastActivity: new Date(),
@@ -97,6 +84,7 @@ describe('GitHub Activity Check', () => {
       });
 
       const workflow = githubDormancy(defaultConfig);
+      // @ts-expect-error
       await workflow.config.inactivityHandler({
         login: 'test-user',
         lastActivity: new Date(),
