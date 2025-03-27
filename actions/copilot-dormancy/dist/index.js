@@ -39247,6 +39247,7 @@ const notificationSchema = objectType({
     body: stringType(),
     baseLabels: arrayType(stringType()).default(['copilot-dormancy']),
     dryRun: booleanType().optional().default(false),
+    assignUserToIssue: booleanType().optional().default(true),
     removeDormantAccounts: booleanType().optional().default(false),
 })
     .transform((data) => {
@@ -39274,6 +39275,7 @@ function getNotificationContext() {
         duration: core.getInput('notifications-duration'),
         body: core.getInput('notifications-body'),
         dryRun: core.getInput('notifications-dry-run') === 'true',
+        assignUserToIssue: core.getInput('notifications-disable-issue-assignment') !== 'true',
         removeDormantAccounts: core.getInput('remove-dormant-accounts') === 'true',
     });
     if (!parsedNotification.success) {
@@ -39356,17 +39358,19 @@ const formatDate = (isoString) => {
     }
 };
 async function processNotifications(octokit, context, dormantAccounts, check) {
+    const { duration: gracePeriod, body, assignUserToIssue, removeDormantAccounts, repo, baseLabels, dryRun, } = context;
     const notifier = new GithubIssueNotifier({
         githubClient: octokit,
-        gracePeriod: context.duration,
+        gracePeriod,
         repository: {
-            ...context.repo,
-            baseLabels: context.baseLabels,
+            ...repo,
+            baseLabels,
         },
-        notificationBody: createDefaultNotificationBodyHandler(context.body),
-        dryRun: context.dryRun,
+        notificationBody: createDefaultNotificationBodyHandler(body),
+        assignUserToIssue,
+        dryRun,
         removeAccount: async ({ lastActivityRecord }) => {
-            if (!context.removeDormantAccounts) {
+            if (!removeDormantAccounts) {
                 core.info(`removeDormantAccounts is false, skipping removal for: ${lastActivityRecord.login}`);
                 return true;
             }
@@ -39374,7 +39378,7 @@ async function processNotifications(octokit, context, dormantAccounts, check) {
                 logins: lastActivityRecord.login,
                 octokit,
                 org: context.repo.owner,
-                dryRun: context.removeDormantAccounts,
+                dryRun: removeDormantAccounts,
             });
             if (accountRemoved) {
                 core.info(`Successfully removed Copilot license for ${lastActivityRecord.login}`);

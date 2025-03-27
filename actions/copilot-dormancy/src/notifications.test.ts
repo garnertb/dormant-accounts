@@ -1,11 +1,16 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { processNotifications } from './run';
+import * as core from '@actions/core';
 import {
   GithubIssueNotifier,
   LastActivityRecord,
 } from '@dormant-accounts/github';
-import { NotificationContext } from './utils/getNotificationContext';
+import {
+  NotificationContext,
+  getNotificationContext,
+} from './utils/getNotificationContext';
 
+vi.mock('@actions/core');
 const createMockCheckObject = () => ({
   fetchActivity: vi.fn().mockResolvedValue(undefined),
   listDormantAccounts: vi.fn().mockResolvedValue([{ login: 'dormant-user' }]),
@@ -65,10 +70,50 @@ describe('Notification Processing', () => {
     baseLabels: ['copilot-dormancy'],
     dryRun: false,
     removeDormantAccounts: false,
+    assignUserToIssue: true,
   };
 
   beforeEach(() => {
     vi.clearAllMocks();
+  });
+
+  describe('notification context', () => {
+    it('should return false when notifications are disabled (by default)', () => {
+      const notificationContext = getNotificationContext();
+      expect(notificationContext).toBeFalsy();
+    });
+
+    it('should return correct notification context', () => {
+      vi.mocked(core.getInput).mockImplementation((name) => {
+        const inputs: Record<string, string> = {
+          org: 'test-org',
+          'activity-log-repo': 'test-owner/test-repo',
+          duration: '90d',
+          token: 'mock-token',
+          'dry-run': 'false',
+          'notifications-enabled': 'true',
+          'notifications-repo': 'test-owner/test-repo',
+          'notifications-duration': '30d',
+          'notifications-body': 'Test notification body',
+          'notifications-dry-run': 'false',
+        };
+        return inputs[name] || '';
+      });
+
+      const notificationContext = getNotificationContext();
+      expect(notificationContext).toEqual({
+        repo: {
+          owner: 'test-owner',
+          repo: 'test-repo',
+        },
+        assignUserToIssue: true,
+        removeDormantAccounts: false,
+        duration: '30d',
+        body: 'Test notification body',
+        baseLabels: ['copilot-dormancy'],
+        dryRun: false,
+      });
+    });
   });
 
   it('should create notifier with correct configuration', async () => {
@@ -82,6 +127,7 @@ describe('Notification Processing', () => {
     expect(GithubIssueNotifier).toHaveBeenCalledWith({
       githubClient: mockOctokit,
       gracePeriod: notificationContext.duration,
+      assignUserToIssue: true,
       repository: {
         ...notificationContext.repo,
         baseLabels: notificationContext.baseLabels,

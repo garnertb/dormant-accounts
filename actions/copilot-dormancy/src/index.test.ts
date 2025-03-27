@@ -108,6 +108,7 @@ describe('Copilot Dormancy Action', () => {
       baseLabels: ['copilot-dormancy'],
       dryRun: false,
       removeDormantAccounts: false,
+      assignUserToIssue: true,
     });
 
     // Setup a fresh mock for the check object
