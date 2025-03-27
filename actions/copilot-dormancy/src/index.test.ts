@@ -1,12 +1,50 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import * as core from '@actions/core';
 import * as github from '@actions/github';
+import { getNotificationContext } from './utils/getNotificationContext';
 
 // Mock dependencies
 vi.mock('@actions/core');
 vi.mock('@actions/github');
+vi.mock('./utils/updateActivityLog', () => ({
+  updateActivityLog: vi.fn().mockResolvedValue({}),
+}));
+vi.mock('./utils/checkBranch', () => ({
+  checkBranch: vi.fn().mockResolvedValue(true),
+}));
+vi.mock('./utils/createBranch', () => ({
+  createBranch: vi.fn().mockResolvedValue(undefined),
+}));
+vi.mock('./utils/getActivityLog', () => ({
+  getActivityLog: vi.fn().mockResolvedValue({
+    sha: 'mock-sha',
+    content: '{}',
+  }),
+}));
+vi.mock('./utils/getNotificationContext');
 vi.mock('@dormant-accounts/github', () => {
-  const mockCheck = {
+  return {
+    copilotDormancy: vi.fn(),
+    GithubIssueNotifier: vi.fn().mockImplementation(() => ({
+      processDormantUsers: vi.fn().mockResolvedValue({
+        notified: [],
+        reactivated: [],
+        removed: [],
+        excluded: [],
+        inGracePeriod: [],
+        errors: [],
+      }),
+    })),
+    createDefaultNotificationBodyHandler: vi.fn(),
+  };
+});
+
+// Mock process.env
+const originalEnv = process.env;
+
+describe('Copilot Dormancy Action', () => {
+  // Create a mock check object to reuse
+  const createMockCheckObject = () => ({
     fetchActivity: vi.fn().mockResolvedValue(undefined),
     listDormantAccounts: vi.fn().mockResolvedValue([{ login: 'dormant-user' }]),
     listActiveAccounts: vi.fn().mockResolvedValue([{ login: 'active-user' }]),
@@ -19,44 +57,39 @@ vi.mock('@dormant-accounts/github', () => {
       dormantAccountPercentage: 50,
       duration: '30d',
     }),
-    getDatabaseData: vi.fn().mockResolvedValue({
-      _state: { lastRun: '2023-01-01T00:00:00.000Z' },
-      users: { 'active-user': {}, 'dormant-user': {} },
-    }),
-  };
-
-  return {
-    copilotDormancy: vi.fn().mockResolvedValue(mockCheck),
-  };
-});
-
-describe('Copilot Dormancy Action', () => {
-  const mockOctokit = {
-    rest: {
-      repos: {
-        createOrUpdateFileContents: vi.fn().mockResolvedValue({}),
-      },
+    activity: {
+      all: vi.fn().mockResolvedValue({
+        _state: { lastRun: '2023-01-01T00:00:00.000Z' },
+        users: { 'active-user': {}, 'dormant-user': {} },
+      }),
     },
-  };
+  });
 
   beforeEach(() => {
+    // Reset modules and mocks
     vi.resetModules();
     vi.resetAllMocks();
 
-    // Setup input mocks
-    vi.mocked(core.getInput).mockImplementation((name) => {
-      const inputs: Record<string, string> = {
-        org: 'test-org',
-        'activity-log-repo': 'activity-logs',
-        duration: '90d',
-        token: 'mock-token',
-        'dry-run': 'false',
-      };
-      return inputs[name] || '';
-    });
-
     // Setup GitHub mocks
-    vi.mocked(github.getOctokit).mockReturnValue(mockOctokit as any);
+    vi.mocked(github.getOctokit).mockReturnValue({
+      rest: {
+        repos: {
+          createOrUpdateFileContents: vi.fn().mockResolvedValue({}),
+        },
+      },
+    } as any);
+
+    // Setup core.summary mock methods
+    vi.mocked(core.summary).addHeading = vi.fn().mockReturnValue(core.summary);
+    vi.mocked(core.summary).addRaw = vi.fn().mockReturnValue(core.summary);
+    vi.mocked(core.summary).addBreak = vi.fn().mockReturnValue(core.summary);
+    vi.mocked(core.summary).addTable = vi.fn().mockReturnValue(core.summary);
+    vi.mocked(core.summary).addList = vi.fn().mockReturnValue(core.summary);
+    vi.mocked(core.summary).addEOL = vi.fn().mockReturnValue(core.summary);
+    vi.mocked(core.summary).write = vi.fn().mockResolvedValue(core.summary);
+
+    // Setup mock for isDebug
+    vi.mocked(core.isDebug).mockReturnValue(false);
   });
 
   afterEach(() => {
@@ -64,10 +97,46 @@ describe('Copilot Dormancy Action', () => {
   });
 
   it('should run the dormancy check and set outputs', async () => {
-    // Import the module to trigger the run function
-    await import('./index');
+    // Setup notification context mock
+    vi.mocked(getNotificationContext).mockReturnValue({
+      repo: {
+        owner: 'test-owner',
+        repo: 'test-repo',
+      },
+      duration: '30d',
+      body: 'Test notification body',
+      baseLabels: ['copilot-dormancy'],
+      dryRun: false,
+      removeDormantAccounts: false,
+    });
 
+    // Setup a fresh mock for the check object
     const { copilotDormancy } = await import('@dormant-accounts/github');
+    //@ts-expect-error
+    vi.mocked(copilotDormancy).mockResolvedValue(createMockCheckObject());
+
+    // Setup input mocks
+    vi.mocked(core.getInput).mockImplementation((name) => {
+      const inputs: Record<string, string> = {
+        org: 'test-org',
+        'activity-log-repo': 'test-owner/test-repo',
+        duration: '90d',
+        token: 'mock-token',
+        'dry-run': 'false',
+        'notifications-enabled': 'true',
+        'notifications-repo': 'test-owner/test-repo',
+        'notifications-duration': '30d',
+        'notifications-body': 'Test notification body',
+        'notifications-dry-run': 'false',
+      };
+      return inputs[name] || '';
+    });
+
+    // Import and execute the run function directly
+    const { run } = await import('./run');
+    await run();
+
+    const { updateActivityLog } = await import('./utils/updateActivityLog');
 
     // Verify the function was called with correct parameters
     expect(copilotDormancy).toHaveBeenCalledWith({
@@ -80,11 +149,17 @@ describe('Copilot Dormancy Action', () => {
       },
     });
 
-    // Verify activity was fetched
-    const mockCheck = await vi.mocked(copilotDormancy).mock.results[0]?.value;
-    expect(mockCheck.fetchActivity).toHaveBeenCalled();
-    expect(mockCheck.listDormantAccounts).toHaveBeenCalled();
-    expect(mockCheck.listActiveAccounts).toHaveBeenCalled();
+    // Verify updateActivityLog was called
+    expect(updateActivityLog).toHaveBeenCalledWith(
+      expect.anything(),
+      { owner: 'test-owner', repo: 'test-repo' },
+      expect.objectContaining({
+        branch: 'copilot-dormancy',
+        path: 'copilot-dormancy.json',
+        content: expect.any(String),
+        message: expect.stringMatching(/Update Copilot dormancy log for/),
+      }),
+    );
 
     // Verify outputs were set
     expect(core.setOutput).toHaveBeenCalledWith(
@@ -103,52 +178,80 @@ describe('Copilot Dormancy Action', () => {
       'check-stats',
       expect.any(String),
     );
+
+    // Verify core.summary methods were called
+    expect(core.summary.addHeading).toHaveBeenCalled();
+    expect(core.summary.addRaw).toHaveBeenCalled();
+    expect(core.summary.write).toHaveBeenCalled();
   });
 
   it('should handle dry run mode correctly', async () => {
+    // For dry run test, disable notifications
+    vi.mocked(getNotificationContext).mockReturnValue(false);
+
+    // Setup a fresh mock for the check object
+    const { copilotDormancy } = await import('@dormant-accounts/github');
+    // @ts-expect-error
+    vi.mocked(copilotDormancy).mockResolvedValue(createMockCheckObject());
+
+    // Setup input mocks
     vi.mocked(core.getInput).mockImplementation((name) => {
       const inputs: Record<string, string> = {
         org: 'test-org',
-        'activity-log-repo': 'activity-logs',
+        'activity-log-repo': 'test-owner/test-repo',
         duration: '90d',
         token: 'mock-token',
         'dry-run': 'true',
+        'notifications-enabled': '', // Disable notifications
       };
       return inputs[name] || '';
     });
 
-    // Reset module cache to re-run with new mocks
-    vi.resetModules();
+    // Import and execute the run function directly
+    const { run } = await import('./run');
+    await run();
 
-    // Import the module to trigger the run function
-    await import('./index');
+    const { updateActivityLog } = await import('./utils/updateActivityLog');
 
     // Verify dry run was passed correctly
-    const { copilotDormancy } = await import('@dormant-accounts/github');
     expect(copilotDormancy).toHaveBeenCalledWith(
       expect.objectContaining({
         dryRun: true,
       }),
     );
 
-    // In dry run mode, we shouldn't create/update the file
-    expect(
-      mockOctokit.rest.repos.createOrUpdateFileContents,
-    ).not.toHaveBeenCalled();
+    // In dry run mode, we shouldn't call updateActivityLog
+    expect(updateActivityLog).not.toHaveBeenCalled();
   });
 
   it('should handle errors gracefully', async () => {
-    // Setup copilotDormancy to throw an error
+    // For error test, disable notifications
+    vi.mocked(getNotificationContext).mockReturnValue(false);
+
+    // Setup input mocks for this test
+    vi.mocked(core.getInput).mockImplementation((name) => {
+      const inputs: Record<string, string> = {
+        org: 'test-org',
+        'activity-log-repo': 'test-owner/test-repo',
+        duration: '90d',
+        token: 'mock-token',
+        'dry-run': 'false',
+        'notifications-enabled': '', // Disable notifications
+      };
+      return inputs[name] || '';
+    });
+
+    // Mock copilotDormancy to throw an error
     const { copilotDormancy } = await import('@dormant-accounts/github');
     vi.mocked(copilotDormancy).mockRejectedValueOnce(new Error('Test error'));
 
-    // Reset module cache to re-run with new mocks
-    vi.resetModules();
+    // Import the run function
+    const { run } = await import('./run');
 
-    // Import the module to trigger the run function
-    await import('./index');
+    // Run and expect it to throw
+    await expect(run()).rejects.toThrow('Test error');
 
-    // Verify error handling
+    // Verify error handling occurred
     expect(core.setFailed).toHaveBeenCalledWith(
       'Action failed with error: Test error',
     );

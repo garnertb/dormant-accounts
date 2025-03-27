@@ -16,12 +16,7 @@ export interface DatabaseSchema {
 }
 
 function isUserRecord(value: unknown): value is UserRecord {
-  return (
-    typeof value === 'object' &&
-    value !== null &&
-    'type' in value &&
-    'lastActivity' in value
-  );
+  return typeof value === 'object' && value !== null && 'lastActivity' in value;
 }
 
 export class Database {
@@ -95,6 +90,29 @@ export class Database {
     this.db.data[login] = record as UserRecord;
     logger.debug(`User activity updated for login: ${login}`);
     await this.writeWithSort();
+  }
+
+  /**
+   * Removes a user record from the database
+   * @param user Either a LastActivityRecord object or a string login
+   * @returns Promise<boolean> true if the user was found and removed, false if not found
+   */
+  async removeUserActivityRecord(
+    user: LastActivityRecord | string,
+  ): Promise<boolean> {
+    await this.validateCheckType();
+
+    const login = typeof user === 'string' ? user : user.login;
+
+    if (!this.db.data[login] || login === '_state') {
+      logger.debug(`User ${login} not found in database, nothing to remove`);
+      return false;
+    }
+
+    delete this.db.data[login];
+    logger.debug(`User ${login} removed from database`);
+    await this.writeWithSort();
+    return true;
   }
 
   async getActivityRecords(): Promise<LastActivityRecord[]> {

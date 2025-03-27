@@ -1,10 +1,34 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { GithubIssueNotifier, NotificationStatus } from './notifier';
+import {
+  GithubIssueNotifier,
+  NotificationConfig,
+  NotificationIssue,
+  NotificationStatus,
+} from './notifier';
 import { LastActivityRecord } from 'dormant-accounts';
+import { create } from 'domain';
 
 describe('GithubIssueNotifier', () => {
   let mockOctokit: any;
   let notifier: GithubIssueNotifier;
+
+  const createNotifier = (options?: Partial<NotificationConfig>) => {
+    const defaults = {
+      githubClient: mockOctokit,
+      gracePeriod: '7d',
+      repository: {
+        owner: 'test-owner',
+        repo: 'test-repo',
+        baseLabels: ['dormant-account'],
+      },
+      notificationBody: 'Test notification body',
+      dryRun: false,
+    };
+    return new GithubIssueNotifier({
+      ...defaults,
+      ...options,
+    });
+  };
 
   const createMockOctokit = () => ({
     rest: {
@@ -36,17 +60,7 @@ describe('GithubIssueNotifier', () => {
   beforeEach(() => {
     mockOctokit = createMockOctokit();
 
-    notifier = new GithubIssueNotifier({
-      githubClient: mockOctokit,
-      gracePeriod: '7d',
-      repository: {
-        owner: 'test-owner',
-        repo: 'test-repo',
-        baseLabels: ['dormant-account'],
-      },
-      notificationBody: 'Test notification body',
-      dryRun: false,
-    });
+    notifier = createNotifier();
   });
 
   describe('constructor', () => {
@@ -71,7 +85,37 @@ describe('GithubIssueNotifier', () => {
         title: 'test-user',
         body: expect.stringContaining('@test-user'),
         labels: ['dormant-account', NotificationStatus.PENDING],
-        assignees: ['garnertb'],
+      });
+
+      expect(result).toEqual(
+        expect.objectContaining({
+          id: 123,
+          number: 1,
+          title: 'test-user',
+        }),
+      );
+    });
+
+    it('assignes the dormant user if configured', async () => {
+      const user: LastActivityRecord = {
+        login: 'test-user',
+        lastActivity: new Date('2023-01-01'),
+        type: 'user',
+      };
+
+      const notifier = createNotifier({
+        assignUserToIssue: true,
+      });
+
+      const result = await notifier.notifyUser(user);
+
+      expect(mockOctokit.rest.issues.create).toHaveBeenCalledWith({
+        owner: 'test-owner',
+        repo: 'test-repo',
+        title: 'test-user',
+        body: expect.stringContaining('@test-user'),
+        labels: ['dormant-account', NotificationStatus.PENDING],
+        assignees: ['test-user'],
       });
 
       expect(result).toEqual(
@@ -93,7 +137,8 @@ describe('GithubIssueNotifier', () => {
           repo: 'test-repo',
           baseLabels: ['dormant-account'],
         },
-        notificationBody: (user) => `Custom message for ${user.login}`,
+        notificationBody: ({ lastActivityRecord: { login } }) =>
+          `Custom message for ${login}`,
         dryRun: false,
       });
 
@@ -161,11 +206,13 @@ describe('GithubIssueNotifier', () => {
       const dormantUsers: LastActivityRecord[] = [
         {
           login: 'dormant-user',
-          lastActivity: new Date('2023-01-01').toISOString(),
+          lastActivity: new Date('2023-01-01'),
+          type: 'user',
         },
         {
           login: 'dormant-user2',
-          lastActivity: new Date('2023-01-01').toISOString(),
+          lastActivity: new Date('2023-01-01'),
+          type: 'user',
         },
       ];
 
@@ -260,19 +307,23 @@ describe('GithubIssueNotifier', () => {
       const dormantUsers: LastActivityRecord[] = [
         {
           login: 'grace-period-user',
-          lastActivity: new Date('2023-01-01').toISOString(),
+          lastActivity: new Date('2023-01-01'),
+          type: 'user',
         },
         {
           login: 'expired-user',
-          lastActivity: new Date('2023-01-01').toISOString(),
+          lastActivity: new Date('2023-01-01'),
+          type: 'user',
         },
         {
           login: 'excluded-user',
-          lastActivity: new Date('2023-01-01').toISOString(),
+          lastActivity: new Date('2023-01-01'),
+          type: 'user',
         },
         {
           login: 'new-user',
-          lastActivity: new Date('2023-01-01').toISOString(),
+          lastActivity: new Date('2023-01-01'),
+          type: 'user',
         },
       ];
 
@@ -280,18 +331,23 @@ describe('GithubIssueNotifier', () => {
 
       // Verify results
       expect(result.inGracePeriod.length).toBe(1);
+      // @ts-expect-error
       expect(result.inGracePeriod[0].user).toBe('grace-period-user');
 
       expect(result.removed.length).toBe(1);
+      // @ts-expect-error
       expect(result.removed[0].user).toBe('expired-user');
 
       expect(result.excluded.length).toBe(1);
+      // @ts-expect-error
       expect(result.excluded[0].user).toBe('excluded-user');
 
       expect(result.notified.length).toBe(1);
+      // @ts-expect-error
       expect(result.notified[0].user).toBe('new-user');
 
       expect(result.reactivated.length).toBe(1);
+      // @ts-expect-error
       expect(result.reactivated[0].user).toBe('reactivated-user');
     });
 
@@ -319,7 +375,8 @@ describe('GithubIssueNotifier', () => {
       const dormantUsers: LastActivityRecord[] = [
         {
           login: 'test-user',
-          lastActivity: new Date('2023-01-01').toISOString(),
+          lastActivity: new Date('2023-01-01'),
+          type: 'user',
         },
       ];
 
@@ -328,6 +385,98 @@ describe('GithubIssueNotifier', () => {
       // In dry run mode, should not call create or update
       expect(mockOctokit.rest.issues.create).not.toHaveBeenCalled();
       expect(mockOctokit.rest.issues.update).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('removeAccount', () => {
+    it('handles user removal with a custom handler', async () => {
+      const mockRemoveHandler = vi.fn().mockResolvedValue(true);
+
+      const handlerNotifier = new GithubIssueNotifier({
+        githubClient: mockOctokit,
+        gracePeriod: '7d',
+        repository: {
+          owner: 'test-owner',
+          repo: 'test-repo',
+          baseLabels: ['dormant-account'],
+        },
+        notificationBody: 'Test notification body',
+        dryRun: false,
+        removeAccount: mockRemoveHandler,
+      });
+
+      const user: LastActivityRecord = {
+        login: 'test-user',
+        lastActivity: new Date('2023-01-01'),
+        type: 'user',
+      };
+
+      const notification = {
+        id: 123,
+        number: 1,
+        title: 'test-user',
+        created_at: new Date().toISOString(),
+        labels: [],
+        state: 'open',
+      };
+
+      // @ts-expect-error
+      await handlerNotifier.removeAccount(user, notification);
+
+      // Verify handler was called with correct parameters
+      expect(mockRemoveHandler).toHaveBeenCalledWith({
+        lastActivityRecord: user,
+      });
+
+      // Verify issue was updated correctly
+      expect(mockOctokit.rest.issues.createComment).toHaveBeenCalledWith(
+        expect.objectContaining({
+          issue_number: 1,
+          body: expect.stringContaining('removed due to inactivity'),
+        }),
+      );
+
+      expect(mockOctokit.rest.issues.addLabels).toHaveBeenCalledWith(
+        expect.objectContaining({
+          issue_number: 1,
+          labels: [NotificationStatus.REMOVED],
+        }),
+      );
+
+      expect(mockOctokit.rest.issues.update).toHaveBeenCalledWith(
+        expect.objectContaining({
+          issue_number: 1,
+          state: 'closed',
+        }),
+      );
+    });
+
+    it('works without a custom handler', async () => {
+      const user: LastActivityRecord = {
+        login: 'test-user',
+        lastActivity: new Date('2023-01-01'),
+        type: 'user',
+      };
+
+      const notification = {
+        id: 123,
+        number: 1,
+        title: 'test-user',
+        created_at: new Date().toISOString(),
+        labels: [],
+        state: 'open',
+      };
+
+      // @ts-expect-error
+      await notifier.removeAccount(user, notification);
+
+      // Just verify the issue was updated correctly
+      expect(mockOctokit.rest.issues.update).toHaveBeenCalledWith(
+        expect.objectContaining({
+          issue_number: 1,
+          state: 'closed',
+        }),
+      );
     });
   });
 });

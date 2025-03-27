@@ -1,6 +1,7 @@
 import { createConsola } from 'consola';
 import type { DurationString } from './types';
 import type { StringValue } from 'ms';
+import { LastActivityRecord } from './types';
 
 import ms from 'ms';
 
@@ -69,5 +70,47 @@ export const compareDatesAgainstDuration = (
     overDuration: actualDuration > durationMillis,
     actualDuration,
     actualDurationString,
+  };
+};
+
+export type EnrichedLastActivityRecord = LastActivityRecord & {
+  duration?: number;
+  humanFriendlyDuration?: string;
+  lastActivityLocalized?: string;
+};
+
+/**
+ * Enriches a LastActivityRecord with duration and human-friendly duration.
+ * * @param record - The LastActivityRecord to enrich
+ * @param endDate - Optional end date for calculating duration
+ * @returns The enriched LastActivityRecord with duration and human-friendly duration
+ * @throws {Error} If the record does not have a lastActivity date
+ **/
+export const enrichLastActivityRecord = (
+  record: LastActivityRecord,
+  endDate?: Date,
+): EnrichedLastActivityRecord => {
+  if (!record.lastActivity) {
+    return record;
+  }
+
+  const duration = msBetweenDates(
+    record.lastActivity,
+    endDate ? new Date(endDate) : new Date(),
+  );
+  const lastActivityLocalized = record.lastActivity.toLocaleDateString(
+    'en-US',
+    {
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric',
+    },
+  );
+
+  return {
+    ...record,
+    duration,
+    humanFriendlyDuration: ms(duration, { long: true }),
+    lastActivityLocalized,
   };
 };

@@ -7,6 +7,7 @@ import {
   IsDormantHandler,
   DormantAccountCheckSummary,
   DormantAccountStatusMap,
+  Activity,
 } from './types';
 import type { SetRequired } from 'type-fest';
 import { Database } from './database';
@@ -18,6 +19,8 @@ export type {
   DormancyCheckConfig,
   DormantAccountCheckSummary,
   DormantAccountStatusMap,
+  RemoveUserHandler,
+  Activity,
 } from './types';
 
 /**
@@ -269,6 +272,25 @@ export class DormantAccountCheck<TConfig> {
           ? parseFloat(((dormant.length / totalAccounts) * 100).toFixed(2))
           : 0,
       duration: this.duration,
+    };
+  }
+
+  /**
+   * Provides access to the activity database for raw data retrieval and user removal
+   * @returns interface with methods to interact with the activity database
+   */
+  get activity(): Activity {
+    return {
+      all: async () => this.db.getRawData(),
+      remove: async (user: LastActivityRecord | string) => {
+        const result = await this.db.removeUserActivityRecord(user);
+        if (result) {
+          this.logger.success(`Removed user ${user} from database`);
+        } else {
+          this.logger.warn(`User ${user} not found in database`);
+        }
+        return result;
+      },
     };
   }
 

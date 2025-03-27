@@ -6,7 +6,7 @@ inputs:
     required: false
     default: ${{ github.repository_owner }}
   activity-log-repo:
-    description: 'Repository to store activity logs'
+    description: 'The owner and repository name to fetch/store activity logs from (e.g., owner/repo)'
     required: false
     default: ${{ github.repository }}
   duration:
@@ -18,30 +18,32 @@ inputs:
     required: false
     default: ${{ github.token }}
   dry-run:
-    description: 'Run in dry-run mode without making any changes'
+    description: 'Run in dry-run mode wont write activity log'
     required: false
-    default: 'true'
+    default: 'false'
   notifications-enabled:
     description: 'Enable notifications for dormant users'
     required: false
     default: 'false'
-  notifications-repo-org:
-    description: 'Organization that owns the repository for notifications'
-    required: false
-    default: ${{ github.repository_owner }}
   notifications-repo:
-    description: 'Repository to create notification issues in'
+    description: 'Repository to create notification issues in (e.g., owner/repo)'
     required: false
     default: ${{ github.repository }}
   notifications-duration:
     description: 'Grace period before removing users after notification (e.g., 7d, 2w, 1m)'
     required: false
     default: '7d'
+  remove-dormant-accounts:
+    description: 'Remove dormant accounts after the grace period'
+    required: false
+    default: 'false'
   notifications-body:
     description: 'Custom message template for user notifications'
     required: false
-    default: 'This organization automatically removes inactive GitHub Copilot users. Your account has been inactive for more than {{duration}} and is pending removal. You have {{gracePeriod}} to take action before removal.'
-
+    default: >+
+      This organization automatically revokes GitHub Copilot licenses for inactive users. Your account is inactive and pending removal.  
+      <br/><br/>
+      You can maintain your Copilot license by using Copilot within {{gracePeriod}}.
 outputs:
   dormant-users:
     description: 'JSON string containing list of dormant accounts'

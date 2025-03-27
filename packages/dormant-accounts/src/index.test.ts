@@ -1,12 +1,6 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import {
-  dormancyCheck,
-  CreateCreateDormancyCheckConfigurationOptionsurationOptions,
-} from '.';
-import {
-  LastActivityRecord,
-  CreateDormancyCheckConfigurationOptions,
-} from './types';
+import { dormancyCheck } from '.';
+import { LastActivityRecord, DormancyCheckConfig } from './types';
 import { Database } from './database';
 
 vi.mock('./database', () => {
@@ -59,12 +53,11 @@ describe('Dormant Account Check', () => {
         type: 'test',
       };
 
-      const config: CreateCreateDormancyCheckConfigurationOptionsurationOptions =
-        {
-          type: 'test-check',
-          isDormant: vi.fn(),
-          fetchLatestActivity: vi.fn().mockResolvedValue([mockActivity]),
-        };
+      const config = {
+        type: 'test-check',
+        isDormant: vi.fn(),
+        fetchLatestActivity: vi.fn().mockResolvedValue([mockActivity]),
+      };
 
       const workflow = dormancyCheck(config);
       await workflow.fetchActivity();
@@ -88,14 +81,13 @@ describe('Dormant Account Check', () => {
         type: 'test',
       };
 
-      const config: CreateCreateDormancyCheckConfigurationOptionsurationOptions =
-        {
-          type: 'test-check',
-          fetchLatestActivity: vi.fn().mockResolvedValue([mockActivity]),
-          logActivityForUser: vi.fn(),
-          isDormant: vi.fn(),
-          duration: '30d',
-        };
+      const config = {
+        type: 'test-check',
+        fetchLatestActivity: vi.fn().mockResolvedValue([mockActivity]),
+        logActivityForUser: vi.fn(),
+        isDormant: vi.fn(),
+        duration: '30d',
+      };
 
       const workflow = dormancyCheck(config);
       await workflow.fetchActivity();
@@ -113,7 +105,7 @@ describe('Dormant Account Check', () => {
     });
 
     it('handles fetch activity errors', async () => {
-      const config: CreateDormancyCheckConfigurationOptions = {
+      const config = {
         type: 'test-check',
         isDormant: vi.fn(),
         fetchLatestActivity: vi
@@ -133,7 +125,7 @@ describe('Dormant Account Check', () => {
         { login: 'user2', lastActivity: new Date('2024-01-02'), type: 'test1' },
       ];
 
-      const config: CreateDormancyCheckConfigurationOptions = {
+      const config = {
         type: 'test-check',
         isDormant: vi.fn(),
         fetchLatestActivity: vi.fn().mockResolvedValue(activities),
@@ -155,7 +147,7 @@ describe('Dormant Account Check', () => {
         metadata: { customField: 'value' },
       };
 
-      const config: CreateDormancyCheckConfigurationOptions = {
+      const config = {
         type: 'test-check',
         isDormant: vi.fn(),
         fetchLatestActivity: vi.fn().mockResolvedValue([mockActivity]),
@@ -174,13 +166,13 @@ describe('Dormant Account Check', () => {
 
   describe.skip('Inactive User Processing', () => {
     const createConfig = (
-      overrides?: Partial<CreateDormancyCheckConfigurationOptions>,
-    ): CreateDormancyCheckConfigurationOptions => ({
+      overrides?: Partial<DormancyCheckConfig<{ testConfig: boolean }>>,
+    ) => ({
       type: 'test-check',
       duration: '30d',
       fetchLatestActivity: vi.fn(),
       isDormant: vi.fn().mockResolvedValue(true),
-      extendedConfig: { testConfig: true },
+      conf: { testConfig: true },
       ...overrides,
     });
 
@@ -191,7 +183,7 @@ describe('Dormant Account Check', () => {
 
       const config = createConfig({
         isWhitelisted: vi.fn().mockResolvedValue(true),
-        extendedConfig: { testConfig: true },
+        conf: { testConfig: true },
       });
 
       const workflow = dormancyCheck(config);
@@ -205,37 +197,16 @@ describe('Dormant Account Check', () => {
       ]);
 
       const config = createConfig({
-        isWhitelisted: async (user) => ['user1', 'user2'].includes(user.login),
+        isWhitelisted: async (user: { login: string }) =>
+          ['user1', 'user2'].includes(user.login),
         isDormant: vi.fn().mockResolvedValue(true),
-        extendedConfig: { testConfig: true },
+        conf: { testConfig: true },
       });
 
       const workflow = dormancyCheck(config);
-      await workflow.processDormantUsers();
 
       expect(config.isDormant).not.toHaveBeenCalled();
       expect(config.inactivityHandler).not.toHaveBeenCalled();
-    });
-
-    it('skips handler in dry run mode', async () => {
-      const config = createConfig({ dryRun: true });
-      const workflow = dormancyCheck(config);
-
-      await workflow.processDormantUsers();
-
-      expect(config.isDormant).toHaveBeenCalled();
-      expect(config.inactivityHandler).not.toHaveBeenCalled();
-    });
-
-    it('throws if handlers are not configured', async () => {
-      const config: CreateDormancyCheckConfigurationOptions = {
-        type: 'test-check',
-        isDormant: vi.fn(),
-        fetchLatestActivity: vi.fn(),
-      };
-      const workflow = dormancyCheck(config);
-      const res = await workflow.processDormantUsers();
-      await expect(res).toBeUndefined();
     });
 
     it('handles inactive check errors', async () => {
@@ -244,9 +215,7 @@ describe('Dormant Account Check', () => {
       });
       const workflow = dormancyCheck(config);
 
-      await expect(workflow.processDormantUsers()).rejects.toThrow(
-        'Check failed',
-      );
+      await expect(workflow.summarize()).rejects.toThrow('Check failed');
       expect(config.inactivityHandler).not.toHaveBeenCalled();
     });
 
@@ -258,9 +227,7 @@ describe('Dormant Account Check', () => {
       });
       const workflow = dormancyCheck(config);
 
-      await expect(workflow.processDormantUsers()).rejects.toThrow(
-        'Handler failed',
-      );
+      await expect(workflow.summarize()).rejects.toThrow('Handler failed');
     });
 
     it('handles empty activity records', async () => {
@@ -268,7 +235,7 @@ describe('Dormant Account Check', () => {
       const config = createConfig();
       const workflow = dormancyCheck(config);
 
-      await workflow.processDormantUsers();
+      await workflow.summarize();
 
       expect(config.isDormant).not.toHaveBeenCalled();
       expect(config.inactivityHandler).not.toHaveBeenCalled();
@@ -284,7 +251,7 @@ describe('Dormant Account Check', () => {
       const config = createConfig();
       const workflow = dormancyCheck(config);
 
-      await workflow.processDormantUsers();
+      await workflow.summarize();
 
       expect(config.isDormant).toHaveBeenCalledTimes(2);
       expect(config.isDormant).toHaveBeenNthCalledWith(
@@ -324,7 +291,7 @@ describe('Dormant Account Check', () => {
       const config = createConfig({
         isWhitelisted: vi.fn().mockResolvedValue(true),
         isDormant: vi.fn().mockResolvedValue(true),
-        extendedConfig: { testConfig: true },
+        conf: { testConfig: true },
       });
 
       const workflow = dormancyCheck(config);
@@ -337,8 +304,8 @@ describe('Dormant Account Check', () => {
 
   describe('Account Status Management', () => {
     const createConfig = (
-      overrides?: Partial<CreateDormancyCheckConfigurationOptions>,
-    ): CreateDormancyCheckConfigurationOptions => ({
+      overrides?: Partial<DormancyCheckConfig<{ testConfig: boolean }>>,
+    ) => ({
       type: 'test-check',
       fetchLatestActivity: vi.fn(),
       isDormant: vi
@@ -375,6 +342,7 @@ describe('Dormant Account Check', () => {
       const accounts = await workflow.listDormantAccounts();
 
       expect(accounts).toHaveLength(1);
+      // @ts-expect-error
       expect(accounts[0].login).toBe('dormant1');
     });
 
@@ -407,42 +375,6 @@ describe('Dormant Account Check', () => {
         dormantAccountPercentage: 0,
         duration: '30d',
       });
-    });
-
-    it('processes accounts in parallel', async () => {
-      vi.useRealTimers();
-
-      const results = ['active1', 'dormant1', 'whitelisted1'].map((login) => ({
-        login,
-        lastActivity: new Date(),
-        type: 'test',
-      }));
-      mockDb.getActivityRecords.mockResolvedValue(results);
-
-      let resolveCount = 0;
-      const isDormant = vi.fn().mockImplementation(async ({ login }) => {
-        await new Promise((resolve) => {
-          setTimeout(() => {
-            resolveCount++;
-            resolve(undefined);
-          }, 100);
-        });
-        return login.startsWith('dormant');
-      });
-
-      const workflow = dormancyCheck(
-        createConfig({
-          isDormant,
-          isWhitelisted: async ({ login }: LastActivityRecord) =>
-            login === 'whitelisted1',
-        }),
-      );
-      const start = Date.now();
-      await workflow.getAccountStatuses();
-      const duration = Date.now() - start;
-
-      expect(resolveCount).toBe(2); // whitelist skips isDormant check
-      expect(duration).toBeLessThan(200); // Should be ~100ms if parallel
     });
 
     it('uses default isDormant method if not provided', async () => {

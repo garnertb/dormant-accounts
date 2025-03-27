@@ -1,5 +1,9 @@
 import { getOctokit } from '@actions/github';
-import { compareDatesAgainstDuration } from 'dormant-accounts/utils';
+import {
+  compareDatesAgainstDuration,
+  enrichLastActivityRecord,
+  EnrichedLastActivityRecord,
+} from 'dormant-accounts/utils';
 import { LastActivityRecord } from 'dormant-accounts';
 import { OctokitClient } from './types';
 import { GetResponseDataTypeFromEndpointMethod } from '@octokit/types';
@@ -12,10 +16,17 @@ type CreateNotificationParams = Exclude<
   'owner' | 'repo'
 >;
 
+type NotificationHandlerContext = {
+  lastActivityRecord: EnrichedLastActivityRecord;
+  gracePeriod: string;
+};
+
 /**
  * Function type that generates notification body text based on user information
  */
-export type NotificationBodyHandler = (user: LastActivityRecord) => string;
+export type NotificationBodyHandler = (
+  context: NotificationHandlerContext,
+) => string;
 
 /**
  * Status labels for notification issues
@@ -41,7 +52,17 @@ export interface NotificationConfig {
   githubClient: ReturnType<typeof getOctokit>; // Octokit client instance
   dryRun?: boolean; // Optional flag for running without making changes
   assignUserToIssue?: boolean; // Optional flag to assign user to the issue
+  removeAccount?: RemoveAccountHandler; // Optional handler for account removal
 }
+
+/**
+ * Handler function type for account removal
+ */
+export type RemoveAccountHandler = ({
+  lastActivityRecord,
+}: {
+  lastActivityRecord: LastActivityRecord;
+}) => Promise<boolean>;
 
 /**
  * Results from processing dormant users
@@ -65,7 +86,7 @@ export interface DormantAccountNotifier {
   ): Promise<string[]>;
   notifyUser(user: LastActivityRecord): Promise<NotificationIssue>;
   hasGracePeriodExpired(notification: NotificationIssue): boolean;
-  removeUser(
+  removeAccount(
     user: LastActivityRecord,
     notification: NotificationIssue,
   ): Promise<void>;
@@ -137,7 +158,7 @@ export class GithubIssueNotifier implements DormantAccountNotifier {
           // Check if grace period expired
           if (this.hasGracePeriodExpired(notification)) {
             if (!this.config.dryRun) {
-              await this.removeUser(user, notification);
+              await this.removeAccount(user, notification);
             }
             result.removed.push({ user: user.login, notification });
           } else {
@@ -229,8 +250,11 @@ export class GithubIssueNotifier implements DormantAccountNotifier {
     // Generate notification body based on whether it's a string or function
     const notificationBody =
       typeof this.config.notificationBody === 'function'
-        ? this.config.notificationBody(user)
-        : this.config.notificationBody;
+        ? this.config.notificationBody({
+            lastActivityRecord: enrichLastActivityRecord(user),
+            gracePeriod: this.config.gracePeriod,
+          })
+        : createDefaultNotificationBodyHandler(this.config.notificationBody);
 
     const { data } = await this.octokit.rest.issues.create({
       owner: this.config.repository.owner,
@@ -241,7 +265,7 @@ export class GithubIssueNotifier implements DormantAccountNotifier {
         ...this.config.repository.baseLabels,
         NotificationStatus.PENDING,
       ],
-      assignees: [this.config.assignUserToIssue ? user.login : 'garnertb'],
+      assignees: this.config.assignUserToIssue ? [user.login] : undefined,
     });
 
     console.log(`Notification created for ${user.login}`);
@@ -251,7 +275,9 @@ export class GithubIssueNotifier implements DormantAccountNotifier {
   /**
    * Check if notification grace period has expired
    */
-  hasGracePeriodExpired(notification: NotificationIssue): boolean {
+  hasGracePeriodExpired(
+    notification: Pick<NotificationIssue, 'created_at'>,
+  ): boolean {
     return compareDatesAgainstDuration(
       this.config.gracePeriod,
       new Date(notification.created_at),
@@ -261,16 +287,39 @@ export class GithubIssueNotifier implements DormantAccountNotifier {
   /**
    * Remove a user after grace period expiration
    */
-  async removeUser(
+  async removeAccount(
     user: LastActivityRecord,
     notification: NotificationIssue,
   ): Promise<void> {
-    console.log(`Removing user ${user.login}`);
+    console.log(`Removing account ${user.login}`);
+
+    // Execute the account removal handler if provided
+    if (this.config.removeAccount) {
+      try {
+        const removed = await this.config.removeAccount({
+          lastActivityRecord: user,
+        });
+        console.log(
+          `Account removal handler executed for ${user.login}: ${Boolean(removed) ? 'success' : 'failure'}`,
+        );
+        if (!removed) {
+          return;
+        }
+      } catch (error) {
+        console.error(
+          `Error executing account removal handler for ${user.login}:`,
+          error,
+        );
+        throw error;
+      }
+    } else {
+      console.log(`No account removal handler provided for ${user.login}`);
+    }
 
     // Add comment and label before closing
     await this.addCommentToIssue(
       notification.number,
-      `User ${user.login} removed due to inactivity after ${this.config.gracePeriod} grace period.`,
+      `Account ${user.login} removed due to inactivity after ${this.config.gracePeriod} grace period.`,
     );
 
     await this.addLabelToIssue(notification.number, NotificationStatus.REMOVED);
@@ -289,13 +338,6 @@ export class GithubIssueNotifier implements DormantAccountNotifier {
     );
 
     console.log(`Notification closed for removed user ${user.login}`);
-
-    // Here you would add code to actually remove the user from your organization
-    // For example:
-    // await this.octokit.rest.orgs.removeMembershipForUser({
-    //   org: "yourOrg",
-    //   username: user.login
-    // });
   }
 
   /**
@@ -321,6 +363,7 @@ export class GithubIssueNotifier implements DormantAccountNotifier {
       repo: this.config.repository.repo,
       issue_number: notification.number,
       state: 'closed',
+      state_reason: 'not_planned',
     });
 
     console.log(`Notification closed for active user ${user.login}`);
@@ -382,7 +425,7 @@ export class GithubIssueNotifier implements DormantAccountNotifier {
       repo: this.config.repository.repo,
       state: 'open',
       labels: this.config.repository.baseLabels.join(','),
-      assignee: this.config.assignUserToIssue ? username : 'garnertb',
+      assignee: this.config.assignUserToIssue ? username : undefined,
     });
 
     return (
@@ -459,47 +502,36 @@ export class GithubIssueNotifier implements DormantAccountNotifier {
 }
 
 /**
- * Creates a default notification body handler that includes last activity date
+ * Creates a handler for generating notification bodies.
+ * @param notificationTemplate - Template string for the notification body
+ * @returns handler function that receives a context object and returns the formatted notification body
+ *
+ * The template string can include placeholders for user information:
+ * - `{{account}}`: The account identification
+ * - `{{lastActivity}}`: The last activity date (localized)
+ * - `{{gracePeriod}}`: The grace period for reactivation
+ * - `{{timeSinceLastActivity}}`: The time since the last activity
+ *
+ * @example
+ * ```ts
+ * const handler = createDefaultNotificationBodyHandler(
+ *  'Hello {{account}}, your last activity was on {{lastActivity}}. ' +
+ *  'You have {{gracePeriod}} to reactivate your account. ' +
+ *  'Time since last activity: {{timeSinceLastActivity}}'
+ * );
+ * ```
  */
 export function createDefaultNotificationBodyHandler(
   notificationTemplate: string,
-  gracePeriod: string,
 ): NotificationBodyHandler {
-  return (user: LastActivityRecord): string => {
-    const lastActivityDate = user.lastActivity
-      ? new Date(user.lastActivity).toLocaleDateString('en-US', {
-          year: 'numeric',
-          month: 'long',
-          day: 'numeric',
-        })
-      : 'an unknown date';
-
+  return ({
+    lastActivityRecord: { login, lastActivityLocalized, humanFriendlyDuration },
+    gracePeriod,
+  }): string => {
     return notificationTemplate
-      .replace('{{lastActivity}}', lastActivityDate)
-      .replace('{{gracePeriod}}', gracePeriod);
+      .replace('{{lastActivity}}', lastActivityLocalized || 'None')
+      .replace('{{gracePeriod}}', gracePeriod)
+      .replace('{{timeSinceLastActivity}}', humanFriendlyDuration || 'N/A')
+      .replace('{{account}}', login);
   };
 }
-
-/**
- * Example usage:
- *
- * const notifier = new GithubIssueNotifier();
- * await notifier.initialize({
- *   gracePeriod: '7d',
- *   notificationBody: createDefaultNotificationBodyHandler(
- *     'Your account has been inactive since {{lastActivity}} and will be removed in {{gracePeriod}}.',
- *     '7 days'
- *   ),
- *   repository: {
- *     owner: 'org-name',
- *     repo: 'notifications-repo',
- *     baseLabels: ['inactive-user'],
- *   },
- *   githubClient: octokit,
- *   dryRun: true  // Set to false when ready to apply changes
- * });
- *
- * const dormantUsers = [...]; // List of dormant users
- * const result = await notifier.processDormantUsers(dormantUsers);
- * console.log(result);
- */
