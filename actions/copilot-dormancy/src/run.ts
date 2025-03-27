@@ -55,17 +55,28 @@ export async function processNotifications(
     activity: Activity;
   },
 ) {
+  const {
+    duration: gracePeriod,
+    body,
+    assignUserToIssue,
+    removeDormantAccounts,
+    repo,
+    baseLabels,
+    dryRun,
+  } = context;
+
   const notifier = new GithubIssueNotifier({
     githubClient: octokit,
-    gracePeriod: context.duration,
+    gracePeriod,
     repository: {
-      ...context.repo,
-      baseLabels: context.baseLabels,
+      ...repo,
+      baseLabels,
     },
-    notificationBody: createDefaultNotificationBodyHandler(context.body),
-    dryRun: context.dryRun,
+    notificationBody: createDefaultNotificationBodyHandler(body),
+    assignUserToIssue,
+    dryRun,
     removeAccount: async ({ lastActivityRecord }) => {
-      if (!context.removeDormantAccounts) {
+      if (!removeDormantAccounts) {
         core.info(
           `removeDormantAccounts is false, skipping removal for: ${lastActivityRecord.login}`,
         );
@@ -76,7 +87,7 @@ export async function processNotifications(
         logins: lastActivityRecord.login,
         octokit,
         org: context.repo.owner,
-        dryRun: context.removeDormantAccounts,
+        dryRun: removeDormantAccounts,
       });
 
       if (accountRemoved) {

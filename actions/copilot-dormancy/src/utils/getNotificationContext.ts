@@ -8,6 +8,7 @@ const notificationSchema = z
     body: z.string(),
     baseLabels: z.array(z.string()).default(['copilot-dormancy']),
     dryRun: z.boolean().optional().default(false),
+    assignUserToIssue: z.boolean().optional().default(true),
     removeDormantAccounts: z.boolean().optional().default(false),
   })
   .transform((data) => {
@@ -39,6 +40,8 @@ export function getNotificationContext(): NotificationContext | false {
     duration: core.getInput('notifications-duration'),
     body: core.getInput('notifications-body'),
     dryRun: core.getInput('notifications-dry-run') === 'true',
+    assignUserToIssue:
+      core.getInput('notifications-disable-issue-assignment') !== 'true',
     removeDormantAccounts: core.getInput('remove-dormant-accounts') === 'true',
   });
 
