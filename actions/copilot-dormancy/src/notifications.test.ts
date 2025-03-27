@@ -83,6 +83,25 @@ describe('Notification Processing', () => {
       expect(notificationContext).toBeFalsy();
     });
 
+    it('should return false when notifications are disabled (by default)', () => {
+      vi.mocked(core.getInput).mockImplementation((name) => {
+        const inputs: Record<string, string> = {
+          'notifications-enabled': 'false',
+
+          'notifications-repo': 'test-owner/test-repo',
+          'notifications-duration': '30d',
+          'notifications-body': 'Test notification body',
+          'notifications-dry-run': 'false',
+          'notifications-disable-issue-assignment': 'false',
+          'remove-dormant-accounts': 'false',
+        };
+        return inputs[name] || '';
+      });
+
+      const notificationContext = getNotificationContext();
+      expect(notificationContext).toBeFalsy();
+    });
+
     it('should return correct notification context', () => {
       vi.mocked(core.getInput).mockImplementation((name) => {
         const inputs: Record<string, string> = {

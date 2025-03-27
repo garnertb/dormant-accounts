@@ -30,7 +30,7 @@ export type NotificationContext = z.infer<typeof notificationSchema>;
  * @returns An object containing the notification context or false if notifications are disabled
  */
 export function getNotificationContext(): NotificationContext | false {
-  if (!core.getInput('notifications-enabled')) {
+  if (core.getInput('notifications-enabled') !== 'true') {
     core.debug('Notifications are disabled');
     return false;
   }

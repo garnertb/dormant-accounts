@@ -39266,7 +39266,7 @@ const notificationSchema = objectType({
  * @returns An object containing the notification context or false if notifications are disabled
  */
 function getNotificationContext() {
-    if (!core.getInput('notifications-enabled')) {
+    if (core.getInput('notifications-enabled') !== 'true') {
         core.debug('Notifications are disabled');
         return false;
     }
