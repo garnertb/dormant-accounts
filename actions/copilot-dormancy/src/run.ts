@@ -366,12 +366,12 @@ async function run(): Promise<void> {
           .addHeading('Notification Errors', 4)
           .addRaw(
             'The following errors occurred during notification processing:',
-          )
-          .addEOL();
+            true,
+          );
 
         notifications.errors.forEach(({ user, error }, index) => {
           core.summary.addRaw(
-            `${index + 1}. **${user}**: ${error.message}`,
+            `${index + 1}. **${user}**: ${error.message}  `,
             true,
           );
         });
