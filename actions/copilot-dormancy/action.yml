@@ -34,9 +34,9 @@ inputs:
     required: false
     default: '7d'
   remove-dormant-accounts:
-    description: 'Remove dormant accounts after the grace period'
+    description: 'Remove dormant accounts after the grace period, only if notifications are enabled'
     required: false
-    default: 'false'
+    default: 'true'
   notifications-body:
     description: 'Custom message template for user notifications'
     required: false
