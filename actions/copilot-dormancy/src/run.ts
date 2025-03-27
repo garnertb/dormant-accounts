@@ -449,10 +449,7 @@ async function run(): Promise<void> {
 
     if (notificationsResults && notificationsResults.errors) {
       core.setFailed(
-        `Action failed with errors: ${notificationsResults.errors
-          // @ts-expect-error
-          .map((error) => error.message)
-          .join(', ')}`,
+        `Action failed with errors: ${notificationsResults.errors.join(', ')}`,
       );
     }
   } catch (error) {

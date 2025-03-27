@@ -39512,7 +39512,10 @@ async function run() {
                     { data: 'Action', header: true },
                     { data: 'Count', header: true },
                 ],
-                ['New notifications created', notificationsResults.notified.length.toString()],
+                [
+                    'New notifications created',
+                    notificationsResults.notified.length.toString(),
+                ],
                 [
                     'Notifications closed (reactivated users)',
                     notificationsResults.reactivated.length.toString(),
@@ -39606,8 +39609,6 @@ async function run() {
         core.info('Copilot dormancy check completed successfully');
         if (notificationsResults && notificationsResults.errors) {
             core.setFailed(`Action failed with errors: ${notificationsResults.errors
-                // @ts-expect-error
-                .map((error) => error.message)
                 .join(', ')}`);
         }
     }
