@@ -13,15 +13,7 @@ import type { SetRequired } from 'type-fest';
 import { Database } from './database';
 import { durationToMillis, compareDatesAgainstDuration } from './utils';
 
-export type {
-  LastActivityRecord,
-  FetchActivityHandler,
-  DormancyCheckConfig,
-  DormantAccountCheckSummary,
-  DormantAccountStatusMap,
-  RemoveUserHandler,
-  Activity,
-} from './types';
+export type * from './types';
 
 /**
  * Handles checking and managing user dormancy status based on configured rules
