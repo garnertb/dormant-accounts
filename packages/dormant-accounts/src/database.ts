@@ -121,6 +121,9 @@ export class Database {
       .filter(([key, value]) => key !== '_state')
       .map(([login, record]) => {
         if (!isUserRecord(record)) {
+          logger.error(
+            `Unexpected non-user record found in database: ${JSON.stringify(record)}`,
+          );
           throw new Error('Unexpected non-user record found');
         }
 
