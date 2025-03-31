@@ -396,7 +396,7 @@ async function run(): Promise<void> {
             branch: activityLogContext.branchName,
             path: activityLogContext.path,
             sha: existingActivityLogSha,
-            message: `Update Copilot dormancy log for ${dateStamp}`,
+            message: `Update ${check.type} log for ${dateStamp}`,
             content: contentBase64,
           });
 

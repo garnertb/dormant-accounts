@@ -34772,7 +34772,7 @@ async function createBranch(octokit, context, branchName) {
  * @param context - The context containing the owner and repo information.
  * @param branchName - The name of the new branch to create.
  */
-async function getActivityLog({ octokit, activityLog: { branchName, path, repo: { owner, repo } } }) {
+async function getActivityLog({ octokit, activityLog: { branchName, path, repo: { owner, repo }, }, }) {
     core.debug(`checking if activity log exists on branch: ${branchName}`);
     core.debug(`checking if activity log exists on path: ${path}`);
     // If the activity log branch exists, check if the activity log file exists
@@ -34814,7 +34814,7 @@ const external_fs_promises_namespaceObject = __WEBPACK_EXTERNAL_createRequire(im
  * @param branchName - The name of the branch to check.
  * @returns A promise that resolves to true if the branch exists, false otherwise.
  */
-async function checkBranch({ octokit, activityLog: { branchName, repo } }) {
+async function checkBranch({ octokit, activityLog: { branchName, repo }, }) {
     core.debug(`checking if branch ${branchName} exists...`);
     // Check if the activity log branch already exists
     try {
@@ -39490,7 +39490,7 @@ async function run() {
             core.setFailed('Invalid context. Please check the action inputs.');
             throw new Error('Invalid context');
         }
-        const { check, octokit, activityLog: activityLogContext, org, duration, dryRun } = context;
+        const { check, octokit, activityLog: activityLogContext, org, duration, dryRun, } = context;
         // Log configuration (without sensitive data)
         core.info(`Starting ${check.type} dormancy check for org: ${org}`);
         core.info(`Duration threshold: ${duration}`);
@@ -39659,7 +39659,7 @@ async function run() {
                         branch: activityLogContext.branchName,
                         path: activityLogContext.path,
                         sha: existingActivityLogSha,
-                        message: `Update Copilot dormancy log for ${dateStamp}`,
+                        message: `Update ${check.type} log for ${dateStamp}`,
                         content: contentBase64,
                     });
                     core.info(`Activity log saved to ${activityLogContext.repo.owner}/${activityLogContext.repo.repo}/${activityLogContext.path}`);
