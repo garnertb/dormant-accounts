@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { githubDormancy } from './audit-log';
+import { githubDormancy, defaultWhitelistHandler } from './audit-log';
 import type { GitHubHandlerArgs } from './types';
 
 // Update the import to import the entire module
@@ -55,46 +55,22 @@ describe('GitHub Activity Check', () => {
     (database.default as any).mockImplementation(() => mockDb);
   });
 
-  describe.skip('inactivityHandler', () => {
-    it('removes user from organization', async () => {
-      mockOctokit.rest.orgs.checkMembershipForUser.mockResolvedValueOnce({
-        status: 204,
-      });
-
-      const workflow = githubDormancy(defaultConfig);
-      // @ts-expect-error
-      await workflow.config.inactivityHandler({
-        login: 'test-user',
-        lastActivity: new Date(),
-        type: 'test',
-        ...defaultConfig,
-      });
-
-      expect(
-        mockOctokit.rest.orgs.removeMembershipForUser,
-      ).toHaveBeenCalledWith({
-        org: 'test-org',
-        username: 'test-user',
-      });
+  describe('defaultWhitelistHandler', () => {
+    it('whitelists bots from being dormant', async () => {
+      // @ts-ignore
+      await expect(
+        defaultWhitelistHandler({
+          login: 'test[bot]',
+          logger: { debug: vi.fn() },
+        }),
+      ).resolves.toBe(true);
     });
 
-    it('skips non-member users', async () => {
-      mockOctokit.rest.orgs.checkMembershipForUser.mockResolvedValueOnce({
-        status: 404,
-      });
-
-      const workflow = githubDormancy(defaultConfig);
-      // @ts-expect-error
-      await workflow.config.inactivityHandler({
-        login: 'test-user',
-        lastActivity: new Date(),
-        type: 'test',
-        ...defaultConfig,
-      });
-
-      expect(
-        mockOctokit.rest.orgs.removeMembershipForUser,
-      ).not.toHaveBeenCalled();
+    it('whitelists bots from being dormant', async () => {
+      // @ts-ignore
+      await expect(
+        defaultWhitelistHandler({ login: 'test', logger: { debug: vi.fn() } }),
+      ).resolves.toBe(false);
     });
   });
 });

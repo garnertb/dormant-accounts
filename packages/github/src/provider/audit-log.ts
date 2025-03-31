@@ -2,6 +2,7 @@ import { dormancyCheck } from 'dormant-accounts';
 import type {
   FetchActivityHandler,
   LastActivityRecord,
+  WhitelistHandler,
 } from 'dormant-accounts';
 import { GitHubHandlerConfig, GitHubHandlerArgs } from './types';
 import ms from 'ms';
@@ -78,6 +79,23 @@ const fetchAuditLogActivity: FetchActivityHandler<
 };
 
 /**
+ * Default whitelist handler for GitHub users.
+ * This handler checks if the user's login contains '[bot]', which is a common convention for GitHub bots.
+ *
+ * @param login - The login of the user to check.
+ * @param logger - The logger instance for logging debug information.
+ *
+ * @returns A boolean indicating whether the user is whitelisted (true) or not (false).
+ */
+export const defaultWhitelistHandler: WhitelistHandler<
+  GitHubHandlerConfig
+> = async ({ login, logger }) => {
+  const resolution = login.includes('[bot]');
+  logger.debug(`Whitelist check for ${login}: ${resolution}`);
+  return resolution;
+};
+
+/**
  * Creates a GitHub dormancy check, which analyzes the audit log to determine user inactivity.
  *
  * @param config - The configuration object for the dormancy check.
@@ -88,6 +106,7 @@ const fetchAuditLogActivity: FetchActivityHandler<
 export const githubDormancy = (config: GitHubHandlerArgs) => {
   const {
     type = 'github-dormancy',
+    isWhitelisted = defaultWhitelistHandler,
     fetchLatestActivity = fetchAuditLogActivity,
     ...rest
   } = config;
@@ -96,5 +115,6 @@ export const githubDormancy = (config: GitHubHandlerArgs) => {
     type,
     ...rest,
     fetchLatestActivity,
+    isWhitelisted,
   });
 };

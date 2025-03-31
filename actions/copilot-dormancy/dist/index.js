@@ -33915,7 +33915,7 @@ function JSONFileSyncPreset(filename, defaultData) {
 
 
 
-;// CONCATENATED MODULE: ../../packages/dormant-accounts/dist/chunk-4ISIA4HF.js
+;// CONCATENATED MODULE: ../../packages/dormant-accounts/dist/chunk-EJG67HCE.js
 
 
 // src/database.ts
@@ -34000,6 +34000,9 @@ var Database = class {
     await this.validateCheckType();
     return Object.entries(this.db.data).filter(([key, value]) => key !== "_state").map(([login, record]) => {
       if (!isUserRecord(record)) {
+        logger.error(
+          `Unexpected non-user record found in database: ${JSON.stringify(record)}`
+        );
         throw new Error("Unexpected non-user record found");
       }
       const { lastActivity, ...remaining } = record;
@@ -34024,7 +34027,7 @@ var Database = class {
 };
 
 
-//# sourceMappingURL=chunk-4ISIA4HF.js.map
+//# sourceMappingURL=chunk-EJG67HCE.js.map
 ;// CONCATENATED MODULE: ../../packages/dormant-accounts/dist/index.js
 
 
@@ -34251,7 +34254,7 @@ function dist_dormancyCheck(config) {
 }
 
 //# sourceMappingURL=index.js.map
-;// CONCATENATED MODULE: ../../packages/github/dist/chunk-LAT55HO6.js
+;// CONCATENATED MODULE: ../../packages/github/dist/chunk-GO3CAWXF.js
 // src/provider/audit-log.ts
 
 
@@ -34304,9 +34307,15 @@ var fetchAuditLogActivity = async ({ lastFetchTime, octokit, org, logger: logger
     throw error;
   }
 };
+var defaultWhitelistHandler = async ({ login, logger: logger2 }) => {
+  const resolution = login.includes("[bot]");
+  logger2.debug(`Whitelist check for ${login}: ${resolution}`);
+  return resolution;
+};
 var githubDormancy = (config) => {
   const {
     type = "github-dormancy",
+    isWhitelisted = defaultWhitelistHandler,
     fetchLatestActivity = fetchAuditLogActivity,
     ...rest
   } = config;
@@ -34320,7 +34329,7 @@ var githubDormancy = (config) => {
 // src/provider/copilot.ts
 
 
-var chunk_LAT55HO6_logger = console;
+var chunk_GO3CAWXF_logger = console;
 var fetchLatestActivityFromCoPilot = async ({ octokit, org, checkType, logger: logger2 }) => {
   logger2.debug(checkType, `Fetching audit log for ${org}`);
   const payload = {
@@ -34389,7 +34398,7 @@ var revokeCopilotLicense = async (config) => {
     selected_usernames = [selected_usernames];
   }
   if (dryRun) {
-    chunk_LAT55HO6_logger.info(`DRY RUN: Removing ${selected_usernames} from ${org}`);
+    chunk_GO3CAWXF_logger.info(`DRY RUN: Removing ${selected_usernames} from ${org}`);
   } else {
     const {
       data: { seats_cancelled }
@@ -34397,7 +34406,7 @@ var revokeCopilotLicense = async (config) => {
       org,
       selected_usernames
     });
-    chunk_LAT55HO6_logger.info(`Removed ${seats_cancelled} license from ${org}`);
+    chunk_GO3CAWXF_logger.info(`Removed ${seats_cancelled} license from ${org}`);
     return seats_cancelled === 1;
   }
   return false;
@@ -34727,7 +34736,7 @@ function createDefaultNotificationBodyHandler(notificationTemplate) {
 }
 
 
-//# sourceMappingURL=chunk-LAT55HO6.js.map
+//# sourceMappingURL=chunk-GO3CAWXF.js.map
 ;// CONCATENATED MODULE: ./src/utils/createBranch.ts
 
 /**
