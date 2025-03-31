@@ -1,5 +1,5 @@
 import * as core from '@actions/core';
-import { OctokitClient } from '@dormant-accounts/github';
+import { type Context } from './getContext';
 
 /**
  * Fetches the activity log from the specified branch.
@@ -7,12 +7,14 @@ import { OctokitClient } from '@dormant-accounts/github';
  * @param context - The context containing the owner and repo information.
  * @param branchName - The name of the new branch to create.
  */
-export async function getActivityLog(
-  octokit: OctokitClient,
-  context: { owner: string; repo: string },
-  branchName: string,
-  path: string,
-): Promise<{ content: string; sha: string } | false> {
+export async function getActivityLog({
+  octokit,
+  activityLog: {
+    branchName,
+    path,
+    repo: { owner, repo },
+  },
+}: Context): Promise<{ content: string; sha: string } | false> {
   core.debug(`checking if activity log exists on branch: ${branchName}`);
   core.debug(`checking if activity log exists on path: ${path}`);
 
@@ -20,7 +22,8 @@ export async function getActivityLog(
   try {
     // Get the activity log file contents
     const { data } = await octokit.rest.repos.getContent({
-      ...context,
+      owner,
+      repo,
       path,
       ref: branchName,
     });

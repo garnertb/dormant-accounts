@@ -9,6 +9,10 @@ inputs:
     description: 'The owner and repository name to fetch/store activity logs from (e.g., owner/repo)'
     required: false
     default: ${{ github.repository }}
+  check-type:
+    description: 'Type of check to perform either "copilot-dormancy" or "github-dormancy"'
+    required: false
+    default: 'copilot-dormancy'
   duration:
     description: 'Duration of inactivity to consider an account dormant (e.g., 90d, 3m, 1y)'
     required: false

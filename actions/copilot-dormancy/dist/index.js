@@ -32020,10 +32020,6 @@ var __webpack_exports__ = {};
 
 // EXTERNAL MODULE: ../../node_modules/.pnpm/@actions+core@1.11.1/node_modules/@actions/core/lib/core.js
 var core = __nccwpck_require__(99);
-// EXTERNAL MODULE: ../../node_modules/.pnpm/@actions+github@6.0.0/node_modules/@actions/github/lib/github.js
-var github = __nccwpck_require__(6495);
-// EXTERNAL MODULE: ../../node_modules/.pnpm/ms@2.1.3/node_modules/ms/index.js
-var node_modules_ms = __nccwpck_require__(9258);
 ;// CONCATENATED MODULE: ../../node_modules/.pnpm/consola@3.4.0/node_modules/consola/dist/core.mjs
 const LogLevels = {
   silent: Number.NEGATIVE_INFINITY,
@@ -33561,6 +33557,8 @@ const consola = dist_createConsola();
 
 
 
+// EXTERNAL MODULE: ../../node_modules/.pnpm/ms@2.1.3/node_modules/ms/index.js
+var ms = __nccwpck_require__(9258);
 ;// CONCATENATED MODULE: ../../packages/dormant-accounts/dist/chunk-KFCV467K.js
 // src/utils.ts
 
@@ -33568,7 +33566,7 @@ const consola = dist_createConsola();
 var logger = dist_createConsola({});
 var durationToMillis = (duration) => {
   try {
-    return duration ? node_modules_ms(duration) : void 0;
+    return duration ? ms(duration) : void 0;
   } catch (error) {
     logger.error("Error calculating durationMillis", error);
     throw error;
@@ -33587,7 +33585,7 @@ var compareDatesAgainstDuration = (duration, start, end) => {
     throw new Error("Invalid duration string");
   }
   const actualDuration = msBetweenDates(start, end);
-  const actualDurationString = node_modules_ms(actualDuration, { long: true });
+  const actualDurationString = ms(actualDuration, { long: true });
   return {
     overDuration: actualDuration > durationMillis,
     actualDuration,
@@ -33613,7 +33611,7 @@ var enrichLastActivityRecord = (record, endDate) => {
   return {
     ...record,
     duration,
-    humanFriendlyDuration: node_modules_ms(duration, { long: true }),
+    humanFriendlyDuration: ms(duration, { long: true }),
     lastActivityLocalized
   };
 };
@@ -34249,12 +34247,12 @@ var DormantAccountCheck = class {
     return this.db.getRawData();
   }
 };
-function dist_dormancyCheck(config) {
+function dormancyCheck(config) {
   return new DormantAccountCheck(config);
 }
 
 //# sourceMappingURL=index.js.map
-;// CONCATENATED MODULE: ../../packages/github/dist/chunk-GO3CAWXF.js
+;// CONCATENATED MODULE: ../../packages/github/dist/chunk-ZIP2PBZ4.js
 // src/provider/audit-log.ts
 
 
@@ -34322,14 +34320,15 @@ var githubDormancy = (config) => {
   return dormancyCheck({
     type,
     ...rest,
-    fetchLatestActivity
+    fetchLatestActivity,
+    isWhitelisted
   });
 };
 
 // src/provider/copilot.ts
 
 
-var chunk_GO3CAWXF_logger = console;
+var chunk_ZIP2PBZ4_logger = console;
 var fetchLatestActivityFromCoPilot = async ({ octokit, org, checkType, logger: logger2 }) => {
   logger2.debug(checkType, `Fetching audit log for ${org}`);
   const payload = {
@@ -34370,7 +34369,7 @@ var fetchLatestActivityFromCoPilot = async ({ octokit, org, checkType, logger: l
         };
         if (!processed[actor]?.lastActivity || lastActivity && lastActivity > processed[actor].lastActivity) {
           processed[actor] = record;
-          const log = lastActivity ? `${node_modules_ms(Date.now() - lastActivity.getTime())} ago` : "never";
+          const log = lastActivity ? `${ms(Date.now() - lastActivity.getTime())} ago` : "never";
           logger2.debug(
             `Activity record found for ${actor} - ${log}${record.type ? ` - ${record.type}` : ""}`
           );
@@ -34398,7 +34397,7 @@ var revokeCopilotLicense = async (config) => {
     selected_usernames = [selected_usernames];
   }
   if (dryRun) {
-    chunk_GO3CAWXF_logger.info(`DRY RUN: Removing ${selected_usernames} from ${org}`);
+    chunk_ZIP2PBZ4_logger.info(`DRY RUN: Removing ${selected_usernames} from ${org}`);
   } else {
     const {
       data: { seats_cancelled }
@@ -34406,7 +34405,7 @@ var revokeCopilotLicense = async (config) => {
       org,
       selected_usernames
     });
-    chunk_GO3CAWXF_logger.info(`Removed ${seats_cancelled} license from ${org}`);
+    chunk_ZIP2PBZ4_logger.info(`Removed ${seats_cancelled} license from ${org}`);
     return seats_cancelled === 1;
   }
   return false;
@@ -34417,7 +34416,7 @@ var copilotDormancy = (config) => {
     fetchLatestActivity = fetchLatestActivityFromCoPilot,
     ...rest
   } = config;
-  return dist_dormancyCheck({
+  return dormancyCheck({
     type,
     ...rest,
     fetchLatestActivity
@@ -34736,7 +34735,7 @@ function createDefaultNotificationBodyHandler(notificationTemplate) {
 }
 
 
-//# sourceMappingURL=chunk-GO3CAWXF.js.map
+//# sourceMappingURL=chunk-ZIP2PBZ4.js.map
 ;// CONCATENATED MODULE: ./src/utils/createBranch.ts
 
 /**
@@ -34773,14 +34772,15 @@ async function createBranch(octokit, context, branchName) {
  * @param context - The context containing the owner and repo information.
  * @param branchName - The name of the new branch to create.
  */
-async function getActivityLog(octokit, context, branchName, path) {
+async function getActivityLog({ octokit, activityLog: { branchName, path, repo: { owner, repo } } }) {
     core.debug(`checking if activity log exists on branch: ${branchName}`);
     core.debug(`checking if activity log exists on path: ${path}`);
     // If the activity log branch exists, check if the activity log file exists
     try {
         // Get the activity log file contents
         const { data } = await octokit.rest.repos.getContent({
-            ...context,
+            owner,
+            repo,
             path,
             ref: branchName,
         });
@@ -34814,12 +34814,12 @@ const external_fs_promises_namespaceObject = __WEBPACK_EXTERNAL_createRequire(im
  * @param branchName - The name of the branch to check.
  * @returns A promise that resolves to true if the branch exists, false otherwise.
  */
-async function checkBranch(octokit, context, branchName) {
+async function checkBranch({ octokit, activityLog: { branchName, repo } }) {
     core.debug(`checking if branch ${branchName} exists...`);
     // Check if the activity log branch already exists
     try {
         await octokit.rest.repos.getBranch({
-            ...context,
+            ...repo,
             branch: branchName,
         });
         // If the branch exists, return true
@@ -39328,6 +39328,87 @@ async function updateActivityLog(octokit, context, options) {
     }
 }
 
+// EXTERNAL MODULE: ../../node_modules/.pnpm/@actions+github@6.0.0/node_modules/@actions/github/lib/github.js
+var github = __nccwpck_require__(6495);
+;// CONCATENATED MODULE: ./src/utils/getContext.ts
+
+
+
+
+const GitHubChecks = {
+    'copilot-dormancy': copilotDormancy,
+    'github-dormancy': githubDormancy,
+};
+const contextSchema = objectType({
+    /**
+     * Org to check for dormant accounts
+     * @example 'my-org'
+     */
+    org: stringType(),
+    /**
+     * Repository to store the activity log
+     * @example 'my-org/activity-log-repo'
+     */
+    activityLogRepo: stringType().includes('/'),
+    token: stringType(),
+    checkType: enumType(['copilot-dormancy', 'github-dormancy']),
+    duration: stringType(),
+    dryRun: booleanType().optional().default(false),
+})
+    .transform((data) => {
+    const { activityLogRepo, dryRun, token, checkType, duration, org, ...rest } = data;
+    const [owner, repo] = activityLogRepo.split('/');
+    const octokit = github.getOctokit(token);
+    const check = GitHubChecks[checkType]({
+        type: checkType,
+        duration,
+        dryRun,
+        conf: {
+            octokit,
+            org,
+        },
+    });
+    if (!dryRun && (!owner || !repo)) {
+        throw new Error(`Invalid activity log repo format. Expected "owner/repo", got "${activityLogRepo}"`);
+    }
+    return {
+        octokit,
+        dryRun,
+        check,
+        org,
+        duration,
+        activityLog: {
+            branchName: data.checkType,
+            path: `${data.checkType}.json`,
+            repo: {
+                owner: owner,
+                repo: repo,
+            },
+        },
+        ...rest,
+    };
+});
+/**
+ * Retrieves the context from the action inputs.
+ * @returns An object containing the notification context or false if notifications are disabled
+ */
+function getContext() {
+    const validContext = contextSchema.safeParse({
+        org: core.getInput('org'),
+        activityLogRepo: core.getInput('activity-log-repo'),
+        duration: core.getInput('duration'),
+        dryRun: core.getInput('dry-run') === 'true',
+        token: core.getInput('token'),
+        checkType: core.getInput('check-type'),
+    });
+    if (!validContext.success) {
+        core.setFailed(`Invalid action inputs: ${validContext.error.message}`);
+        return false;
+    }
+    core.debug(`Parsed context: ${JSON.stringify(validContext.data, null, 2)}`);
+    return validContext.data;
+}
+
 ;// CONCATENATED MODULE: ./src/run.ts
 
 
@@ -39401,38 +39482,24 @@ async function processNotifications(octokit, context, dormantAccounts, check) {
 async function run() {
     try {
         // Get inputs from workflow
-        const org = core.getInput('org');
-        const activityLogRepo = core.getInput('activity-log-repo');
-        const duration = core.getInput('duration');
-        const token = core.getInput('token');
-        const dryRun = core.getInput('dry-run') === 'true';
-        const checkType = 'copilot-dormancy';
+        const context = getContext();
         const notificationsContext = getNotificationContext();
         const sendNotifications = notificationsContext !== false;
         let notificationsResults = null;
-        const branchName = checkType;
-        const [owner, repo] = activityLogRepo.split('/');
-        if (!dryRun && (!owner || !repo)) {
-            throw new Error(`Invalid activity log repo format. Expected "owner/repo", got "${activityLogRepo}"`);
+        if (!context) {
+            core.setFailed('Invalid context. Please check the action inputs.');
+            throw new Error('Invalid context');
         }
-        const activityLogContext = {
-            path: `${checkType}.json`,
-            repo: {
-                owner: owner,
-                repo: repo,
-            },
-        };
+        const { check, octokit, activityLog: activityLogContext, org, duration, dryRun } = context;
         // Log configuration (without sensitive data)
-        core.info(`Starting Copilot dormancy check for org: ${org}`);
+        core.info(`Starting ${check.type} dormancy check for org: ${org}`);
         core.info(`Duration threshold: ${duration}`);
         core.info(`Dry run mode: ${dryRun}`);
         if (sendNotifications) {
             core.info(`Notifications enabled with grace period: ${notificationsContext.duration}`);
             core.info(`Notification repository: ${notificationsContext.repo.owner}/${notificationsContext.repo.repo}`);
         }
-        // Initialize GitHub client
-        const octokit = github.getOctokit(token);
-        const activityLog = await getActivityLog(octokit, activityLogContext.repo, branchName, activityLogContext.path);
+        const activityLog = await getActivityLog(context);
         if (activityLog) {
             core.info('Activity log exists, fetching latest activity...');
             await (0,external_fs_promises_namespaceObject.writeFile)(activityLogContext.path, activityLog.content);
@@ -39442,16 +39509,6 @@ async function run() {
             core.info('Activity log does not exist, creating new one...');
         }
         const existingActivityLogSha = activityLog ? activityLog.sha : undefined;
-        // Run dormancy check
-        const check = await copilotDormancy({
-            type: checkType,
-            duration,
-            dryRun,
-            conf: {
-                octokit,
-                org,
-            },
-        });
         // Fetch latest activity if needed
         await check.fetchActivity();
         if (core.isDebug()) {
@@ -39582,33 +39639,33 @@ async function run() {
         }
         await core.summary.write();
         // Save activity log if repo info is provided
-        if (activityLogRepo) {
-            core.info(`Saving activity log to ${activityLogRepo}`);
+        if (context.activityLog) {
+            core.info(`Saving activity log to ${activityLogContext.repo.owner}/${activityLogContext.repo.repo}`);
             try {
                 const dateStamp = new Date().toISOString().split('T')[0];
                 const content = await check.activity.all();
                 const contentBase64 = Buffer.from(JSON.stringify(content, null, 2)).toString('base64');
                 if (!dryRun) {
                     // Check if the branch exists
-                    const branchExists = await checkBranch(octokit, activityLogContext.repo, branchName);
+                    const branchExists = await checkBranch(context);
                     if (!branchExists) {
-                        core.info(`Creating branch: ${branchName}`);
-                        await createBranch(octokit, activityLogContext.repo, checkType);
+                        core.info(`Creating branch: ${activityLogContext.branchName}`);
+                        await createBranch(octokit, activityLogContext.repo, check.type);
                     }
                     else {
-                        core.debug(`Branch already exists: ${branchName}`);
+                        core.debug(`Branch already exists: ${activityLogContext.branchName}`);
                     }
                     await updateActivityLog(octokit, activityLogContext.repo, {
-                        branch: branchName,
+                        branch: activityLogContext.branchName,
                         path: activityLogContext.path,
                         sha: existingActivityLogSha,
                         message: `Update Copilot dormancy log for ${dateStamp}`,
                         content: contentBase64,
                     });
-                    core.info(`Activity log saved to ${org}/${activityLogRepo}/${activityLogContext.path}`);
+                    core.info(`Activity log saved to ${activityLogContext.repo.owner}/${activityLogContext.repo.repo}/${activityLogContext.path}`);
                 }
                 else {
-                    core.info(`Dry run: Activity log would be saved to ${org}/${activityLogRepo}/${activityLogContext.path}`);
+                    core.info(`Dry run: Activity log would be saved to ${activityLogContext.repo.owner}/${activityLogContext.repo.repo}/${activityLogContext.path}`);
                 }
             }
             catch (error) {

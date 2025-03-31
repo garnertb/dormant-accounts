@@ -1,7 +1,5 @@
 import * as core from '@actions/core';
-import * as github from '@actions/github';
 import {
-  copilotDormancy,
   GithubIssueNotifier,
   OctokitClient,
   LastActivityRecord,
@@ -19,6 +17,7 @@ import {
 import { updateActivityLog } from './utils/updateActivityLog';
 import { Activity } from 'dormant-accounts';
 import { ProcessingResult } from '@dormant-accounts/github/';
+import { getContext } from './utils/getContext';
 
 // Function to safely stringify data for output
 const safeStringify = (data: unknown): string => {
@@ -107,37 +106,27 @@ export async function processNotifications(
 async function run(): Promise<void> {
   try {
     // Get inputs from workflow
-    const org = core.getInput('org');
-    const activityLogRepo = core.getInput('activity-log-repo');
-    const duration = core.getInput('duration');
-    const token = core.getInput('token');
-    const dryRun = core.getInput('dry-run') === 'true';
-    const checkType = 'copilot-dormancy';
-
+    const context = getContext();
     const notificationsContext = getNotificationContext();
     const sendNotifications = notificationsContext !== false;
     let notificationsResults: ProcessingResult | null = null;
 
-    const branchName = checkType;
-
-    const [owner, repo] = activityLogRepo.split('/');
-
-    if (!dryRun && (!owner || !repo)) {
-      throw new Error(
-        `Invalid activity log repo format. Expected "owner/repo", got "${activityLogRepo}"`,
-      );
+    if (!context) {
+      core.setFailed('Invalid context. Please check the action inputs.');
+      throw new Error('Invalid context');
     }
 
-    const activityLogContext = {
-      path: `${checkType}.json`,
-      repo: {
-        owner: owner as string,
-        repo: repo as string,
-      },
-    };
+    const {
+      check,
+      octokit,
+      activityLog: activityLogContext,
+      org,
+      duration,
+      dryRun,
+    } = context;
 
     // Log configuration (without sensitive data)
-    core.info(`Starting Copilot dormancy check for org: ${org}`);
+    core.info(`Starting ${check.type} dormancy check for org: ${org}`);
     core.info(`Duration threshold: ${duration}`);
     core.info(`Dry run mode: ${dryRun}`);
 
@@ -150,15 +139,7 @@ async function run(): Promise<void> {
       );
     }
 
-    // Initialize GitHub client
-    const octokit = github.getOctokit(token);
-
-    const activityLog = await getActivityLog(
-      octokit,
-      activityLogContext.repo,
-      branchName,
-      activityLogContext.path,
-    );
+    const activityLog = await getActivityLog(context);
 
     if (activityLog) {
       core.info('Activity log exists, fetching latest activity...');
@@ -169,17 +150,6 @@ async function run(): Promise<void> {
     }
 
     const existingActivityLogSha = activityLog ? activityLog.sha : undefined;
-
-    // Run dormancy check
-    const check = await copilotDormancy({
-      type: checkType,
-      duration,
-      dryRun,
-      conf: {
-        octokit,
-        org,
-      },
-    });
 
     // Fetch latest activity if needed
     await check.fetchActivity();
@@ -396,8 +366,10 @@ async function run(): Promise<void> {
     await core.summary.write();
 
     // Save activity log if repo info is provided
-    if (activityLogRepo) {
-      core.info(`Saving activity log to ${activityLogRepo}`);
+    if (context.activityLog) {
+      core.info(
+        `Saving activity log to ${activityLogContext.repo.owner}/${activityLogContext.repo.repo}`,
+      );
 
       try {
         const dateStamp = new Date().toISOString().split('T')[0];
@@ -409,21 +381,19 @@ async function run(): Promise<void> {
 
         if (!dryRun) {
           // Check if the branch exists
-          const branchExists = await checkBranch(
-            octokit,
-            activityLogContext.repo,
-            branchName,
-          );
+          const branchExists = await checkBranch(context);
 
           if (!branchExists) {
-            core.info(`Creating branch: ${branchName}`);
-            await createBranch(octokit, activityLogContext.repo, checkType);
+            core.info(`Creating branch: ${activityLogContext.branchName}`);
+            await createBranch(octokit, activityLogContext.repo, check.type);
           } else {
-            core.debug(`Branch already exists: ${branchName}`);
+            core.debug(
+              `Branch already exists: ${activityLogContext.branchName}`,
+            );
           }
 
           await updateActivityLog(octokit, activityLogContext.repo, {
-            branch: branchName,
+            branch: activityLogContext.branchName,
             path: activityLogContext.path,
             sha: existingActivityLogSha,
             message: `Update Copilot dormancy log for ${dateStamp}`,
@@ -431,11 +401,11 @@ async function run(): Promise<void> {
           });
 
           core.info(
-            `Activity log saved to ${org}/${activityLogRepo}/${activityLogContext.path}`,
+            `Activity log saved to ${activityLogContext.repo.owner}/${activityLogContext.repo.repo}/${activityLogContext.path}`,
           );
         } else {
           core.info(
-            `Dry run: Activity log would be saved to ${org}/${activityLogRepo}/${activityLogContext.path}`,
+            `Dry run: Activity log would be saved to ${activityLogContext.repo.owner}/${activityLogContext.repo.repo}/${activityLogContext.path}`,
           );
         }
       } catch (error) {

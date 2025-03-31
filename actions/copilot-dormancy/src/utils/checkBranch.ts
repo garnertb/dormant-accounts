@@ -1,5 +1,5 @@
 import * as core from '@actions/core';
-import { OctokitClient } from '@dormant-accounts/github';
+import { type Context } from './getContext';
 
 /**
  * Checks if a branch exists in the specified repository.
@@ -8,16 +8,15 @@ import { OctokitClient } from '@dormant-accounts/github';
  * @param branchName - The name of the branch to check.
  * @returns A promise that resolves to true if the branch exists, false otherwise.
  */
-export async function checkBranch(
-  octokit: OctokitClient,
-  context: { owner: string; repo: string },
-  branchName: string,
-): Promise<boolean> {
+export async function checkBranch({
+  octokit,
+  activityLog: { branchName, repo },
+}: Context): Promise<boolean> {
   core.debug(`checking if branch ${branchName} exists...`);
   // Check if the activity log branch already exists
   try {
     await octokit.rest.repos.getBranch({
-      ...context,
+      ...repo,
       branch: branchName,
     });
     // If the branch exists, return true
