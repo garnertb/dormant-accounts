@@ -34254,7 +34254,7 @@ function dist_dormancyCheck(config) {
 }
 
 //# sourceMappingURL=index.js.map
-;// CONCATENATED MODULE: ../../packages/github/dist/chunk-GO3CAWXF.js
+;// CONCATENATED MODULE: ../../packages/github/dist/chunk-ZIP2PBZ4.js
 // src/provider/audit-log.ts
 
 
@@ -34322,14 +34322,15 @@ var githubDormancy = (config) => {
   return dormancyCheck({
     type,
     ...rest,
-    fetchLatestActivity
+    fetchLatestActivity,
+    isWhitelisted
   });
 };
 
 // src/provider/copilot.ts
 
 
-var chunk_GO3CAWXF_logger = console;
+var chunk_ZIP2PBZ4_logger = console;
 var fetchLatestActivityFromCoPilot = async ({ octokit, org, checkType, logger: logger2 }) => {
   logger2.debug(checkType, `Fetching audit log for ${org}`);
   const payload = {
@@ -34398,7 +34399,7 @@ var revokeCopilotLicense = async (config) => {
     selected_usernames = [selected_usernames];
   }
   if (dryRun) {
-    chunk_GO3CAWXF_logger.info(`DRY RUN: Removing ${selected_usernames} from ${org}`);
+    chunk_ZIP2PBZ4_logger.info(`DRY RUN: Removing ${selected_usernames} from ${org}`);
   } else {
     const {
       data: { seats_cancelled }
@@ -34406,7 +34407,7 @@ var revokeCopilotLicense = async (config) => {
       org,
       selected_usernames
     });
-    chunk_GO3CAWXF_logger.info(`Removed ${seats_cancelled} license from ${org}`);
+    chunk_ZIP2PBZ4_logger.info(`Removed ${seats_cancelled} license from ${org}`);
     return seats_cancelled === 1;
   }
   return false;
@@ -34736,7 +34737,7 @@ function createDefaultNotificationBodyHandler(notificationTemplate) {
 }
 
 
-//# sourceMappingURL=chunk-GO3CAWXF.js.map
+//# sourceMappingURL=chunk-ZIP2PBZ4.js.map
 ;// CONCATENATED MODULE: ./src/utils/createBranch.ts
 
 /**
@@ -39616,7 +39617,7 @@ async function run() {
             }
         }
         core.info('Copilot dormancy check completed successfully');
-        if (notificationsResults && notificationsResults.errors) {
+        if (notificationsResults && notificationsResults.errors.length > 0) {
             core.setFailed(`Action failed due to errors sending notifications: ${notificationsResults.errors.map(({ error }) => error.message).join(', ')}`);
         }
     }

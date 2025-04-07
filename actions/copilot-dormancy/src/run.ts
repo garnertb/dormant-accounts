@@ -447,7 +447,7 @@ async function run(): Promise<void> {
 
     core.info('Copilot dormancy check completed successfully');
 
-    if (notificationsResults && notificationsResults.errors) {
+    if (notificationsResults && notificationsResults.errors.length > 0) {
       core.setFailed(
         `Action failed due to errors sending notifications: ${notificationsResults.errors.map(({ error }) => error.message).join(', ')}`,
       );
