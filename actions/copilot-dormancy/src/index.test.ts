@@ -103,7 +103,10 @@ describe('Copilot Dormancy Action', () => {
   it('should run the dormancy check and set outputs', async () => {
     // Setup notification context mock
     vi.mocked(getNotificationContext).mockReturnValue(false);
-    const mockedCheck = createMockCheckObject();
+    const mockedCheck = {
+      ...createMockCheckObject(),
+      type: 'copilot-dormancy',
+    };
     const mocktokit = vi.fn();
 
     // Setup input mocks
@@ -140,7 +143,7 @@ describe('Copilot Dormancy Action', () => {
         branch: 'copilot-dormancy',
         path: 'copilot-dormancy.json',
         content: expect.any(String),
-        message: expect.stringContaining('Update Copilot dormancy log for'),
+        message: expect.stringContaining('Update copilot-dormancy log for'),
       }),
     );
 

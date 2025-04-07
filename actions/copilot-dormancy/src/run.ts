@@ -181,7 +181,7 @@ async function run(): Promise<void> {
 
     // Create a human-friendly job summary
     core.summary
-      .addHeading('Copilot Dormancy Check Summary')
+      .addHeading(`${check.type} Check Summary`)
       .addRaw(
         `**Last Activity Fetch:** ${formatDate(summary.lastActivityFetch)}`,
         true,

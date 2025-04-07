@@ -39529,7 +39529,7 @@ async function run() {
         core.info(`Check summary: ${safeStringify(summary)}`);
         // Create a human-friendly job summary
         core.summary
-            .addHeading('Copilot Dormancy Check Summary')
+            .addHeading(`${check.type} Check Summary`)
             .addRaw(`**Last Activity Fetch:** ${formatDate(summary.lastActivityFetch)}`, true)
             .addRaw(`**Dormancy Threshold:** ${summary.duration}`, true)
             .addBreak()

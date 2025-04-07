@@ -95,7 +95,7 @@ jobs:
           token: ${{ secrets.ORG_ADMIN_TOKEN }}
           dry-run: 'false'
           notifications-enabled: 'true'
-          notifications-repo: 'copilot-notifications'
+          notifications-repo: 'my-organization/copilot-notifications'
           notifications-duration: '14d'
           notifications-body: 'Hello @{{username}}, your GitHub Copilot license has been inactive for {{duration}}. To keep your license, please use Copilot within the next {{gracePeriod}}.'
 ```
