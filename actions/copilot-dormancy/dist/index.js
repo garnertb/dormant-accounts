@@ -34254,7 +34254,7 @@ function dist_dormancyCheck(config) {
 }
 
 //# sourceMappingURL=index.js.map
-;// CONCATENATED MODULE: ../../packages/github/dist/chunk-ZIP2PBZ4.js
+;// CONCATENATED MODULE: ../../packages/github/dist/chunk-QT47JTUK.js
 // src/provider/audit-log.ts
 
 
@@ -34330,7 +34330,7 @@ var githubDormancy = (config) => {
 // src/provider/copilot.ts
 
 
-var chunk_ZIP2PBZ4_logger = console;
+var chunk_QT47JTUK_logger = console;
 var fetchLatestActivityFromCoPilot = async ({ octokit, org, checkType, logger: logger2 }) => {
   logger2.debug(checkType, `Fetching audit log for ${org}`);
   const payload = {
@@ -34399,7 +34399,7 @@ var revokeCopilotLicense = async (config) => {
     selected_usernames = [selected_usernames];
   }
   if (dryRun) {
-    chunk_ZIP2PBZ4_logger.info(`DRY RUN: Removing ${selected_usernames} from ${org}`);
+    chunk_QT47JTUK_logger.info(`DRY RUN: Removing ${selected_usernames} from ${org}`);
   } else {
     const {
       data: { seats_cancelled }
@@ -34407,7 +34407,7 @@ var revokeCopilotLicense = async (config) => {
       org,
       selected_usernames
     });
-    chunk_ZIP2PBZ4_logger.info(`Removed ${seats_cancelled} license from ${org}`);
+    chunk_QT47JTUK_logger.info(`Removed ${seats_cancelled} license from ${org}`);
     return seats_cancelled === 1;
   }
   return false;
@@ -34616,11 +34616,17 @@ ${notificationBody}`,
    */
   async closeNotificationForActiveUser(user, notification) {
     console.log(`Closing notification for active user ${user.login}`);
-    await this.addCommentToIssue(
-      notification.number,
-      `User ${user.login} is now active. No removal needed.`
-    );
-    await this.addLabelToIssue(notification.number, "became-active" /* ACTIVE */);
+    await Promise.all([
+      this.addCommentToIssue(
+        notification.number,
+        `User ${user.login} is now active. No removal needed.`
+      ),
+      this.addLabelToIssue(notification.number, "became-active" /* ACTIVE */),
+      this.removeLabelFromIssue(
+        notification.number,
+        "pending-removal" /* PENDING */
+      )
+    ]);
     await this.octokit.rest.issues.update({
       owner: this.config.repository.owner,
       repo: this.config.repository.repo,
@@ -34737,7 +34743,7 @@ function createDefaultNotificationBodyHandler(notificationTemplate) {
 }
 
 
-//# sourceMappingURL=chunk-ZIP2PBZ4.js.map
+//# sourceMappingURL=chunk-QT47JTUK.js.map
 ;// CONCATENATED MODULE: ./src/utils/createBranch.ts
 
 /**

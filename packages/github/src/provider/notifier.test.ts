@@ -479,4 +479,109 @@ describe('GithubIssueNotifier', () => {
       );
     });
   });
+
+  describe('closeNotificationForActiveUser', () => {
+    it('closes notification and updates labels for active user', async () => {
+      const user: LastActivityRecord = {
+        login: 'active-user',
+        lastActivity: new Date('2023-01-01'),
+        type: 'user',
+      };
+
+      const notification = {
+        id: 456,
+        number: 42,
+        title: 'active-user',
+        created_at: new Date().toISOString(),
+        labels: [{ name: NotificationStatus.PENDING }],
+        state: 'open',
+      };
+
+      await notifier.closeNotificationForActiveUser(
+        user,
+        notification as NotificationIssue,
+      );
+
+      expect(mockOctokit.rest.issues.createComment).toHaveBeenCalledWith({
+        owner: 'test-owner',
+        repo: 'test-repo',
+        issue_number: 42,
+        body: 'User active-user is now active. No removal needed.',
+      });
+
+      expect(mockOctokit.rest.issues.addLabels).toHaveBeenCalledWith({
+        owner: 'test-owner',
+        repo: 'test-repo',
+        issue_number: 42,
+        labels: [NotificationStatus.ACTIVE],
+      });
+
+      expect(mockOctokit.rest.issues.removeLabel).toHaveBeenCalledWith({
+        owner: 'test-owner',
+        repo: 'test-repo',
+        issue_number: 42,
+        name: NotificationStatus.PENDING,
+      });
+
+      expect(mockOctokit.rest.issues.update).toHaveBeenCalledWith({
+        owner: 'test-owner',
+        repo: 'test-repo',
+        issue_number: 42,
+        state: 'closed',
+        state_reason: 'not_planned',
+      });
+    });
+
+    it('handles missing pending label gracefully', async () => {
+      mockOctokit.rest.issues.removeLabel.mockRejectedValueOnce({
+        status: 404,
+      });
+
+      const user: LastActivityRecord = {
+        login: 'active-user',
+        lastActivity: new Date('2023-01-01'),
+        type: 'user',
+      };
+
+      const notification: NotificationIssue = {
+        id: 789,
+        number: 43,
+        title: 'active-user',
+        created_at: new Date().toISOString(),
+        labels: [{ name: NotificationStatus.ACTIVE }],
+        state: 'open',
+      };
+
+      await notifier.closeNotificationForActiveUser(user, notification);
+
+      expect(mockOctokit.rest.issues.createComment).toHaveBeenCalledWith({
+        owner: 'test-owner',
+        repo: 'test-repo',
+        issue_number: 43,
+        body: 'User active-user is now active. No removal needed.',
+      });
+
+      expect(mockOctokit.rest.issues.addLabels).toHaveBeenCalledWith({
+        owner: 'test-owner',
+        repo: 'test-repo',
+        issue_number: 43,
+        labels: [NotificationStatus.ACTIVE],
+      });
+
+      expect(mockOctokit.rest.issues.removeLabel).toHaveBeenCalledWith({
+        owner: 'test-owner',
+        repo: 'test-repo',
+        issue_number: 43,
+        name: NotificationStatus.PENDING,
+      });
+
+      expect(mockOctokit.rest.issues.update).toHaveBeenCalledWith({
+        owner: 'test-owner',
+        repo: 'test-repo',
+        issue_number: 43,
+        state: 'closed',
+        state_reason: 'not_planned',
+      });
+    });
+  });
 });

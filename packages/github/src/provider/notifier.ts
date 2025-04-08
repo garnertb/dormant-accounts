@@ -349,13 +349,18 @@ export class GithubIssueNotifier implements DormantAccountNotifier {
   ): Promise<void> {
     console.log(`Closing notification for active user ${user.login}`);
 
-    // Add comment and label
-    await this.addCommentToIssue(
-      notification.number,
-      `User ${user.login} is now active. No removal needed.`,
-    );
-
-    await this.addLabelToIssue(notification.number, NotificationStatus.ACTIVE);
+    // Add comment and update labels before closing
+    await Promise.all([
+      this.addCommentToIssue(
+        notification.number,
+        `User ${user.login} is now active. No removal needed.`,
+      ),
+      this.addLabelToIssue(notification.number, NotificationStatus.ACTIVE),
+      this.removeLabelFromIssue(
+        notification.number,
+        NotificationStatus.PENDING,
+      ),
+    ]);
 
     // Close the issue
     await this.octokit.rest.issues.update({
