@@ -1,5 +1,5 @@
-name: 'Copilot Dormancy Check'
-description: 'Check for dormant GitHub Copilot accounts in a GitHub organization'
+name: 'GitHub Dormancy Check'
+description: 'Check for dormant GitHub accounts'
 inputs:
   org:
     description: 'GitHub organization name to check for dormant accounts'
@@ -48,10 +48,6 @@ inputs:
   notifications-body:
     description: 'Custom message template for user notifications'
     required: false
-    default: >+
-      This organization automatically revokes GitHub Copilot licenses for inactive users. Your account is inactive and pending removal.  
-      <br/><br/>
-      You can maintain your Copilot license by using Copilot within {{gracePeriod}}.
 outputs:
   dormant-users:
     description: 'JSON string containing list of dormant accounts'

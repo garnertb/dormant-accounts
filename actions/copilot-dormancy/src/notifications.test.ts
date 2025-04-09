@@ -79,7 +79,9 @@ describe('Notification Processing', () => {
 
   describe('notification context', () => {
     it('should return false when notifications are disabled (by default)', () => {
-      const notificationContext = getNotificationContext();
+      const notificationContext = getNotificationContext({
+        checkType: 'github-copilot',
+      });
       expect(notificationContext).toBeFalsy();
     });
 
@@ -98,7 +100,9 @@ describe('Notification Processing', () => {
         return inputs[name] || '';
       });
 
-      const notificationContext = getNotificationContext();
+      const notificationContext = getNotificationContext({
+        checkType: 'github-copilot',
+      });
       expect(notificationContext).toBeFalsy();
     });
 
@@ -119,7 +123,9 @@ describe('Notification Processing', () => {
         return inputs[name] || '';
       });
 
-      const notificationContext = getNotificationContext();
+      const notificationContext = getNotificationContext({
+        checkType: 'github-copilot',
+      });
       expect(notificationContext).toEqual({
         repo: {
           owner: 'test-owner',
@@ -132,6 +138,45 @@ describe('Notification Processing', () => {
         baseLabels: ['copilot-dormancy'],
         dryRun: false,
       });
+    });
+
+    it('correctly generates default notification body', () => {
+      vi.mocked(core.getInput).mockImplementation((name) => {
+        const inputs: Record<string, string> = {
+          org: 'test-org',
+          'activity-log-repo': 'test-owner/test-repo',
+          duration: '90d',
+          token: 'mock-token',
+          'dry-run': 'false',
+          'notifications-enabled': 'true',
+          'notifications-repo': 'test-owner/test-repo',
+          'notifications-duration': '30d',
+          'notifications-dry-run': 'false',
+        };
+        return inputs[name] || '';
+      });
+
+      const notificationContext = getNotificationContext({
+        checkType: 'github-copilot',
+      });
+      expect(notificationContext).toBeTruthy();
+
+      const { body } = notificationContext as NotificationContext;
+
+      expect(body).toContain(
+        'This organization automatically revokes GitHub Copilot licenses for inactive users. Your account is inactive and pending removal.',
+      );
+
+      const githubDormancy = getNotificationContext({
+        checkType: 'github-dormancy',
+      });
+      expect(githubDormancy).toBeTruthy();
+
+      const { body: githubDormancyBody } =
+        githubDormancy as NotificationContext;
+      expect(githubDormancyBody).toContain(
+        'This organization automatically revokes GitHub licenses for inactive users. Your account is inactive and pending removal.',
+      );
     });
   });
 
