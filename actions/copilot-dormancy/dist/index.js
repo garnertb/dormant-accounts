@@ -39247,9 +39247,81 @@ var z = /*#__PURE__*/Object.freeze({
 
 
 
+;// CONCATENATED MODULE: ../../node_modules/.pnpm/dedent@1.5.3/node_modules/dedent/dist/dedent.mjs
+function ownKeys(object, enumerableOnly) { var keys = Object.keys(object); if (Object.getOwnPropertySymbols) { var symbols = Object.getOwnPropertySymbols(object); enumerableOnly && (symbols = symbols.filter(function (sym) { return Object.getOwnPropertyDescriptor(object, sym).enumerable; })), keys.push.apply(keys, symbols); } return keys; }
+function _objectSpread(target) { for (var i = 1; i < arguments.length; i++) { var source = null != arguments[i] ? arguments[i] : {}; i % 2 ? ownKeys(Object(source), !0).forEach(function (key) { _defineProperty(target, key, source[key]); }) : Object.getOwnPropertyDescriptors ? Object.defineProperties(target, Object.getOwnPropertyDescriptors(source)) : ownKeys(Object(source)).forEach(function (key) { Object.defineProperty(target, key, Object.getOwnPropertyDescriptor(source, key)); }); } return target; }
+function _defineProperty(obj, key, value) { key = _toPropertyKey(key); if (key in obj) { Object.defineProperty(obj, key, { value: value, enumerable: true, configurable: true, writable: true }); } else { obj[key] = value; } return obj; }
+function _toPropertyKey(arg) { var key = _toPrimitive(arg, "string"); return typeof key === "symbol" ? key : String(key); }
+function _toPrimitive(input, hint) { if (typeof input !== "object" || input === null) return input; var prim = input[Symbol.toPrimitive]; if (prim !== undefined) { var res = prim.call(input, hint || "default"); if (typeof res !== "object") return res; throw new TypeError("@@toPrimitive must return a primitive value."); } return (hint === "string" ? String : Number)(input); }
+const dedent = createDedent({});
+/* harmony default export */ const dist_dedent = (dedent);
+function createDedent(options) {
+  dedent.withOptions = newOptions => createDedent(_objectSpread(_objectSpread({}, options), newOptions));
+  return dedent;
+  function dedent(strings, ...values) {
+    const raw = typeof strings === "string" ? [strings] : strings.raw;
+    const {
+      escapeSpecialCharacters = Array.isArray(strings)
+    } = options;
+
+    // first, perform interpolation
+    let result = "";
+    for (let i = 0; i < raw.length; i++) {
+      let next = raw[i];
+      if (escapeSpecialCharacters) {
+        // handle escaped newlines, backticks, and interpolation characters
+        next = next.replace(/\\\n[ \t]*/g, "").replace(/\\`/g, "`").replace(/\\\$/g, "$").replace(/\\\{/g, "{");
+      }
+      result += next;
+      if (i < values.length) {
+        // eslint-disable-next-line @typescript-eslint/restrict-plus-operands
+        result += values[i];
+      }
+    }
+
+    // now strip indentation
+    const lines = result.split("\n");
+    let mindent = null;
+    for (const l of lines) {
+      const m = l.match(/^(\s+)\S+/);
+      if (m) {
+        const indent = m[1].length;
+        if (!mindent) {
+          // this is the first indented line
+          mindent = indent;
+        } else {
+          mindent = Math.min(mindent, indent);
+        }
+      }
+    }
+    if (mindent !== null) {
+      const m = mindent; // appease TypeScript
+      result = lines
+      // https://github.com/typescript-eslint/typescript-eslint/issues/7140
+      // eslint-disable-next-line @typescript-eslint/prefer-string-starts-ends-with
+      .map(l => l[0] === " " || l[0] === "\t" ? l.slice(m) : l).join("\n");
+    }
+
+    // dedent eats leading and trailing whitespace too
+    result = result.trim();
+    if (escapeSpecialCharacters) {
+      // handle escaped newlines at the end to ensure they don't get stripped too
+      result = result.replace(/\\n/g, "\n");
+    }
+    return result;
+  }
+}
+
 ;// CONCATENATED MODULE: ./src/utils/getNotificationContext.ts
 
 
+
+const defaultNotificationBody = (checkType) => {
+    const checkName = checkType === 'github-copilot' ? 'GitHub Copilot' : 'GitHub';
+    return dist_dedent `This organization automatically revokes ${checkName} licenses for inactive users. Your account is inactive and pending removal.  
+      <br/><br/>
+      You can maintain your ${checkName} license by using Copilot within {{gracePeriod}}.`;
+};
 const notificationSchema = objectType({
     repo: stringType().includes('/'),
     duration: stringType(),
@@ -39274,7 +39346,7 @@ const notificationSchema = objectType({
  * Retrieves the notification context from the action inputs.
  * @returns An object containing the notification context or false if notifications are disabled
  */
-function getNotificationContext() {
+function getNotificationContext({ checkType, }) {
     if (core.getInput('notifications-enabled') !== 'true') {
         core.debug('Notifications are disabled');
         return false;
@@ -39282,7 +39354,7 @@ function getNotificationContext() {
     const parsedNotification = notificationSchema.safeParse({
         repo: core.getInput('notifications-repo'),
         duration: core.getInput('notifications-duration'),
-        body: core.getInput('notifications-body'),
+        body: core.getInput('notifications-body') || defaultNotificationBody(checkType),
         dryRun: core.getInput('notifications-dry-run') === 'true',
         assignUserToIssue: core.getInput('notifications-disable-issue-assignment') !== 'true',
         removeDormantAccounts: core.getInput('remove-dormant-accounts') === 'true',
@@ -39483,14 +39555,14 @@ async function run() {
     try {
         // Get inputs from workflow
         const context = getContext();
-        const notificationsContext = getNotificationContext();
-        const sendNotifications = notificationsContext !== false;
-        let notificationsResults = null;
         if (!context) {
             core.setFailed('Invalid context. Please check the action inputs.');
             throw new Error('Invalid context');
         }
         const { check, octokit, activityLog: activityLogContext, org, duration, dryRun, } = context;
+        const notificationsContext = getNotificationContext({ checkType: check.type });
+        const sendNotifications = notificationsContext !== false;
+        let notificationsResults = null;
         // Log configuration (without sensitive data)
         core.info(`Starting ${check.type} dormancy check for org: ${org}`);
         core.info(`Duration threshold: ${duration}`);

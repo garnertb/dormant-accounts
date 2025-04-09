@@ -107,9 +107,6 @@ async function run(): Promise<void> {
   try {
     // Get inputs from workflow
     const context = getContext();
-    const notificationsContext = getNotificationContext();
-    const sendNotifications = notificationsContext !== false;
-    let notificationsResults: ProcessingResult | null = null;
 
     if (!context) {
       core.setFailed('Invalid context. Please check the action inputs.');
@@ -124,6 +121,12 @@ async function run(): Promise<void> {
       duration,
       dryRun,
     } = context;
+
+    const notificationsContext = getNotificationContext({
+      checkType: check.type,
+    });
+    const sendNotifications = notificationsContext !== false;
+    let notificationsResults: ProcessingResult | null = null;
 
     // Log configuration (without sensitive data)
     core.info(`Starting ${check.type} dormancy check for org: ${org}`);
