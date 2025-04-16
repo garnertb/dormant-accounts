@@ -39,10 +39,11 @@ export function getNotificationContext(): NotificationContext | false {
     repo: core.getInput('notifications-repo'),
     duration: core.getInput('notifications-duration'),
     body: core.getInput('notifications-body'),
-    dryRun: core.getInput('notifications-dry-run') === 'true',
-    assignUserToIssue:
-      core.getInput('notifications-disable-issue-assignment') !== 'true',
-    removeDormantAccounts: core.getInput('remove-dormant-accounts') === 'true',
+    dryRun: core.getBooleanInput('notifications-dry-run'),
+    assignUserToIssue: core.getBooleanInput(
+      'notifications-disable-issue-assignment',
+    ),
+    removeDormantAccounts: core.getBooleanInput('remove-dormant-accounts'),
   });
 
   if (!parsedNotification.success) {
