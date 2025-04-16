@@ -25,6 +25,10 @@ inputs:
     description: 'Enable notifications for dormant users'
     required: false
     default: 'false'
+  notifications-dry-run:
+    description: 'Run in dry-run mode for notifications'
+    required: false
+    default: 'false'
   notifications-repo:
     description: 'Repository to create notification issues in (e.g., owner/repo)'
     required: false
