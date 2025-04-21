@@ -39394,7 +39394,7 @@ async function processNotifications(octokit, context, dormantAccounts, check) {
                 logins: lastActivityRecord.login,
                 octokit,
                 org: context.repo.owner,
-                dryRun: removeDormantAccounts,
+                dryRun: !removeDormantAccounts,
             });
             if (accountRemoved) {
                 core.info(`Successfully removed Copilot license for ${lastActivityRecord.login}`);
