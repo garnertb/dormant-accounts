@@ -79,9 +79,23 @@ export async function processNotifications(
     removeAccount: async ({ lastActivityRecord }) => {
       if (!removeDormantAccounts) {
         core.info(
-          `removeDormantAccounts is false, skipping removal for: ${lastActivityRecord.login}`,
+          `remove-dormant-accounts setting is disabled, checking if user ${lastActivityRecord.login} has been removed from Copilot externally`,
         );
-        return true;
+
+        const { data: pending_cancellation_date } =
+          await octokit.rest.copilot.getCopilotSeatDetailsForUser({
+            username: lastActivityRecord.login,
+            org: context.repo.owner,
+          });
+
+        if (pending_cancellation_date) {
+          core.info(
+            `User ${lastActivityRecord.login} has a pending cancellation date: ${pending_cancellation_date}`,
+          );
+          return true;
+        }
+
+        return false;
       }
 
       const accountRemoved = await revokeCopilotLicense({
