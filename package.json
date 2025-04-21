@@ -36,7 +36,7 @@
   "devDependencies": {
     "@changesets/cli": "2.27.1",
     "@types/node": "22.9.0",
-    "@vercel/style-guide": "5.2.0",
+    "@vercel/style-guide": "6.0.0",
     "eslint": "8.56.0",
     "eslint-config-custom": "workspace:*",
     "husky": "9.0.10",
