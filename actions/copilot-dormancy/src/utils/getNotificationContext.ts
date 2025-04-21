@@ -41,7 +41,7 @@ export function getNotificationContext(): NotificationContext | false {
     body: core.getInput('notifications-body'),
     dryRun: core.getBooleanInput('notifications-dry-run'),
     assignUserToIssue: core.getBooleanInput(
-      'notifications-disable-issue-assignment',
+      'assign-user-to-notification-issue',
     ),
     removeDormantAccounts: core.getBooleanInput('remove-dormant-accounts'),
   });

@@ -37,8 +37,9 @@ inputs:
     description: 'Grace period before removing users after notification (e.g., 7d, 2w, 1m)'
     required: false
     default: '7d'
-  notifications-disable-issue-assignment:
-    description: 'Flag to disable issue assignment for dormant users'
+  assign-user-to-notification-issue:
+    # Note: users must have write access to the repo to be assigned
+    description: 'Flag to enable issue assignment for dormant users'
     required: false
     default: 'false'
   remove-dormant-accounts:

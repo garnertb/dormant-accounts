@@ -39291,7 +39291,7 @@ function getNotificationContext() {
         duration: core.getInput('notifications-duration'),
         body: core.getInput('notifications-body'),
         dryRun: core.getBooleanInput('notifications-dry-run'),
-        assignUserToIssue: core.getBooleanInput('notifications-disable-issue-assignment'),
+        assignUserToIssue: core.getBooleanInput('assign-user-to-notification-issue'),
         removeDormantAccounts: core.getBooleanInput('remove-dormant-accounts'),
     });
     if (!parsedNotification.success) {

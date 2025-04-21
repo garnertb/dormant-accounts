@@ -92,7 +92,7 @@ describe('Notification Processing', () => {
           'notifications-duration': '30d',
           'notifications-body': 'Test notification body',
           'notifications-dry-run': 'false',
-          'notifications-disable-issue-assignment': 'false',
+          'assign-user-to-notification-issue': 'false',
           'remove-dormant-accounts': 'false',
         };
         return inputs[name] || '';
