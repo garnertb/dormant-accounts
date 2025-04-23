@@ -39387,8 +39387,8 @@ async function processNotifications(octokit, context, dormantAccounts, check) {
         dryRun,
         removeAccount: async ({ lastActivityRecord }) => {
             if (!removeDormantAccounts) {
-                core.info(`removeDormantAccounts is false, checking if user has been removed from Copilot externally`);
-                const { data: pending_cancellation_date } = await octokit.rest.copilot.getCopilotSeatDetailsForUser({
+                core.info(`remove-dormant-accounts setting is disabled, checking if user ${lastActivityRecord.login} has been removed from Copilot externally`);
+                const { data: { pending_cancellation_date } } = await octokit.rest.copilot.getCopilotSeatDetailsForUser({
                     username: lastActivityRecord.login,
                     org: context.repo.owner,
                 });

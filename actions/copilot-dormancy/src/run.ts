@@ -82,11 +82,12 @@ export async function processNotifications(
           `remove-dormant-accounts setting is disabled, checking if user ${lastActivityRecord.login} has been removed from Copilot externally`,
         );
 
-        const { data: pending_cancellation_date } =
-          await octokit.rest.copilot.getCopilotSeatDetailsForUser({
-            username: lastActivityRecord.login,
-            org: context.repo.owner,
-          });
+        const {
+          data: { pending_cancellation_date },
+        } = await octokit.rest.copilot.getCopilotSeatDetailsForUser({
+          username: lastActivityRecord.login,
+          org: context.repo.owner,
+        });
 
         if (pending_cancellation_date) {
           core.info(
