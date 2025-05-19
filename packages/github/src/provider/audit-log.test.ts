@@ -57,18 +57,18 @@ describe('GitHub Activity Check', () => {
 
   describe('defaultWhitelistHandler', () => {
     it('whitelists bots from being dormant', async () => {
-      // @ts-ignore
       await expect(
         defaultWhitelistHandler({
           login: 'test[bot]',
+          // @ts-expect-error todo
           logger: { debug: vi.fn() },
         }),
       ).resolves.toBe(true);
     });
 
     it('whitelists bots from being dormant', async () => {
-      // @ts-ignore
       await expect(
+        // @ts-expect-error todo
         defaultWhitelistHandler({ login: 'test', logger: { debug: vi.fn() } }),
       ).resolves.toBe(false);
     });
