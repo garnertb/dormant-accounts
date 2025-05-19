@@ -543,7 +543,7 @@ describe('GithubIssueNotifier', () => {
         type: 'user',
       };
 
-      const notification: NotificationIssue = {
+      const notification = {
         id: 789,
         number: 43,
         title: 'active-user',
@@ -552,7 +552,10 @@ describe('GithubIssueNotifier', () => {
         state: 'open',
       };
 
-      await notifier.closeNotificationForActiveUser(user, notification);
+      await notifier.closeNotificationForActiveUser(
+        user,
+        notification as NotificationIssue,
+      );
 
       expect(mockOctokit.rest.issues.createComment).toHaveBeenCalledWith({
         owner: 'test-owner',
