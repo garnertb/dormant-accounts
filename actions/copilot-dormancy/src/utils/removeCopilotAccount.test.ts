@@ -41,6 +41,7 @@ describe('removeCopilotAccount', () => {
     octokit: mockOctokit as any,
     orgOwner: 'test-org',
     removeDormantAccounts: true,
+    allowTeamRemoval: false,
     activity: mockActivity as any,
   };
 
@@ -94,7 +95,7 @@ describe('removeCopilotAccount', () => {
     expect(removeCopilotUserFromTeam).not.toHaveBeenCalled();
   });
 
-  it('should remove user from team when assigned via team', async () => {
+  it('should not remove user from team by default when allowTeamRemoval is false', async () => {
     mockOctokit.rest.copilot.getCopilotSeatDetailsForUser.mockResolvedValue({
       data: {
         pending_cancellation_date: null,
@@ -102,7 +103,30 @@ describe('removeCopilotAccount', () => {
       },
     });
 
+    // Using default params which has allowTeamRemoval: false
     const result = await removeCopilotAccount(defaultParams);
+
+    expect(result).toBe(false);
+    expect(core.info).toHaveBeenCalledWith(
+      expect.stringContaining('team removal is disabled for safety'),
+    );
+    expect(removeCopilotUserFromTeam).not.toHaveBeenCalled();
+    expect(revokeCopilotLicense).not.toHaveBeenCalled();
+    expect(mockActivityRemove).not.toHaveBeenCalled();
+  });
+
+  it('should remove user from team when assigned via team and allowTeamRemoval is true', async () => {
+    mockOctokit.rest.copilot.getCopilotSeatDetailsForUser.mockResolvedValue({
+      data: {
+        pending_cancellation_date: null,
+        assigning_team: { name: 'copilot-team' },
+      },
+    });
+
+    const result = await removeCopilotAccount({
+      ...defaultParams,
+      allowTeamRemoval: true,
+    });
 
     expect(result).toBe(true);
     expect(removeCopilotUserFromTeam).toHaveBeenCalledWith({

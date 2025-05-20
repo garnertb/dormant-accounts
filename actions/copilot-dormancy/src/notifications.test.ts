@@ -70,6 +70,7 @@ describe('Notification Processing', () => {
     baseLabels: ['copilot-dormancy'],
     dryRun: false,
     removeDormantAccounts: false,
+    allowTeamRemoval: false,
     assignUserToIssue: true,
   };
 
@@ -115,6 +116,7 @@ describe('Notification Processing', () => {
           'notifications-duration': '30d',
           'notifications-body': 'Test notification body',
           'notifications-dry-run': 'false',
+          'allow-team-removal': 'false',
         };
         return inputs[name] || '';
       });
@@ -127,6 +129,7 @@ describe('Notification Processing', () => {
         },
         assignUserToIssue: true,
         removeDormantAccounts: false,
+        allowTeamRemoval: false,
         duration: '30d',
         body: 'Test notification body',
         baseLabels: ['copilot-dormancy'],

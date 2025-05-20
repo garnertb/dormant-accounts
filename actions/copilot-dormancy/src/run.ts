@@ -61,6 +61,7 @@ export async function processNotifications(
     body,
     assignUserToIssue,
     removeDormantAccounts,
+    allowTeamRemoval,
     repo,
     baseLabels,
     dryRun,
@@ -82,6 +83,7 @@ export async function processNotifications(
         octokit,
         orgOwner: context.repo.owner,
         removeDormantAccounts,
+        allowTeamRemoval,
         activity: check.activity,
       });
     },

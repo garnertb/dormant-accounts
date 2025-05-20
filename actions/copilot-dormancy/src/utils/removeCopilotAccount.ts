@@ -12,6 +12,7 @@ interface RemoveCopilotAccountParams {
   octokit: OctokitClient;
   orgOwner: string;
   removeDormantAccounts: boolean;
+  allowTeamRemoval: boolean;
   activity: Activity;
 }
 
@@ -23,6 +24,7 @@ interface RemoveCopilotAccountParams {
  * @param octokit - The Octokit instance for API calls
  * @param orgOwner - The organization owner
  * @param removeDormantAccounts - Flag indicating if accounts should actually be removed
+ * @param allowTeamRemoval - Flag indicating if users can be removed from teams that provision Copilot
  * @param activity - Activity tracker to record removals
  * @returns Promise<boolean> - True if account was removed, false otherwise
  */
@@ -31,6 +33,7 @@ export const removeCopilotAccount = async ({
   octokit,
   orgOwner,
   removeDormantAccounts,
+  allowTeamRemoval,
   activity,
 }: RemoveCopilotAccountParams): Promise<boolean> => {
   const {
@@ -57,10 +60,17 @@ export const removeCopilotAccount = async ({
 
   let accountRemoved = false;
   // When `assigning_team` is not null, the user is provisioned access for GitHub Copilot via a team
-  // and we need to remove them from that team
+  // and we need to remove them from that team if allowTeamRemoval is true
   if (assigning_team) {
+    if (!allowTeamRemoval) {
+      core.info(
+        `User ${lastActivityRecord.login} is part of team "${assigning_team.name}" that provisions Copilot access, but team removal is disabled for safety`,
+      );
+      return false;
+    }
+
     core.info(
-      `User ${lastActivityRecord.login} is part of a team, attempting to remove from team ${assigning_team}`,
+      `User ${lastActivityRecord.login} is part of a team, attempting to remove from team ${assigning_team.name}`,
     );
     accountRemoved = await removeCopilotUserFromTeam({
       username: lastActivityRecord.login,

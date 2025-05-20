@@ -109,6 +109,7 @@ describe('Copilot Dormancy Action', () => {
       dryRun: false,
       removeDormantAccounts: false,
       assignUserToIssue: true,
+      allowTeamRemoval: false,
     });
 
     // Setup a fresh mock for the check object

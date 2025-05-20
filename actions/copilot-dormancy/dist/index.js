@@ -34866,10 +34866,11 @@ async function createBranch(octokit, context, branchName) {
  * @param octokit - The Octokit instance for API calls
  * @param orgOwner - The organization owner
  * @param removeDormantAccounts - Flag indicating if accounts should actually be removed
+ * @param allowTeamRemoval - Flag indicating if users can be removed from teams that provision Copilot
  * @param activity - Activity tracker to record removals
  * @returns Promise<boolean> - True if account was removed, false otherwise
  */
-const removeCopilotAccount = async ({ lastActivityRecord, octokit, orgOwner, removeDormantAccounts, activity, }) => {
+const removeCopilotAccount = async ({ lastActivityRecord, octokit, orgOwner, removeDormantAccounts, allowTeamRemoval, activity, }) => {
     const { data: { pending_cancellation_date, assigning_team }, } = await octokit.rest.copilot.getCopilotSeatDetailsForUser({
         username: lastActivityRecord.login,
         org: orgOwner,
@@ -34884,9 +34885,13 @@ const removeCopilotAccount = async ({ lastActivityRecord, octokit, orgOwner, rem
     }
     let accountRemoved = false;
     // When `assigning_team` is not null, the user is provisioned access for GitHub Copilot via a team
-    // and we need to remove them from that team
+    // and we need to remove them from that team if allowTeamRemoval is true
     if (assigning_team) {
-        core.info(`User ${lastActivityRecord.login} is part of a team, attempting to remove from team ${assigning_team}`);
+        if (!allowTeamRemoval) {
+            core.info(`User ${lastActivityRecord.login} is part of team "${assigning_team.name}" that provisions Copilot access, but team removal is disabled for safety`);
+            return false;
+        }
+        core.info(`User ${lastActivityRecord.login} is part of a team, attempting to remove from team ${assigning_team.name}`);
         accountRemoved = await removeCopilotUserFromTeam({
             username: lastActivityRecord.login,
             octokit,
@@ -39402,6 +39407,7 @@ const notificationSchema = objectType({
     dryRun: booleanType().optional().default(false),
     assignUserToIssue: booleanType().optional().default(true),
     removeDormantAccounts: booleanType().optional().default(false),
+    allowTeamRemoval: booleanType().optional().default(false),
 })
     .transform((data) => {
     const { repo: ownerAndRepo, ...rest } = data;
@@ -39430,6 +39436,7 @@ function getNotificationContext() {
         dryRun: core.getBooleanInput('notifications-dry-run'),
         assignUserToIssue: core.getBooleanInput('assign-user-to-notification-issue'),
         removeDormantAccounts: core.getBooleanInput('remove-dormant-accounts'),
+        allowTeamRemoval: core.getBooleanInput('allow-team-removal'),
     });
     if (!parsedNotification.success) {
         core.setFailed(`Invalid notification inputs: ${parsedNotification.error.message}`);
@@ -39512,7 +39519,7 @@ const formatDate = (isoString) => {
     }
 };
 async function processNotifications(octokit, context, dormantAccounts, check) {
-    const { duration: gracePeriod, body, assignUserToIssue, removeDormantAccounts, repo, baseLabels, dryRun, } = context;
+    const { duration: gracePeriod, body, assignUserToIssue, removeDormantAccounts, allowTeamRemoval, repo, baseLabels, dryRun, } = context;
     const notifier = new GithubIssueNotifier({
         githubClient: octokit,
         gracePeriod,
@@ -39529,6 +39536,7 @@ async function processNotifications(octokit, context, dormantAccounts, check) {
                 octokit,
                 orgOwner: context.repo.owner,
                 removeDormantAccounts,
+                allowTeamRemoval,
                 activity: check.activity,
             });
         },
