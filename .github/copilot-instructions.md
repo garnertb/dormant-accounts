@@ -1,0 +1,5 @@
+- Use `pnpm` for package management.
+- Keep code as simple as possible and avoid unnecessary complexity.
+- use vitest for testing
+- Use `eslint` for linting and `prettier` for formatting.
+- In general, don't cover logging in tests cases
