@@ -8,30 +8,30 @@ import {
 import { Activity } from 'dormant-accounts';
 
 interface RemoveCopilotAccountParams {
+  activity: Activity;
+  allowTeamRemoval: boolean;
   lastActivityRecord: LastActivityRecord;
   octokit: OctokitClient;
-  orgOwner: string;
+  owner: string;
   removeDormantAccounts: boolean;
-  allowTeamRemoval: boolean;
-  activity: Activity;
 }
 
 /**
  * Removes a user's Copilot license by revoking directly or removing them from a Copilot team
  * based on their provisioning method.
  *
+ * @param activity - Activity tracker to record removals
+ * @param allowTeamRemoval - Flag indicating if users can be removed from teams that provision Copilot
  * @param lastActivityRecord - User activity record containing login info
  * @param octokit - The Octokit instance for API calls
- * @param orgOwner - The organization owner
+ * @param owner - The organization owner
  * @param removeDormantAccounts - Flag indicating if accounts should actually be removed
- * @param allowTeamRemoval - Flag indicating if users can be removed from teams that provision Copilot
- * @param activity - Activity tracker to record removals
  * @returns Promise<boolean> - True if account was removed, false otherwise
  */
 export const removeCopilotAccount = async ({
   lastActivityRecord,
   octokit,
-  orgOwner,
+  owner,
   removeDormantAccounts,
   allowTeamRemoval,
   activity,
@@ -40,7 +40,7 @@ export const removeCopilotAccount = async ({
     data: { pending_cancellation_date, assigning_team },
   } = await octokit.rest.copilot.getCopilotSeatDetailsForUser({
     username: lastActivityRecord.login,
-    org: orgOwner,
+    org: owner,
   });
 
   if (pending_cancellation_date) {
@@ -75,14 +75,14 @@ export const removeCopilotAccount = async ({
     accountRemoved = await removeCopilotUserFromTeam({
       username: lastActivityRecord.login,
       octokit,
-      org: orgOwner,
+      org: owner,
       dryRun: !removeDormantAccounts,
     });
   } else {
     accountRemoved = await revokeCopilotLicense({
       logins: lastActivityRecord.login,
       octokit,
-      org: orgOwner,
+      org: owner,
       dryRun: !removeDormantAccounts,
     });
   }

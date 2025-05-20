@@ -39,7 +39,7 @@ describe('removeCopilotAccount', () => {
       type: 'copilot',
     } as any,
     octokit: mockOctokit as any,
-    orgOwner: 'test-org',
+    owner: 'test-org',
     removeDormantAccounts: true,
     allowTeamRemoval: false,
     activity: mockActivity as any,

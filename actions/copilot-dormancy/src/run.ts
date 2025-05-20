@@ -81,7 +81,7 @@ export async function processNotifications(
       return removeCopilotAccount({
         lastActivityRecord,
         octokit,
-        orgOwner: context.repo.owner,
+        owner: context.repo.owner,
         removeDormantAccounts,
         allowTeamRemoval,
         activity: check.activity,

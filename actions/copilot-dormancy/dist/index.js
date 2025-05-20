@@ -34862,18 +34862,18 @@ async function createBranch(octokit, context, branchName) {
  * Removes a user's Copilot license by revoking directly or removing them from a Copilot team
  * based on their provisioning method.
  *
+ * @param activity - Activity tracker to record removals
+ * @param allowTeamRemoval - Flag indicating if users can be removed from teams that provision Copilot
  * @param lastActivityRecord - User activity record containing login info
  * @param octokit - The Octokit instance for API calls
- * @param orgOwner - The organization owner
+ * @param owner - The organization owner
  * @param removeDormantAccounts - Flag indicating if accounts should actually be removed
- * @param allowTeamRemoval - Flag indicating if users can be removed from teams that provision Copilot
- * @param activity - Activity tracker to record removals
  * @returns Promise<boolean> - True if account was removed, false otherwise
  */
-const removeCopilotAccount = async ({ lastActivityRecord, octokit, orgOwner, removeDormantAccounts, allowTeamRemoval, activity, }) => {
+const removeCopilotAccount = async ({ lastActivityRecord, octokit, owner, removeDormantAccounts, allowTeamRemoval, activity, }) => {
     const { data: { pending_cancellation_date, assigning_team }, } = await octokit.rest.copilot.getCopilotSeatDetailsForUser({
         username: lastActivityRecord.login,
-        org: orgOwner,
+        org: owner,
     });
     if (pending_cancellation_date) {
         core.info(`User ${lastActivityRecord.login} already has a pending cancellation date: ${pending_cancellation_date}`);
@@ -34895,7 +34895,7 @@ const removeCopilotAccount = async ({ lastActivityRecord, octokit, orgOwner, rem
         accountRemoved = await removeCopilotUserFromTeam({
             username: lastActivityRecord.login,
             octokit,
-            org: orgOwner,
+            org: owner,
             dryRun: !removeDormantAccounts,
         });
     }
@@ -34903,7 +34903,7 @@ const removeCopilotAccount = async ({ lastActivityRecord, octokit, orgOwner, rem
         accountRemoved = await revokeCopilotLicense({
             logins: lastActivityRecord.login,
             octokit,
-            org: orgOwner,
+            org: owner,
             dryRun: !removeDormantAccounts,
         });
     }
@@ -39534,7 +39534,7 @@ async function processNotifications(octokit, context, dormantAccounts, check) {
             return removeCopilotAccount({
                 lastActivityRecord,
                 octokit,
-                orgOwner: context.repo.owner,
+                owner: context.repo.owner,
                 removeDormantAccounts,
                 allowTeamRemoval,
                 activity: check.activity,
