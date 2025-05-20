@@ -123,8 +123,7 @@ export const removeAccount: RemoveUserHandler<
  * @param octokit - The Octokit instance for making API calls.
  * @param org - The organization to remove users from.
  * @param dryRun - If true, only logs the actions without executing them.
- * @returns A promise `true` if the user was removed, `false` otherwise.
- *
+ * @returns A promise `true` if the user(s) were removed, `false` otherwise.
  */
 export const revokeCopilotLicense = async (config: {
   logins: string | string[];
@@ -142,17 +141,21 @@ export const revokeCopilotLicense = async (config: {
 
   if (dryRun) {
     logger.info(`DRY RUN: Removing ${selected_usernames} from ${org}`);
-  } else {
-    const {
-      data: { seats_cancelled },
-    } = await octokit.rest.copilot.cancelCopilotSeatAssignmentForUsers({
-      org,
-      selected_usernames,
-    });
-    logger.info(`Removed ${seats_cancelled} license from ${org}`);
-    return seats_cancelled === 1;
+    return false;
   }
-  return false;
+
+  const {
+    data: { seats_cancelled },
+  } = await octokit.rest.copilot.cancelCopilotSeatAssignmentForUsers({
+    org,
+    selected_usernames,
+  });
+  logger.info(`Removed ${seats_cancelled} license from ${org}`);
+
+  // todo: need to think about what true/false means in the context of
+  // more than one user, however for now, all actual uses of this function are
+  // for a single user
+  return seats_cancelled === selected_usernames.length;
 };
 
 /**
