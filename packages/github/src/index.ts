@@ -4,6 +4,7 @@ export {
   GithubIssueNotifier,
   createDefaultNotificationBodyHandler,
   revokeCopilotLicense,
+  removeCopilotUserFromTeam,
   type ProcessingResult,
 } from './provider';
 
