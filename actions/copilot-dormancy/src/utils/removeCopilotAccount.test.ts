@@ -1,0 +1,140 @@
+import { describe, it, expect, vi, beforeEach } from 'vitest';
+
+// Mock dependencies before importing the module being tested
+vi.mock('@actions/core', () => ({
+  info: vi.fn(),
+}));
+
+vi.mock('@dormant-accounts/github', () => ({
+  revokeCopilotLicense: vi.fn(),
+  removeCopilotUserFromTeam: vi.fn(),
+}));
+
+// Import after mocking
+import { removeCopilotAccount } from './removeCopilotAccount';
+import * as core from '@actions/core';
+import {
+  revokeCopilotLicense,
+  removeCopilotUserFromTeam,
+} from '@dormant-accounts/github';
+
+describe('removeCopilotAccount', () => {
+  const mockOctokit = {
+    rest: {
+      copilot: {
+        getCopilotSeatDetailsForUser: vi.fn(),
+      },
+    },
+  };
+
+  const mockActivityRemove = vi.fn();
+  const mockActivity = {
+    remove: mockActivityRemove,
+  };
+
+  const defaultParams = {
+    lastActivityRecord: {
+      login: 'testuser',
+      lastActivity: new Date(),
+      type: 'copilot',
+    } as any,
+    octokit: mockOctokit as any,
+    orgOwner: 'test-org',
+    removeDormantAccounts: true,
+    activity: mockActivity as any,
+  };
+
+  beforeEach(() => {
+    vi.resetAllMocks();
+    mockOctokit.rest.copilot.getCopilotSeatDetailsForUser.mockResolvedValue({
+      data: {
+        pending_cancellation_date: null,
+        assigning_team: null,
+      },
+    });
+    vi.mocked(revokeCopilotLicense).mockResolvedValue(true);
+    vi.mocked(removeCopilotUserFromTeam).mockResolvedValue(true);
+  });
+
+  it('should return true if user has a pending cancellation date', async () => {
+    mockOctokit.rest.copilot.getCopilotSeatDetailsForUser.mockResolvedValue({
+      data: {
+        pending_cancellation_date: '2025-06-01',
+        assigning_team: null,
+      },
+    });
+
+    const result = await removeCopilotAccount({
+      ...defaultParams,
+    });
+
+    expect(result).toBe(true);
+    expect(core.info).toHaveBeenCalledWith(
+      expect.stringContaining('pending cancellation date'),
+    );
+    expect(revokeCopilotLicense).not.toHaveBeenCalled();
+    expect(removeCopilotUserFromTeam).not.toHaveBeenCalled();
+  });
+
+  it('should return false when removeDormantAccounts is false and no pending cancellation', async () => {
+    mockOctokit.rest.copilot.getCopilotSeatDetailsForUser.mockResolvedValue({
+      data: {
+        pending_cancellation_date: null,
+        assigning_team: null,
+      },
+    });
+
+    const result = await removeCopilotAccount({
+      ...defaultParams,
+      removeDormantAccounts: false,
+    });
+
+    expect(result).toBe(false);
+    expect(revokeCopilotLicense).not.toHaveBeenCalled();
+    expect(removeCopilotUserFromTeam).not.toHaveBeenCalled();
+  });
+
+  it('should remove user from team when assigned via team', async () => {
+    mockOctokit.rest.copilot.getCopilotSeatDetailsForUser.mockResolvedValue({
+      data: {
+        pending_cancellation_date: null,
+        assigning_team: { name: 'copilot-team' },
+      },
+    });
+
+    const result = await removeCopilotAccount(defaultParams);
+
+    expect(result).toBe(true);
+    expect(removeCopilotUserFromTeam).toHaveBeenCalledWith({
+      username: 'testuser',
+      octokit: mockOctokit,
+      org: 'test-org',
+      dryRun: false,
+    });
+    expect(revokeCopilotLicense).not.toHaveBeenCalled();
+    expect(mockActivityRemove).toHaveBeenCalledWith('testuser');
+  });
+
+  it('should revoke license when not assigned via team', async () => {
+    const result = await removeCopilotAccount(defaultParams);
+
+    expect(result).toBe(true);
+    expect(revokeCopilotLicense).toHaveBeenCalledWith({
+      logins: 'testuser',
+      octokit: mockOctokit,
+      org: 'test-org',
+      dryRun: false,
+    });
+    expect(removeCopilotUserFromTeam).not.toHaveBeenCalled();
+    expect(mockActivityRemove).toHaveBeenCalledWith('testuser');
+  });
+
+  it('should not update activity when account removal fails', async () => {
+    vi.mocked(revokeCopilotLicense).mockResolvedValue(false);
+
+    const result = await removeCopilotAccount(defaultParams);
+
+    expect(result).toBe(false);
+    expect(mockActivityRemove).not.toHaveBeenCalled();
+  });
+});
