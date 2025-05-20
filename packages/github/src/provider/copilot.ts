@@ -123,7 +123,7 @@ export const removeAccount: RemoveUserHandler<
  * @param octokit - The Octokit instance for making API calls.
  * @param org - The organization to remove users from.
  * @param dryRun - If true, only logs the actions without executing them.
- * @returns A promise true if the user was removed, false otherwise.
+ * @returns A promise `true` if the user was removed, `false` otherwise.
  *
  */
 export const revokeCopilotLicense = async (config: {
