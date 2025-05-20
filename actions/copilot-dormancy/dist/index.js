@@ -34254,11 +34254,11 @@ function dist_dormancyCheck(config) {
 }
 
 //# sourceMappingURL=index.js.map
-;// CONCATENATED MODULE: ../../packages/github/dist/chunk-QT47JTUK.js
+;// CONCATENATED MODULE: ../../packages/github/dist/chunk-L2XFFE4X.js
 // src/provider/audit-log.ts
 
 
-var fetchAuditLogActivity = async ({ lastFetchTime, octokit, org, logger: logger2 }) => {
+var fetchAuditLogActivity = async ({ lastFetchTime, octokit, org, logger: logger4 }) => {
   const lastFetchTimeAsDate = new Date(lastFetchTime);
   const payload = {
     org,
@@ -34267,7 +34267,7 @@ var fetchAuditLogActivity = async ({ lastFetchTime, octokit, org, logger: logger
     per_page: 100,
     order: "desc"
   };
-  logger2.debug(`Fetching audit log for ${org} since ${lastFetchTimeAsDate}`);
+  logger4.debug(`Fetching audit log for ${org} since ${lastFetchTimeAsDate}`);
   try {
     const processed = {};
     try {
@@ -34286,7 +34286,7 @@ var fetchAuditLogActivity = async ({ lastFetchTime, octokit, org, logger: logger
           if (!processed[actor]?.lastActivity || lastActivity && lastActivity > processed[actor].lastActivity) {
             processed[actor] = record;
             const log = lastActivity ? `${ms(Date.now() - lastActivity.getTime())} ago` : "unknown";
-            logger2.debug(
+            logger4.debug(
               `Activity record found for ${actor} - ${log}${record.type ? ` - ${record.type}` : ""}`
             );
           }
@@ -34294,7 +34294,7 @@ var fetchAuditLogActivity = async ({ lastFetchTime, octokit, org, logger: logger
       }
     } catch (err) {
       if (err.status === 404) {
-        logger2.error(
+        logger4.error(
           `Audit log not found for organization ${org}. The organization may not have audit log access.`
         );
         return [];
@@ -34303,13 +34303,13 @@ var fetchAuditLogActivity = async ({ lastFetchTime, octokit, org, logger: logger
     }
     return Object.values(processed);
   } catch (error) {
-    logger2.error("Failed to fetch audit log", { error });
+    logger4.error("Failed to fetch audit log", { error });
     throw error;
   }
 };
-var defaultWhitelistHandler = async ({ login, logger: logger2 }) => {
+var defaultWhitelistHandler = async ({ login, logger: logger4 }) => {
   const resolution = login.includes("[bot]");
-  logger2.debug(`Whitelist check for ${login}: ${resolution}`);
+  logger4.debug(`Whitelist check for ${login}: ${resolution}`);
   return resolution;
 };
 var githubDormancy = (config) => {
@@ -34330,9 +34330,9 @@ var githubDormancy = (config) => {
 // src/provider/copilot.ts
 
 
-var chunk_QT47JTUK_logger = console;
-var fetchLatestActivityFromCoPilot = async ({ octokit, org, checkType, logger: logger2 }) => {
-  logger2.debug(checkType, `Fetching audit log for ${org}`);
+var chunk_L2XFFE4X_logger = console;
+var fetchLatestActivityFromCoPilot = async ({ octokit, org, checkType, logger: logger4 }) => {
+  logger4.debug(checkType, `Fetching audit log for ${org}`);
   const payload = {
     org,
     per_page: 100
@@ -34346,7 +34346,7 @@ var fetchLatestActivityFromCoPilot = async ({ octokit, org, checkType, logger: l
     for await (const {
       data: { seats, total_seats }
     } of iterator) {
-      logger2.debug(
+      logger4.debug(
         checkType,
         `Found ${total_seats} total copilot seats in ${org} org`
       );
@@ -34357,7 +34357,7 @@ var fetchLatestActivityFromCoPilot = async ({ octokit, org, checkType, logger: l
         if (!actor)
           continue;
         if (seat.pending_cancellation_date) {
-          logger2.debug(
+          logger4.debug(
             checkType,
             `Skipping activity record for ${actor} due to pending cancellation`
           );
@@ -34372,7 +34372,7 @@ var fetchLatestActivityFromCoPilot = async ({ octokit, org, checkType, logger: l
         if (!processed[actor]?.lastActivity || lastActivity && lastActivity > processed[actor].lastActivity) {
           processed[actor] = record;
           const log = lastActivity ? `${node_modules_ms(Date.now() - lastActivity.getTime())} ago` : "never";
-          logger2.debug(
+          logger4.debug(
             `Activity record found for ${actor} - ${log}${record.type ? ` - ${record.type}` : ""}`
           );
         }
@@ -34380,7 +34380,7 @@ var fetchLatestActivityFromCoPilot = async ({ octokit, org, checkType, logger: l
     }
     return Object.values(processed);
   } catch (error) {
-    logger2.error(checkType, "Failed to fetch audit log", { error });
+    logger4.error(checkType, "Failed to fetch audit log", { error });
     throw error;
   }
 };
@@ -34399,18 +34399,17 @@ var revokeCopilotLicense = async (config) => {
     selected_usernames = [selected_usernames];
   }
   if (dryRun) {
-    chunk_QT47JTUK_logger.info(`DRY RUN: Removing ${selected_usernames} from ${org}`);
-  } else {
-    const {
-      data: { seats_cancelled }
-    } = await octokit.rest.copilot.cancelCopilotSeatAssignmentForUsers({
-      org,
-      selected_usernames
-    });
-    chunk_QT47JTUK_logger.info(`Removed ${seats_cancelled} license from ${org}`);
-    return seats_cancelled === 1;
+    chunk_L2XFFE4X_logger.info(`DRY RUN: Removing ${selected_usernames} from ${org}`);
+    return false;
   }
-  return false;
+  const {
+    data: { seats_cancelled }
+  } = await octokit.rest.copilot.cancelCopilotSeatAssignmentForUsers({
+    org,
+    selected_usernames
+  });
+  chunk_L2XFFE4X_logger.info(`Removed ${seats_cancelled} license from ${org}`);
+  return seats_cancelled === selected_usernames.length;
 };
 var copilotDormancy = (config) => {
   const {
@@ -34742,8 +34741,92 @@ function createDefaultNotificationBodyHandler(notificationTemplate) {
   };
 }
 
+// src/provider/isTeamIdpSynced.ts
+var logger2 = console;
+async function isTeamIdpSynced({
+  octokit,
+  org,
+  team_slug
+}) {
+  try {
+    const {
+      data: { groups = [] }
+    } = await octokit.request(
+      "GET /orgs/{org}/teams/{team_slug}/team-sync/group-mappings",
+      {
+        org,
+        team_slug
+      }
+    );
+    if (groups.length > 0) {
+      logger2.debug(
+        `Team ${team_slug} is IdP synced with ${groups.length} group mappings`
+      );
+      return true;
+    }
+    logger2.debug(`Team ${team_slug} is not IdP synced.`);
+    return false;
+  } catch (error) {
+    logger2.error(
+      `Error checking IdP sync status for team ${team_slug}:`,
+      error
+    );
+    throw error;
+  }
+}
 
-//# sourceMappingURL=chunk-QT47JTUK.js.map
+// src/provider/removeCopilotUserFromTeam.ts
+var logger3 = console;
+var removeCopilotUserFromTeam = async ({
+  username,
+  octokit,
+  org,
+  dryRun = false
+}) => {
+  try {
+    const {
+      data: { assigning_team }
+    } = await octokit.rest.copilot.getCopilotSeatDetailsForUser({
+      org,
+      username
+    });
+    if (!assigning_team) {
+      logger3.debug(`User ${username} is not assigned to Copilot via a team`);
+      return false;
+    }
+    const { id, name, slug: team_slug } = assigning_team;
+    logger3.debug(
+      `User ${username} is assigned to Copilot via team ${name} (id: ${id})`
+    );
+    if (await isTeamIdpSynced({ octokit, org, team_slug })) {
+      logger3.info(
+        `User ${username} must be removed from team ${name} via the IdP to revoke Copilot license`
+      );
+      return false;
+    }
+    if (dryRun) {
+      logger3.info(
+        `DRY RUN: Would remove ${username} from team ${name} to revoke Copilot license`
+      );
+      return false;
+    }
+    await octokit.rest.teams.removeMembershipForUserInOrg({
+      org,
+      team_slug,
+      username
+    });
+    logger3.info(
+      `Successfully removed ${username} from team ${team_slug} to revoke Copilot license`
+    );
+    return true;
+  } catch (error) {
+    logger3.error(`Error removing ${username} from team:`, error);
+    return false;
+  }
+};
+
+
+//# sourceMappingURL=chunk-L2XFFE4X.js.map
 ;// CONCATENATED MODULE: ./src/utils/createBranch.ts
 
 /**
@@ -34771,6 +34854,60 @@ async function createBranch(octokit, context, branchName) {
     });
     core.info(`📖 created activity log branch: ${branchName}`);
 }
+
+;// CONCATENATED MODULE: ./src/utils/removeCopilotAccount.ts
+
+
+/**
+ * Removes a user's Copilot license by revoking directly or removing them from a Copilot team
+ * based on their provisioning method.
+ *
+ * @param lastActivityRecord - User activity record containing login info
+ * @param octokit - The Octokit instance for API calls
+ * @param orgOwner - The organization owner
+ * @param removeDormantAccounts - Flag indicating if accounts should actually be removed
+ * @param activity - Activity tracker to record removals
+ * @returns Promise<boolean> - True if account was removed, false otherwise
+ */
+const removeCopilotAccount = async ({ lastActivityRecord, octokit, orgOwner, removeDormantAccounts, activity, }) => {
+    const { data: { pending_cancellation_date, assigning_team }, } = await octokit.rest.copilot.getCopilotSeatDetailsForUser({
+        username: lastActivityRecord.login,
+        org: orgOwner,
+    });
+    if (pending_cancellation_date) {
+        core.info(`User ${lastActivityRecord.login} already has a pending cancellation date: ${pending_cancellation_date}`);
+        return true;
+    }
+    if (!removeDormantAccounts) {
+        core.info(`remove-dormant-accounts setting is disabled, checking if user ${lastActivityRecord.login} has been removed from Copilot externally`);
+        return false;
+    }
+    let accountRemoved = false;
+    // When `assigning_team` is not null, the user is provisioned access for GitHub Copilot via a team
+    // and we need to remove them from that team
+    if (assigning_team) {
+        core.info(`User ${lastActivityRecord.login} is part of a team, attempting to remove from team ${assigning_team}`);
+        accountRemoved = await removeCopilotUserFromTeam({
+            username: lastActivityRecord.login,
+            octokit,
+            org: orgOwner,
+            dryRun: !removeDormantAccounts,
+        });
+    }
+    else {
+        accountRemoved = await revokeCopilotLicense({
+            logins: lastActivityRecord.login,
+            octokit,
+            org: orgOwner,
+            dryRun: !removeDormantAccounts,
+        });
+    }
+    if (accountRemoved) {
+        core.info(`Successfully removed Copilot license for ${lastActivityRecord.login}`);
+        await activity.remove(lastActivityRecord.login);
+    }
+    return accountRemoved;
+};
 
 ;// CONCATENATED MODULE: ./src/utils/getActivityLog.ts
 
@@ -39345,6 +39482,7 @@ async function updateActivityLog(octokit, context, options) {
 
 
 
+
 // Function to safely stringify data for output
 const safeStringify = (data) => {
     try {
@@ -39386,29 +39524,13 @@ async function processNotifications(octokit, context, dormantAccounts, check) {
         assignUserToIssue,
         dryRun,
         removeAccount: async ({ lastActivityRecord }) => {
-            if (!removeDormantAccounts) {
-                core.info(`remove-dormant-accounts setting is disabled, checking if user ${lastActivityRecord.login} has been removed from Copilot externally`);
-                const { data: { pending_cancellation_date } } = await octokit.rest.copilot.getCopilotSeatDetailsForUser({
-                    username: lastActivityRecord.login,
-                    org: context.repo.owner,
-                });
-                if (pending_cancellation_date) {
-                    core.info(`User ${lastActivityRecord.login} has a pending cancellation date: ${pending_cancellation_date}`);
-                    return true;
-                }
-                return false;
-            }
-            const accountRemoved = await revokeCopilotLicense({
-                logins: lastActivityRecord.login,
+            return removeCopilotAccount({
+                lastActivityRecord,
                 octokit,
-                org: context.repo.owner,
-                dryRun: !removeDormantAccounts,
+                orgOwner: context.repo.owner,
+                removeDormantAccounts,
+                activity: check.activity,
             });
-            if (accountRemoved) {
-                core.info(`Successfully removed Copilot license for ${lastActivityRecord.login}`);
-                await check.activity.remove(lastActivityRecord.login);
-            }
-            return accountRemoved;
         },
     });
     return notifier.processDormantUsers(dormantAccounts);
