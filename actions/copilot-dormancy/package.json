@@ -1,6 +1,6 @@
 {
   "name": "@dormant-accounts/copilpot-dormancy-action",
-  "version": "0.1.3",
+  "version": "0.1.8",
   "description": "A GitHub Action to check for dormant accounts in a GitHub organization.",
   "keywords": [
     "github",
