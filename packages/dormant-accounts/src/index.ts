@@ -315,11 +315,13 @@ export class DormantAccountCheck<TConfig> {
     return {
       all: async () => this.db.getRawData(),
       remove: async (user: LastActivityRecord | string) => {
+        const userLogin = typeof user === 'string' ? user : user.login;
         const result = await this.db.removeUserActivityRecord(user);
+
         if (result) {
-          this.logger.success(`Removed user ${user} from database`);
+          this.logger.success(`Removed user ${userLogin} from database`);
         } else {
-          this.logger.warn(`User ${user} not found in database`);
+          this.logger.warn(`User ${userLogin} not found in database`);
         }
         return result;
       },
