@@ -162,9 +162,9 @@ export class DormantAccountCheck<TConfig> {
         this.logger.start('Processing complete activity results');
 
         const allUsers = await this.listAccounts();
-        const fetchedUserLogins = entries.map((entry) => entry.login);
+        const fetchedUserLoginsSet = new Set(entries.map((entry) => entry.login));
         const usersToRemove = allUsers.filter(
-          (user) => !fetchedUserLogins.includes(user.login),
+          (user) => !fetchedUserLoginsSet.has(user.login),
         );
 
         if (usersToRemove.length > 0) {
