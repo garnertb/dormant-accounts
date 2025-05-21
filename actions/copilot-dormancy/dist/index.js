@@ -34855,7 +34855,7 @@ async function createBranch(octokit, context, branchName) {
     core.info(`📖 created activity log branch: ${branchName}`);
 }
 
-;// CONCATENATED MODULE: ./src/utils/removeCopilotAccount.ts
+;// CONCATENATED MODULE: ./src/utils/removeCopilotLicense.ts
 
 
 /**
@@ -34870,7 +34870,7 @@ async function createBranch(octokit, context, branchName) {
  * @param removeDormantAccounts - Flag indicating if accounts should actually be removed
  * @returns Promise<boolean> - True if account was removed, false otherwise
  */
-const removeCopilotAccount = async ({ lastActivityRecord, octokit, owner, removeDormantAccounts, allowTeamRemoval, activity, }) => {
+const removeCopilotLicense = async ({ lastActivityRecord, octokit, owner, removeDormantAccounts, allowTeamRemoval, activity, }) => {
     const { data: { pending_cancellation_date, assigning_team }, } = await octokit.rest.copilot.getCopilotSeatDetailsForUser({
         username: lastActivityRecord.login,
         org: owner,
@@ -39531,7 +39531,7 @@ async function processNotifications(octokit, context, dormantAccounts, check) {
         assignUserToIssue,
         dryRun,
         removeAccount: async ({ lastActivityRecord }) => {
-            return removeCopilotAccount({
+            return removeCopilotLicense({
                 lastActivityRecord,
                 octokit,
                 owner: context.repo.owner,
