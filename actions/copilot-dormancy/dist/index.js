@@ -34135,9 +34135,11 @@ var DormantAccountCheck = class {
       if (this.activityResultType === "complete") {
         this.logger.start("Processing complete activity results");
         const allUsers = await this.listAccounts();
-        const fetchedUserLogins = entries.map((entry) => entry.login);
+        const fetchedUserLoginsSet = new Set(
+          entries.map((entry) => entry.login)
+        );
         const usersToRemove = allUsers.filter(
-          (user) => !fetchedUserLogins.includes(user.login)
+          (user) => !fetchedUserLoginsSet.has(user.login)
         );
         if (usersToRemove.length > 0) {
           this.logger.info(
@@ -34262,11 +34264,12 @@ var DormantAccountCheck = class {
     return {
       all: async () => this.db.getRawData(),
       remove: async (user) => {
+        const userLogin = typeof user === "string" ? user : user.login;
         const result = await this.db.removeUserActivityRecord(user);
         if (result) {
-          this.logger.success(`Removed user ${user} from database`);
+          this.logger.success(`Removed user ${userLogin} from database`);
         } else {
-          this.logger.warn(`User ${user} not found in database`);
+          this.logger.warn(`User ${userLogin} not found in database`);
         }
         return result;
       }
