@@ -7,13 +7,10 @@ import {
 import { LastActivityRecord } from 'dormant-accounts';
 import { OctokitClient } from './types';
 import { GetResponseDataTypeFromEndpointMethod } from '@octokit/types';
+import { getNotifications } from './getNotifications';
 
 export type NotificationIssue = GetResponseDataTypeFromEndpointMethod<
   OctokitClient['rest']['issues']['create']
->;
-type CreateNotificationParams = Exclude<
-  Parameters<OctokitClient['rest']['issues']['create']>[0],
-  'owner' | 'repo'
 >;
 
 type NotificationHandlerContext = {
@@ -227,12 +224,15 @@ export class GithubIssueNotifier implements DormantAccountNotifier {
       currentDormantUsers.map((user) => user.login),
     );
 
-    // Get all open notifications
-    const { data: openIssues } = await this.octokit.rest.issues.listForRepo({
+    // Get all open notifications with proper pagination
+    const openIssues = await getNotifications({
+      octokit: this.octokit,
       owner: this.config.repository.owner,
       repo: this.config.repository.repo,
-      state: 'open',
-      labels: this.config.repository.baseLabels.join(','),
+      params: {
+        state: 'open',
+        labels: this.config.repository.baseLabels.join(','),
+      },
     });
 
     // Find notifications for users who are no longer dormant
@@ -404,14 +404,17 @@ export class GithubIssueNotifier implements DormantAccountNotifier {
   async getNotificationsByStatus(
     status: NotificationStatus,
   ): Promise<Array<{ user: string; notification: NotificationIssue }>> {
-    const { data } = await this.octokit.rest.issues.listForRepo({
+    const issues = await getNotifications({
+      octokit: this.octokit,
       owner: this.config.repository.owner,
       repo: this.config.repository.repo,
-      state: 'all',
-      labels: `${status}`,
+      params: {
+        state: 'open',
+        labels: `${status}`,
+      },
     });
 
-    return data.map((issue) => ({
+    return issues.map((issue) => ({
       user: issue.title,
       notification: issue as NotificationIssue,
     }));
@@ -425,16 +428,19 @@ export class GithubIssueNotifier implements DormantAccountNotifier {
   private async getExistingNotification(
     username: string,
   ): Promise<NotificationIssue | null> {
-    const { data } = await this.octokit.rest.issues.listForRepo({
+    const issues = await getNotifications({
+      octokit: this.octokit,
       owner: this.config.repository.owner,
       repo: this.config.repository.repo,
-      state: 'open',
-      labels: this.config.repository.baseLabels.join(','),
-      assignee: this.config.assignUserToIssue ? username : undefined,
+      params: {
+        state: 'open',
+        labels: this.config.repository.baseLabels.join(','),
+        assignee: this.config.assignUserToIssue ? username : undefined,
+      },
     });
 
     return (
-      (data.find((issue) => issue.title === username) as NotificationIssue) ||
+      (issues.find((issue) => issue.title === username) as NotificationIssue) ||
       null
     );
   }

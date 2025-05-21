@@ -31,6 +31,10 @@ describe('GithubIssueNotifier', () => {
   };
 
   const createMockOctokit = () => ({
+    paginate: vi.fn().mockImplementation(async (endpoint, params) => {
+      const result = await endpoint(params);
+      return result.data;
+    }),
     rest: {
       issues: {
         create: vi.fn().mockResolvedValue({
