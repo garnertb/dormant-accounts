@@ -34058,6 +34058,7 @@ var DormantAccountCheck = class {
     this.config = config;
     logger.debug("DormantAccountCheck initialized with config:", this.config);
     this.type = config.type;
+    this.activityResultType = config.activityResultType || "partial";
     this.db = new Database(this.type, this.config.dbPath);
     this.dryRun = this.config.dryRun === true;
     this.duration = this.config.duration || "30d";
@@ -34131,6 +34132,38 @@ var DormantAccountCheck = class {
         )
       );
       this.logger.success(`Finished logging latest activity`);
+      if (this.activityResultType === "complete") {
+        this.logger.start("Processing complete activity results");
+        const allUsers = await this.listAccounts();
+        const fetchedUserLoginsSet = new Set(
+          entries.map((entry) => entry.login)
+        );
+        const usersToRemove = allUsers.filter(
+          (user) => !fetchedUserLoginsSet.has(user.login)
+        );
+        if (usersToRemove.length > 0) {
+          this.logger.info(
+            `Found ${usersToRemove.length} accounts no longer in the system`
+          );
+          for (const user of usersToRemove) {
+            this.logger.info(
+              `Removing user ${user.login} as they are no longer in the system`
+            );
+            if (!this.dryRun) {
+              await this.activity.remove(user);
+            } else {
+              this.logger.info(`[DRY RUN] Would remove user ${user.login}`);
+            }
+          }
+          this.logger.success(
+            `Removed ${usersToRemove.length} accounts no longer in the system`
+          );
+        } else {
+          this.logger.info(
+            "No accounts to remove based on complete activity results"
+          );
+        }
+      }
       await this.db.updateLastRun(fetchStartTime);
       this.logger.success(`Completed fetching and logging latest activity`);
     } catch (error) {
@@ -34231,11 +34264,12 @@ var DormantAccountCheck = class {
     return {
       all: async () => this.db.getRawData(),
       remove: async (user) => {
+        const userLogin = typeof user === "string" ? user : user.login;
         const result = await this.db.removeUserActivityRecord(user);
         if (result) {
-          this.logger.success(`Removed user ${user} from database`);
+          this.logger.success(`Removed user ${userLogin} from database`);
         } else {
-          this.logger.warn(`User ${user} not found in database`);
+          this.logger.warn(`User ${userLogin} not found in database`);
         }
         return result;
       }
@@ -34254,7 +34288,7 @@ function dist_dormancyCheck(config) {
 }
 
 //# sourceMappingURL=index.js.map
-;// CONCATENATED MODULE: ../../packages/github/dist/chunk-O4QT4OYP.js
+;// CONCATENATED MODULE: ../../packages/github/dist/chunk-JJXOG77W.js
 // src/provider/audit-log.ts
 
 
@@ -34330,7 +34364,7 @@ var githubDormancy = (config) => {
 // src/provider/copilot.ts
 
 
-var chunk_O4QT4OYP_logger = console;
+var chunk_JJXOG77W_logger = console;
 var fetchLatestActivityFromCoPilot = async ({ octokit, org, checkType, logger: logger2 }) => {
   logger2.debug(checkType, `Fetching audit log for ${org}`);
   const payload = {
@@ -34399,7 +34433,7 @@ var revokeCopilotLicense = async (config) => {
     selected_usernames = [selected_usernames];
   }
   if (dryRun) {
-    chunk_O4QT4OYP_logger.info(`DRY RUN: Removing ${selected_usernames} from ${org}`);
+    chunk_JJXOG77W_logger.info(`DRY RUN: Removing ${selected_usernames} from ${org}`);
   } else {
     const {
       data: { seats_cancelled }
@@ -34407,7 +34441,7 @@ var revokeCopilotLicense = async (config) => {
       org,
       selected_usernames
     });
-    chunk_O4QT4OYP_logger.info(`Removed ${seats_cancelled} license from ${org}`);
+    chunk_JJXOG77W_logger.info(`Removed ${seats_cancelled} license from ${org}`);
     return seats_cancelled === 1;
   }
   return false;
@@ -34420,6 +34454,7 @@ var copilotDormancy = (config) => {
   } = config;
   return dist_dormancyCheck({
     type,
+    activityResultType: "complete",
     ...rest,
     fetchLatestActivity
   });
@@ -34771,7 +34806,7 @@ function createDefaultNotificationBodyHandler(notificationTemplate) {
 }
 
 
-//# sourceMappingURL=chunk-O4QT4OYP.js.map
+//# sourceMappingURL=chunk-JJXOG77W.js.map
 ;// CONCATENATED MODULE: ./src/utils/createBranch.ts
 
 /**

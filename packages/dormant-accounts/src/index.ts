@@ -26,6 +26,7 @@ export class DormantAccountCheck<TConfig> {
   private duration: DurationString;
   private dryRun: boolean;
   private durationMillis?: number;
+  private readonly activityResultType: 'partial' | 'complete';
   readonly type: string;
 
   constructor(
@@ -34,6 +35,7 @@ export class DormantAccountCheck<TConfig> {
     this.config = config;
     logger.debug('DormantAccountCheck initialized with config:', this.config);
     this.type = config.type;
+    this.activityResultType = config.activityResultType || 'partial';
     this.db = new Database(this.type, this.config.dbPath);
     this.dryRun = this.config.dryRun === true;
     this.duration = (this.config.duration as DurationString) || '30d';
@@ -152,6 +154,46 @@ export class DormantAccountCheck<TConfig> {
       );
 
       this.logger.success(`Finished logging latest activity`);
+
+      // If activityResultType is 'complete', the activity represents a complete
+      // snapshot of all users in the system, so we need to remove any users
+      // that are no longer present in the snapshot
+      if (this.activityResultType === 'complete') {
+        this.logger.start('Processing complete activity results');
+
+        const allUsers = await this.listAccounts();
+        const fetchedUserLoginsSet = new Set(
+          entries.map((entry) => entry.login),
+        );
+        const usersToRemove = allUsers.filter(
+          (user) => !fetchedUserLoginsSet.has(user.login),
+        );
+
+        if (usersToRemove.length > 0) {
+          this.logger.info(
+            `Found ${usersToRemove.length} accounts no longer in the system`,
+          );
+
+          for (const user of usersToRemove) {
+            this.logger.info(
+              `Removing user ${user.login} as they are no longer in the system`,
+            );
+            if (!this.dryRun) {
+              await this.activity.remove(user);
+            } else {
+              this.logger.info(`[DRY RUN] Would remove user ${user.login}`);
+            }
+          }
+
+          this.logger.success(
+            `Removed ${usersToRemove.length} accounts no longer in the system`,
+          );
+        } else {
+          this.logger.info(
+            'No accounts to remove based on complete activity results',
+          );
+        }
+      }
 
       await this.db.updateLastRun(fetchStartTime);
       this.logger.success(`Completed fetching and logging latest activity`);
@@ -275,11 +317,13 @@ export class DormantAccountCheck<TConfig> {
     return {
       all: async () => this.db.getRawData(),
       remove: async (user: LastActivityRecord | string) => {
+        const userLogin = typeof user === 'string' ? user : user.login;
         const result = await this.db.removeUserActivityRecord(user);
+
         if (result) {
-          this.logger.success(`Removed user ${user} from database`);
+          this.logger.success(`Removed user ${userLogin} from database`);
         } else {
-          this.logger.warn(`User ${user} not found in database`);
+          this.logger.warn(`User ${userLogin} not found in database`);
         }
         return result;
       },

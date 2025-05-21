@@ -171,6 +171,7 @@ export const copilotDormancy = (config: GitHubHandlerArgs) => {
 
   return dormancyCheck<GitHubHandlerConfig>({
     type,
+    activityResultType: 'complete',
     ...rest,
     fetchLatestActivity,
   });
