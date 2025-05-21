@@ -11,7 +11,7 @@ vi.mock('@dormant-accounts/github', () => ({
 }));
 
 // Import after mocking
-import { removeCopilotAccount } from './removeCopilotAccount';
+import { removeCopilotLicense } from './removeCopilotLicense';
 import * as core from '@actions/core';
 import {
   revokeCopilotLicense,
@@ -65,7 +65,7 @@ describe('removeCopilotAccount', () => {
       },
     });
 
-    const result = await removeCopilotAccount({
+    const result = await removeCopilotLicense({
       ...defaultParams,
     });
 
@@ -85,7 +85,7 @@ describe('removeCopilotAccount', () => {
       },
     });
 
-    const result = await removeCopilotAccount({
+    const result = await removeCopilotLicense({
       ...defaultParams,
       removeDormantAccounts: false,
     });
@@ -104,7 +104,7 @@ describe('removeCopilotAccount', () => {
     });
 
     // Using default params which has allowTeamRemoval: false
-    const result = await removeCopilotAccount(defaultParams);
+    const result = await removeCopilotLicense(defaultParams);
 
     expect(result).toBe(false);
     expect(core.info).toHaveBeenCalledWith(
@@ -123,7 +123,7 @@ describe('removeCopilotAccount', () => {
       },
     });
 
-    const result = await removeCopilotAccount({
+    const result = await removeCopilotLicense({
       ...defaultParams,
       allowTeamRemoval: true,
     });
@@ -140,7 +140,7 @@ describe('removeCopilotAccount', () => {
   });
 
   it('should revoke license when not assigned via team', async () => {
-    const result = await removeCopilotAccount(defaultParams);
+    const result = await removeCopilotLicense(defaultParams);
 
     expect(result).toBe(true);
     expect(revokeCopilotLicense).toHaveBeenCalledWith({
@@ -156,7 +156,7 @@ describe('removeCopilotAccount', () => {
   it('should not update activity when account removal fails', async () => {
     vi.mocked(revokeCopilotLicense).mockResolvedValue(false);
 
-    const result = await removeCopilotAccount(defaultParams);
+    const result = await removeCopilotLicense(defaultParams);
 
     expect(result).toBe(false);
     expect(mockActivityRemove).not.toHaveBeenCalled();

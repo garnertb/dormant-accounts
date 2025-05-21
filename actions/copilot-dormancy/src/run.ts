@@ -9,7 +9,7 @@ import {
   ProcessingResult,
 } from '@dormant-accounts/github';
 import { createBranch } from './utils/createBranch';
-import { removeCopilotAccount } from './utils/removeCopilotAccount';
+import { removeCopilotLicense } from './utils/removeCopilotLicense';
 import { getActivityLog } from './utils/getActivityLog';
 import { writeFile } from 'fs/promises';
 import { checkBranch } from './utils/checkBranch';
@@ -78,7 +78,7 @@ export async function processNotifications(
     assignUserToIssue,
     dryRun,
     removeAccount: async ({ lastActivityRecord }) => {
-      return removeCopilotAccount({
+      return removeCopilotLicense({
         lastActivityRecord,
         octokit,
         owner: context.repo.owner,

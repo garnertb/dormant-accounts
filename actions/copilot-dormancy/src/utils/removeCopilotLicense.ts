@@ -28,7 +28,7 @@ interface RemoveCopilotAccountParams {
  * @param removeDormantAccounts - Flag indicating if accounts should actually be removed
  * @returns Promise<boolean> - True if account was removed, false otherwise
  */
-export const removeCopilotAccount = async ({
+export const removeCopilotLicense = async ({
   lastActivityRecord,
   octokit,
   owner,
