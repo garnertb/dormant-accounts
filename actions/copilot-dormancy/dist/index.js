@@ -34058,6 +34058,7 @@ var DormantAccountCheck = class {
     this.config = config;
     logger.debug("DormantAccountCheck initialized with config:", this.config);
     this.type = config.type;
+    this.activityResultType = config.activityResultType || "partial";
     this.db = new Database(this.type, this.config.dbPath);
     this.dryRun = this.config.dryRun === true;
     this.duration = this.config.duration || "30d";
@@ -34131,6 +34132,28 @@ var DormantAccountCheck = class {
         )
       );
       this.logger.success(`Finished logging latest activity`);
+      if (this.activityResultType === "complete") {
+        this.logger.start("Processing complete activity results");
+        const allUsers = await this.listAccounts();
+        const fetchedUserLogins = entries.map((entry) => entry.login);
+        const usersToRemove = allUsers.filter(
+          (user) => !fetchedUserLogins.includes(user.login)
+        );
+        if (usersToRemove.length > 0) {
+          this.logger.info(`Found ${usersToRemove.length} accounts no longer in the system`);
+          for (const user of usersToRemove) {
+            this.logger.info(`Removing user ${user.login} as they are no longer in the system`);
+            if (!this.dryRun) {
+              await this.activity.remove(user);
+            } else {
+              this.logger.info(`[DRY RUN] Would remove user ${user.login}`);
+            }
+          }
+          this.logger.success(`Removed ${usersToRemove.length} accounts no longer in the system`);
+        } else {
+          this.logger.info("No accounts to remove based on complete activity results");
+        }
+      }
       await this.db.updateLastRun(fetchStartTime);
       this.logger.success(`Completed fetching and logging latest activity`);
     } catch (error) {

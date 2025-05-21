@@ -10,7 +10,7 @@ export interface GitHubHandlerConfig {
   notificationBody?: string;
 }
 
-type DefaultedProps = 'type' | 'fetchLatestActivity';
+type DefaultedProps = 'type' | 'activityResultType' | 'fetchLatestActivity';
 export type GitHubHandlerArgs = Omit<
   DormancyCheckConfig<GitHubHandlerConfig>,
   DefaultedProps
