@@ -1987,7 +1987,7 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
 Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.getApiBaseUrl = exports.getProxyFetch = exports.getProxyAgentDispatcher = exports.getProxyAgent = exports.getAuthString = void 0;
 const httpClient = __importStar(__nccwpck_require__(4639));
-const undici_1 = __nccwpck_require__(9310);
+const undici_1 = __nccwpck_require__(6929);
 function getAuthString(token, options) {
     if (!token && !options.auth) {
         throw new Error('Parameter token or opts.auth is required');
@@ -2219,7 +2219,7 @@ const http = __importStar(__nccwpck_require__(8611));
 const https = __importStar(__nccwpck_require__(5692));
 const pm = __importStar(__nccwpck_require__(9739));
 const tunnel = __importStar(__nccwpck_require__(376));
-const undici_1 = __nccwpck_require__(9310);
+const undici_1 = __nccwpck_require__(6929);
 var HttpCodes;
 (function (HttpCodes) {
     HttpCodes[HttpCodes["OK"] = 200] = "OK";
@@ -7820,7 +7820,7 @@ exports.debug = debug; // for test
 
 /***/ }),
 
-/***/ 9310:
+/***/ 6929:
 /***/ ((module, __unused_webpack_exports, __nccwpck_require__) => {
 
 
@@ -34288,7 +34288,7 @@ function dist_dormancyCheck(config) {
 }
 
 //# sourceMappingURL=index.js.map
-;// CONCATENATED MODULE: ../../packages/github/dist/chunk-S3WMO5HF.js
+;// CONCATENATED MODULE: ../../packages/github/dist/chunk-5UFPHK4C.js
 // src/provider/audit-log.ts
 
 
@@ -34364,7 +34364,7 @@ var githubDormancy = (config) => {
 // src/provider/copilot.ts
 
 
-var chunk_S3WMO5HF_logger = console;
+var chunk_5UFPHK4C_logger = console;
 var fetchLatestActivityFromCoPilot = async ({ octokit, org, checkType, logger: logger2 }) => {
   logger2.debug(checkType, `Fetching audit log for ${org}`);
   const payload = {
@@ -34433,7 +34433,7 @@ var revokeCopilotLicense = async (config) => {
     selected_usernames = [selected_usernames];
   }
   if (dryRun) {
-    chunk_S3WMO5HF_logger.info(`DRY RUN: Removing ${selected_usernames} from ${org}`);
+    chunk_5UFPHK4C_logger.info(`DRY RUN: Removing ${selected_usernames} from ${org}`);
   } else {
     const {
       data: { seats_cancelled }
@@ -34441,7 +34441,7 @@ var revokeCopilotLicense = async (config) => {
       org,
       selected_usernames
     });
-    chunk_S3WMO5HF_logger.info(`Removed ${seats_cancelled} license from ${org}`);
+    chunk_5UFPHK4C_logger.info(`Removed ${seats_cancelled} license from ${org}`);
     return seats_cancelled === 1;
   }
   return false;
@@ -34813,9 +34813,6 @@ ${notificationBody}`,
   /**
    * Get existing notification for a user
    */
-  /**
-   * Get existing notification for a user
-   */
   async getExistingNotification(username) {
     return getExistingNotification({
       octokit: this.octokit,
@@ -34889,7 +34886,7 @@ function createDefaultNotificationBodyHandler(notificationTemplate) {
 }
 
 
-//# sourceMappingURL=chunk-S3WMO5HF.js.map
+//# sourceMappingURL=chunk-5UFPHK4C.js.map
 ;// CONCATENATED MODULE: ./src/utils/createBranch.ts
 
 /**
