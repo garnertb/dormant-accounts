@@ -19,7 +19,7 @@ export interface IsTeamIdpSyncedParams {
  *
  * @param params - The parameters for checking team IdP synchronization
  * @returns A promise that resolves to a boolean indicating whether the team is IdP synced
- * @throws Will throw an error if the API call fails for any reason other than a 404 response
+ * @throws Will throw an error if the API call fails for any reason
  */
 export async function isTeamIdpSynced({
   octokit,
