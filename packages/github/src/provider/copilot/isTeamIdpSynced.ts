@@ -1,4 +1,4 @@
-import type { OctokitClient } from './types';
+import type { OctokitClient } from '../types';
 
 const logger = console;
 
