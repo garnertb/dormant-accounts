@@ -14,7 +14,7 @@ This module provides functionality to check for dormant GitHub Copilot users and
 import {
   copilotDormancy,
   removeAccount,
-} from '@dormant-accounts/github/provider/copilot';
+} from '@dormant-accounts/github/copilot';
 import { Octokit } from '@octokit/rest';
 
 // Initialize Octokit
