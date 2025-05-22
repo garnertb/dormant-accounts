@@ -423,9 +423,6 @@ export class GithubIssueNotifier implements DormantAccountNotifier {
   /**
    * Get existing notification for a user
    */
-  /**
-   * Get existing notification for a user
-   */
   private async getExistingNotification(
     username: string,
   ): Promise<NotificationIssue | null> {
