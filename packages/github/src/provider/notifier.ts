@@ -5,13 +5,11 @@ import {
   EnrichedLastActivityRecord,
 } from 'dormant-accounts/utils';
 import { LastActivityRecord } from 'dormant-accounts';
-import { OctokitClient } from './types';
-import { GetResponseDataTypeFromEndpointMethod } from '@octokit/types';
 import { getNotifications } from './getNotifications';
-
-export type NotificationIssue = GetResponseDataTypeFromEndpointMethod<
-  OctokitClient['rest']['issues']['create']
->;
+import {
+  getExistingNotification,
+  NotificationIssue,
+} from './getExistingNotification';
 
 type NotificationHandlerContext = {
   lastActivityRecord: EnrichedLastActivityRecord;
@@ -428,21 +426,14 @@ export class GithubIssueNotifier implements DormantAccountNotifier {
   private async getExistingNotification(
     username: string,
   ): Promise<NotificationIssue | null> {
-    const issues = await getNotifications({
+    return getExistingNotification({
       octokit: this.octokit,
       owner: this.config.repository.owner,
       repo: this.config.repository.repo,
-      params: {
-        state: 'open',
-        labels: this.config.repository.baseLabels.join(','),
-        assignee: this.config.assignUserToIssue ? username : undefined,
-      },
+      username,
+      baseLabels: this.config.repository.baseLabels,
+      assignUserToIssue: this.config.assignUserToIssue,
     });
-
-    return (
-      (issues.find((issue) => issue.title === username) as NotificationIssue) ||
-      null
-    );
   }
 
   /**

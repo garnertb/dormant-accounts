@@ -1987,7 +1987,7 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
 Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.getApiBaseUrl = exports.getProxyFetch = exports.getProxyAgentDispatcher = exports.getProxyAgent = exports.getAuthString = void 0;
 const httpClient = __importStar(__nccwpck_require__(4639));
-const undici_1 = __nccwpck_require__(9310);
+const undici_1 = __nccwpck_require__(6929);
 function getAuthString(token, options) {
     if (!token && !options.auth) {
         throw new Error('Parameter token or opts.auth is required');
@@ -2219,7 +2219,7 @@ const http = __importStar(__nccwpck_require__(8611));
 const https = __importStar(__nccwpck_require__(5692));
 const pm = __importStar(__nccwpck_require__(9739));
 const tunnel = __importStar(__nccwpck_require__(376));
-const undici_1 = __nccwpck_require__(9310);
+const undici_1 = __nccwpck_require__(6929);
 var HttpCodes;
 (function (HttpCodes) {
     HttpCodes[HttpCodes["OK"] = 200] = "OK";
@@ -7820,7 +7820,7 @@ exports.debug = debug; // for test
 
 /***/ }),
 
-/***/ 9310:
+/***/ 6929:
 /***/ ((module, __unused_webpack_exports, __nccwpck_require__) => {
 
 
@@ -34288,7 +34288,7 @@ function dist_dormancyCheck(config) {
 }
 
 //# sourceMappingURL=index.js.map
-;// CONCATENATED MODULE: ../../packages/github/dist/chunk-JJXOG77W.js
+;// CONCATENATED MODULE: ../../packages/github/dist/chunk-5UFPHK4C.js
 // src/provider/audit-log.ts
 
 
@@ -34364,7 +34364,7 @@ var githubDormancy = (config) => {
 // src/provider/copilot.ts
 
 
-var chunk_JJXOG77W_logger = console;
+var chunk_5UFPHK4C_logger = console;
 var fetchLatestActivityFromCoPilot = async ({ octokit, org, checkType, logger: logger2 }) => {
   logger2.debug(checkType, `Fetching audit log for ${org}`);
   const payload = {
@@ -34433,7 +34433,7 @@ var revokeCopilotLicense = async (config) => {
     selected_usernames = [selected_usernames];
   }
   if (dryRun) {
-    chunk_JJXOG77W_logger.info(`DRY RUN: Removing ${selected_usernames} from ${org}`);
+    chunk_5UFPHK4C_logger.info(`DRY RUN: Removing ${selected_usernames} from ${org}`);
   } else {
     const {
       data: { seats_cancelled }
@@ -34441,7 +34441,7 @@ var revokeCopilotLicense = async (config) => {
       org,
       selected_usernames
     });
-    chunk_JJXOG77W_logger.info(`Removed ${seats_cancelled} license from ${org}`);
+    chunk_5UFPHK4C_logger.info(`Removed ${seats_cancelled} license from ${org}`);
     return seats_cancelled === 1;
   }
   return false;
@@ -34478,6 +34478,89 @@ async function getNotifications({
   });
   console.log(`Fetched ${issues.length} total issues from ${owner}/${repo}`);
   return issues;
+}
+
+// src/provider/getExistingNotification.ts
+async function getExistingNotification(options) {
+  const { octokit, owner, repo, username, baseLabels, assignUserToIssue } = options;
+  const repoQuery = `repo:${owner}/${repo}`;
+  const titleQuery = `in:title ${username}`;
+  const stateQuery = "state:open";
+  const sortQuery = "sort:created-asc";
+  const labelQuery = baseLabels.map((label) => `label:"${label}"`).join(" ");
+  const assigneeQuery = assignUserToIssue ? `assignee:${username}` : "";
+  const searchQuery = [
+    repoQuery,
+    titleQuery,
+    stateQuery,
+    labelQuery,
+    assigneeQuery,
+    sortQuery
+  ].filter(Boolean).join(" ");
+  try {
+    const response = await octokit.graphql(
+      `
+      query GetExistingNotification($searchQuery: String!) {
+        search(query: $searchQuery, type: ISSUE, first: 50) {
+          nodes {
+            ... on Issue {
+              number
+              title
+              url
+              createdAt
+              state
+              labels(first: 10) {
+                nodes {
+                  name
+                }
+              }
+            }
+          }
+        }
+      }
+    `,
+      {
+        searchQuery
+      }
+    );
+    console.debug(
+      `Found ${response.search.nodes.length} issues matching query: ${searchQuery}`
+    );
+    const issueNode = response.search.nodes.find(
+      (node) => node.title === username
+    );
+    if (!issueNode) {
+      return null;
+    }
+    const issue = {
+      number: issueNode.number,
+      title: issueNode.title,
+      html_url: issueNode.url,
+      created_at: issueNode.createdAt,
+      state: issueNode.state,
+      // Transform labels to match the expected format
+      labels: issueNode.labels?.nodes.map((label) => ({ name: label.name })) || []
+    };
+    return issue;
+  } catch (error) {
+    console.error("Error fetching existing notification via GraphQL:", error);
+    console.log("Falling back to REST API for fetching notification");
+    return fallbackToRestApi(options);
+  }
+}
+async function fallbackToRestApi(options) {
+  const { octokit, owner, repo, username, baseLabels, assignUserToIssue } = options;
+  const issues = await getNotifications({
+    octokit,
+    owner,
+    repo,
+    params: {
+      state: "open",
+      labels: baseLabels.join(","),
+      assignee: assignUserToIssue ? username : void 0
+    }
+  });
+  return issues.find((issue) => issue.title === username) || null;
 }
 
 // src/provider/notifier.ts
@@ -34731,17 +34814,14 @@ ${notificationBody}`,
    * Get existing notification for a user
    */
   async getExistingNotification(username) {
-    const issues = await getNotifications({
+    return getExistingNotification({
       octokit: this.octokit,
       owner: this.config.repository.owner,
       repo: this.config.repository.repo,
-      params: {
-        state: "open",
-        labels: this.config.repository.baseLabels.join(","),
-        assignee: this.config.assignUserToIssue ? username : void 0
-      }
+      username,
+      baseLabels: this.config.repository.baseLabels,
+      assignUserToIssue: this.config.assignUserToIssue
     });
-    return issues.find((issue) => issue.title === username) || null;
   }
   /**
    * Add a comment to an issue
@@ -34806,7 +34886,7 @@ function createDefaultNotificationBodyHandler(notificationTemplate) {
 }
 
 
-//# sourceMappingURL=chunk-JJXOG77W.js.map
+//# sourceMappingURL=chunk-5UFPHK4C.js.map
 ;// CONCATENATED MODULE: ./src/utils/createBranch.ts
 
 /**
