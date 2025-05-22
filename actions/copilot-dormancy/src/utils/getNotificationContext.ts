@@ -10,6 +10,7 @@ const notificationSchema = z
     dryRun: z.boolean().optional().default(false),
     assignUserToIssue: z.boolean().optional().default(true),
     removeDormantAccounts: z.boolean().optional().default(false),
+    allowTeamRemoval: z.boolean().optional().default(false),
   })
   .transform((data) => {
     const { repo: ownerAndRepo, ...rest } = data;
@@ -44,6 +45,7 @@ export function getNotificationContext(): NotificationContext | false {
       'assign-user-to-notification-issue',
     ),
     removeDormantAccounts: core.getBooleanInput('remove-dormant-accounts'),
+    allowTeamRemoval: core.getBooleanInput('remove-user-from-assigning-team'),
   });
 
   if (!parsedNotification.success) {

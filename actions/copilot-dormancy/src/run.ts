@@ -1,14 +1,15 @@
 import * as core from '@actions/core';
 import * as github from '@actions/github';
 import {
-  copilotDormancy,
   GithubIssueNotifier,
   OctokitClient,
   LastActivityRecord,
   createDefaultNotificationBodyHandler,
-  revokeCopilotLicense,
+  ProcessingResult,
 } from '@dormant-accounts/github';
+import { copilotDormancy } from '@dormant-accounts/github/copilot';
 import { createBranch } from './utils/createBranch';
+import { removeCopilotLicense } from './utils/removeCopilotLicense';
 import { getActivityLog } from './utils/getActivityLog';
 import { writeFile } from 'fs/promises';
 import { checkBranch } from './utils/checkBranch';
@@ -18,7 +19,6 @@ import {
 } from './utils/getNotificationContext';
 import { updateActivityLog } from './utils/updateActivityLog';
 import { Activity } from 'dormant-accounts';
-import { ProcessingResult } from '@dormant-accounts/github/';
 
 // Function to safely stringify data for output
 const safeStringify = (data: unknown): string => {
@@ -61,6 +61,7 @@ export async function processNotifications(
     body,
     assignUserToIssue,
     removeDormantAccounts,
+    allowTeamRemoval,
     repo,
     baseLabels,
     dryRun,
@@ -77,45 +78,17 @@ export async function processNotifications(
     assignUserToIssue,
     dryRun,
     removeAccount: async ({ lastActivityRecord }) => {
-      if (!removeDormantAccounts) {
-        core.info(
-          `remove-dormant-accounts setting is disabled, checking if user ${lastActivityRecord.login} has been removed from Copilot externally`,
-        );
-
-        const {
-          data: { pending_cancellation_date },
-        } = await octokit.rest.copilot.getCopilotSeatDetailsForUser({
-          username: lastActivityRecord.login,
-          org: context.repo.owner,
-        });
-
-        if (pending_cancellation_date) {
-          core.info(
-            `User ${lastActivityRecord.login} has a pending cancellation date: ${pending_cancellation_date}`,
-          );
-          return true;
-        }
-
-        return false;
-      }
-
-      const accountRemoved = await revokeCopilotLicense({
-        logins: lastActivityRecord.login,
+      return removeCopilotLicense({
+        lastActivityRecord,
         octokit,
-        org: context.repo.owner,
-        dryRun: !removeDormantAccounts,
+        owner: context.repo.owner,
+        removeDormantAccounts,
+        allowTeamRemoval,
+        activity: check.activity,
       });
-
-      if (accountRemoved) {
-        core.info(
-          `Successfully removed Copilot license for ${lastActivityRecord.login}`,
-        );
-        await check.activity.remove(lastActivityRecord.login);
-      }
-
-      return accountRemoved;
     },
   });
+
   return notifier.processDormantUsers(dormantAccounts);
 }
 
