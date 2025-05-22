@@ -2,11 +2,10 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import {
   GithubIssueNotifier,
   NotificationConfig,
-  NotificationIssue,
   NotificationStatus,
 } from './notifier';
+import { NotificationIssue } from './getExistingNotification';
 import { LastActivityRecord } from 'dormant-accounts';
-import { create } from 'domain';
 
 describe('GithubIssueNotifier', () => {
   let mockOctokit: any;
@@ -31,6 +30,10 @@ describe('GithubIssueNotifier', () => {
   };
 
   const createMockOctokit = () => ({
+    paginate: vi.fn().mockImplementation(async (endpoint, params) => {
+      const result = await endpoint(params);
+      return result.data;
+    }),
     rest: {
       issues: {
         create: vi.fn().mockResolvedValue({

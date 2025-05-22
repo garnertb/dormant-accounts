@@ -188,6 +188,15 @@ export type DormancyCheckConfig<CheckType> = {
   duration?: DurationString;
 
   /**
+   * Specifies how activity results should be interpreted.
+   * - 'partial': Activity data is incomplete; absence doesn't indicate removal
+   * - 'complete': Results represent all users; absence means removal
+   *
+   * @default 'partial'
+   */
+  activityResultType?: 'partial' | 'complete';
+
+  /**
    * Determines if a user should be considered dormant based on their activity
    * @param args - Activity record and implementation config
    * @returns Promise resolving to true if user is dormant

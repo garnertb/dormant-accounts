@@ -34058,6 +34058,7 @@ var DormantAccountCheck = class {
     this.config = config;
     logger.debug("DormantAccountCheck initialized with config:", this.config);
     this.type = config.type;
+    this.activityResultType = config.activityResultType || "partial";
     this.db = new Database(this.type, this.config.dbPath);
     this.dryRun = this.config.dryRun === true;
     this.duration = this.config.duration || "30d";
@@ -34131,6 +34132,38 @@ var DormantAccountCheck = class {
         )
       );
       this.logger.success(`Finished logging latest activity`);
+      if (this.activityResultType === "complete") {
+        this.logger.start("Processing complete activity results");
+        const allUsers = await this.listAccounts();
+        const fetchedUserLoginsSet = new Set(
+          entries.map((entry) => entry.login)
+        );
+        const usersToRemove = allUsers.filter(
+          (user) => !fetchedUserLoginsSet.has(user.login)
+        );
+        if (usersToRemove.length > 0) {
+          this.logger.info(
+            `Found ${usersToRemove.length} accounts no longer in the system`
+          );
+          for (const user of usersToRemove) {
+            this.logger.info(
+              `Removing user ${user.login} as they are no longer in the system`
+            );
+            if (!this.dryRun) {
+              await this.activity.remove(user);
+            } else {
+              this.logger.info(`[DRY RUN] Would remove user ${user.login}`);
+            }
+          }
+          this.logger.success(
+            `Removed ${usersToRemove.length} accounts no longer in the system`
+          );
+        } else {
+          this.logger.info(
+            "No accounts to remove based on complete activity results"
+          );
+        }
+      }
       await this.db.updateLastRun(fetchStartTime);
       this.logger.success(`Completed fetching and logging latest activity`);
     } catch (error) {
@@ -34231,11 +34264,12 @@ var DormantAccountCheck = class {
     return {
       all: async () => this.db.getRawData(),
       remove: async (user) => {
+        const userLogin = typeof user === "string" ? user : user.login;
         const result = await this.db.removeUserActivityRecord(user);
         if (result) {
-          this.logger.success(`Removed user ${user} from database`);
+          this.logger.success(`Removed user ${userLogin} from database`);
         } else {
-          this.logger.warn(`User ${user} not found in database`);
+          this.logger.warn(`User ${userLogin} not found in database`);
         }
         return result;
       }
@@ -34254,7 +34288,7 @@ function dist_dormancyCheck(config) {
 }
 
 //# sourceMappingURL=index.js.map
-;// CONCATENATED MODULE: ../../packages/github/dist/chunk-L2XFFE4X.js
+;// CONCATENATED MODULE: ../../packages/github/dist/chunk-I2GDOBCE.js
 // src/provider/audit-log.ts
 
 
@@ -34330,7 +34364,7 @@ var githubDormancy = (config) => {
 // src/provider/copilot.ts
 
 
-var chunk_L2XFFE4X_logger = console;
+var chunk_I2GDOBCE_logger = console;
 var fetchLatestActivityFromCoPilot = async ({ octokit, org, checkType, logger: logger4 }) => {
   logger4.debug(checkType, `Fetching audit log for ${org}`);
   const payload = {
@@ -34399,7 +34433,7 @@ var revokeCopilotLicense = async (config) => {
     selected_usernames = [selected_usernames];
   }
   if (dryRun) {
-    chunk_L2XFFE4X_logger.info(`DRY RUN: Removing ${selected_usernames} from ${org}`);
+    chunk_I2GDOBCE_logger.info(`DRY RUN: Removing ${selected_usernames} from ${org}`);
     return false;
   }
   const {
@@ -34408,7 +34442,7 @@ var revokeCopilotLicense = async (config) => {
     org,
     selected_usernames
   });
-  chunk_L2XFFE4X_logger.info(`Removed ${seats_cancelled} license from ${org}`);
+  chunk_I2GDOBCE_logger.info(`Removed ${seats_cancelled} license from ${org}`);
   return seats_cancelled === selected_usernames.length;
 };
 var copilotDormancy = (config) => {
@@ -34419,6 +34453,7 @@ var copilotDormancy = (config) => {
   } = config;
   return dist_dormancyCheck({
     type,
+    activityResultType: "complete",
     ...rest,
     fetchLatestActivity
   });
@@ -34426,6 +34461,108 @@ var copilotDormancy = (config) => {
 
 // src/provider/notifier.ts
 
+
+// src/provider/getNotifications.ts
+async function getNotifications({
+  octokit,
+  owner,
+  repo,
+  params = {}
+}) {
+  const issues = await octokit.paginate(octokit.rest.issues.listForRepo, {
+    owner,
+    repo,
+    per_page: 100,
+    ...params
+  });
+  console.log(`Fetched ${issues.length} total issues from ${owner}/${repo}`);
+  return issues;
+}
+
+// src/provider/getExistingNotification.ts
+async function getExistingNotification(options) {
+  const { octokit, owner, repo, username, baseLabels, assignUserToIssue } = options;
+  const repoQuery = `repo:${owner}/${repo}`;
+  const titleQuery = `in:title ${username}`;
+  const stateQuery = "state:open";
+  const sortQuery = "sort:created-asc";
+  const labelQuery = baseLabels.map((label) => `label:"${label}"`).join(" ");
+  const assigneeQuery = assignUserToIssue ? `assignee:${username}` : "";
+  const searchQuery = [
+    repoQuery,
+    titleQuery,
+    stateQuery,
+    labelQuery,
+    assigneeQuery,
+    sortQuery
+  ].filter(Boolean).join(" ");
+  try {
+    const response = await octokit.graphql(
+      `
+      query GetExistingNotification($searchQuery: String!) {
+        search(query: $searchQuery, type: ISSUE, first: 50) {
+          nodes {
+            ... on Issue {
+              number
+              title
+              url
+              createdAt
+              state
+              labels(first: 10) {
+                nodes {
+                  name
+                }
+              }
+            }
+          }
+        }
+      }
+    `,
+      {
+        searchQuery
+      }
+    );
+    console.debug(
+      `Found ${response.search.nodes.length} issues matching query: ${searchQuery}`
+    );
+    const issueNode = response.search.nodes.find(
+      (node) => node.title === username
+    );
+    if (!issueNode) {
+      return null;
+    }
+    const issue = {
+      number: issueNode.number,
+      title: issueNode.title,
+      html_url: issueNode.url,
+      created_at: issueNode.createdAt,
+      state: issueNode.state,
+      // Transform labels to match the expected format
+      labels: issueNode.labels?.nodes.map((label) => ({ name: label.name })) || []
+    };
+    return issue;
+  } catch (error) {
+    console.error("Error fetching existing notification via GraphQL:", error);
+    console.log("Falling back to REST API for fetching notification");
+    return fallbackToRestApi(options);
+  }
+}
+async function fallbackToRestApi(options) {
+  const { octokit, owner, repo, username, baseLabels, assignUserToIssue } = options;
+  const issues = await getNotifications({
+    octokit,
+    owner,
+    repo,
+    params: {
+      state: "open",
+      labels: baseLabels.join(","),
+      assignee: assignUserToIssue ? username : void 0
+    }
+  });
+  return issues.find((issue) => issue.title === username) || null;
+}
+
+// src/provider/notifier.ts
 var NotificationStatus = /* @__PURE__ */ ((NotificationStatus2) => {
   NotificationStatus2["ACTIVE"] = "became-active";
   NotificationStatus2["EXCLUDED"] = "admin-exclusion";
@@ -34525,11 +34662,14 @@ var GithubIssueNotifier = class {
     const dormantLogins = new Set(
       currentDormantUsers.map((user) => user.login)
     );
-    const { data: openIssues } = await this.octokit.rest.issues.listForRepo({
+    const openIssues = await getNotifications({
+      octokit: this.octokit,
       owner: this.config.repository.owner,
       repo: this.config.repository.repo,
-      state: "open",
-      labels: this.config.repository.baseLabels.join(",")
+      params: {
+        state: "open",
+        labels: this.config.repository.baseLabels.join(",")
+      }
     });
     return openIssues.filter((issue) => !dormantLogins.has(issue.title)).map((issue) => issue.title);
   }
@@ -34654,13 +34794,16 @@ ${notificationBody}`,
    * Get notifications by status
    */
   async getNotificationsByStatus(status) {
-    const { data } = await this.octokit.rest.issues.listForRepo({
+    const issues = await getNotifications({
+      octokit: this.octokit,
       owner: this.config.repository.owner,
       repo: this.config.repository.repo,
-      state: "all",
-      labels: `${status}`
+      params: {
+        state: "open",
+        labels: `${status}`
+      }
     });
-    return data.map((issue) => ({
+    return issues.map((issue) => ({
       user: issue.title,
       notification: issue
     }));
@@ -34670,14 +34813,14 @@ ${notificationBody}`,
    * Get existing notification for a user
    */
   async getExistingNotification(username) {
-    const { data } = await this.octokit.rest.issues.listForRepo({
+    return getExistingNotification({
+      octokit: this.octokit,
       owner: this.config.repository.owner,
       repo: this.config.repository.repo,
-      state: "open",
-      labels: this.config.repository.baseLabels.join(","),
-      assignee: this.config.assignUserToIssue ? username : void 0
+      username,
+      baseLabels: this.config.repository.baseLabels,
+      assignUserToIssue: this.config.assignUserToIssue
     });
-    return data.find((issue) => issue.title === username) || null;
   }
   /**
    * Add a comment to an issue
@@ -34826,7 +34969,7 @@ var removeCopilotUserFromTeam = async ({
 };
 
 
-//# sourceMappingURL=chunk-L2XFFE4X.js.map
+//# sourceMappingURL=chunk-I2GDOBCE.js.map
 ;// CONCATENATED MODULE: ./src/utils/createBranch.ts
 
 /**

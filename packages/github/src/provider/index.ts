@@ -3,3 +3,5 @@ export * from './audit-log';
 export * from './copilot';
 export * from './notifier';
 export * from './removeCopilotUserFromTeam';
+export * from './getExistingNotification';
+export * from './getNotifications';
