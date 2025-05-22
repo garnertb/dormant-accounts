@@ -33620,6 +33620,498 @@ var enrichLastActivityRecord = (record, endDate) => {
 
 
 //# sourceMappingURL=chunk-KFCV467K.js.map
+;// CONCATENATED MODULE: ../../packages/github/dist/index.js
+// src/provider/audit-log.ts
+
+
+var fetchAuditLogActivity = async ({ lastFetchTime, octokit, org, logger }) => {
+  const lastFetchTimeAsDate = new Date(lastFetchTime);
+  const payload = {
+    org,
+    include: "all",
+    phrase: `created:>=${lastFetchTimeAsDate.toISOString()}`,
+    per_page: 100,
+    order: "desc"
+  };
+  logger.debug(`Fetching audit log for ${org} since ${lastFetchTimeAsDate}`);
+  try {
+    const processed = {};
+    try {
+      for await (const {
+        data: entries
+      } of octokit.paginate.iterator(
+        "GET /orgs/{org}/audit-log",
+        payload
+      )) {
+        for (const entry of entries) {
+          if (!entry.actor)
+            continue;
+          const actor = entry.actor.toLowerCase();
+          const lastActivity = entry["@timestamp"] ? new Date(entry["@timestamp"]) : null;
+          const record = { type: entry.action, login: actor, lastActivity };
+          if (!processed[actor]?.lastActivity || lastActivity && lastActivity > processed[actor].lastActivity) {
+            processed[actor] = record;
+            const log = lastActivity ? `${ms(Date.now() - lastActivity.getTime())} ago` : "unknown";
+            logger.debug(
+              `Activity record found for ${actor} - ${log}${record.type ? ` - ${record.type}` : ""}`
+            );
+          }
+        }
+      }
+    } catch (err) {
+      if (err.status === 404) {
+        logger.error(
+          `Audit log not found for organization ${org}. The organization may not have audit log access.`
+        );
+        return [];
+      }
+      throw err;
+    }
+    return Object.values(processed);
+  } catch (error) {
+    logger.error("Failed to fetch audit log", { error });
+    throw error;
+  }
+};
+var defaultWhitelistHandler = async ({ login, logger }) => {
+  const resolution = login.includes("[bot]");
+  logger.debug(`Whitelist check for ${login}: ${resolution}`);
+  return resolution;
+};
+var githubDormancy = (config) => {
+  const {
+    type = "github-dormancy",
+    isWhitelisted = defaultWhitelistHandler,
+    fetchLatestActivity = fetchAuditLogActivity,
+    ...rest
+  } = config;
+  return dormancyCheck({
+    type,
+    ...rest,
+    fetchLatestActivity,
+    isWhitelisted
+  });
+};
+
+// src/provider/notifier.ts
+
+
+// src/provider/getNotifications.ts
+async function getNotifications({
+  octokit,
+  owner,
+  repo,
+  params = {}
+}) {
+  const issues = await octokit.paginate(octokit.rest.issues.listForRepo, {
+    owner,
+    repo,
+    per_page: 100,
+    ...params
+  });
+  console.log(`Fetched ${issues.length} total issues from ${owner}/${repo}`);
+  return issues;
+}
+
+// src/provider/getExistingNotification.ts
+async function getExistingNotification(options) {
+  const { octokit, owner, repo, username, baseLabels, assignUserToIssue } = options;
+  const repoQuery = `repo:${owner}/${repo}`;
+  const titleQuery = `in:title ${username}`;
+  const stateQuery = "state:open";
+  const sortQuery = "sort:created-asc";
+  const labelQuery = baseLabels.map((label) => `label:"${label}"`).join(" ");
+  const assigneeQuery = assignUserToIssue ? `assignee:${username}` : "";
+  const searchQuery = [
+    repoQuery,
+    titleQuery,
+    stateQuery,
+    labelQuery,
+    assigneeQuery,
+    sortQuery
+  ].filter(Boolean).join(" ");
+  try {
+    const response = await octokit.graphql(
+      `
+      query GetExistingNotification($searchQuery: String!) {
+        search(query: $searchQuery, type: ISSUE, first: 50) {
+          nodes {
+            ... on Issue {
+              number
+              title
+              url
+              createdAt
+              state
+              labels(first: 10) {
+                nodes {
+                  name
+                }
+              }
+            }
+          }
+        }
+      }
+    `,
+      {
+        searchQuery
+      }
+    );
+    console.debug(
+      `Found ${response.search.nodes.length} issues matching query: ${searchQuery}`
+    );
+    const issueNode = response.search.nodes.find(
+      (node) => node.title === username
+    );
+    if (!issueNode) {
+      return null;
+    }
+    const issue = {
+      number: issueNode.number,
+      title: issueNode.title,
+      html_url: issueNode.url,
+      created_at: issueNode.createdAt,
+      state: issueNode.state,
+      // Transform labels to match the expected format
+      labels: issueNode.labels?.nodes.map((label) => ({ name: label.name })) || []
+    };
+    return issue;
+  } catch (error) {
+    console.error("Error fetching existing notification via GraphQL:", error);
+    console.log("Falling back to REST API for fetching notification");
+    return fallbackToRestApi(options);
+  }
+}
+async function fallbackToRestApi(options) {
+  const { octokit, owner, repo, username, baseLabels, assignUserToIssue } = options;
+  const issues = await getNotifications({
+    octokit,
+    owner,
+    repo,
+    params: {
+      state: "open",
+      labels: baseLabels.join(","),
+      assignee: assignUserToIssue ? username : void 0
+    }
+  });
+  return issues.find((issue) => issue.title === username) || null;
+}
+
+// src/provider/notifier.ts
+var GithubIssueNotifier = class {
+  /**
+   * Initialize the notifier with configuration
+   */
+  constructor(config) {
+    this.config = config;
+    this.octokit = config.githubClient;
+  }
+  /**
+   * Process a list of dormant users
+   */
+  async processDormantUsers(users) {
+    const result = {
+      notified: [],
+      removed: [],
+      reactivated: [],
+      excluded: [],
+      inGracePeriod: [],
+      errors: []
+    };
+    const reactivatedUsers = await this.findReactivatedUsers(users);
+    for (const user of users) {
+      try {
+        if (reactivatedUsers.includes(user.login)) {
+          continue;
+        }
+        const notification = await this.getExistingNotification(user.login);
+        if (notification) {
+          if (this.hasLabel(notification, "admin-exclusion" /* EXCLUDED */)) {
+            result.excluded.push({ user: user.login, notification });
+            continue;
+          }
+          if (this.hasGracePeriodExpired(notification)) {
+            if (!this.config.dryRun) {
+              await this.removeAccount(user, notification);
+            }
+            result.removed.push({ user: user.login, notification });
+          } else {
+            result.inGracePeriod.push({ user: user.login, notification });
+          }
+        } else {
+          if (!this.config.dryRun) {
+            const newNotification = await this.notifyUser(user);
+            result.notified.push({
+              user: user.login,
+              notification: newNotification
+            });
+          } else {
+            console.log(`[DRY RUN] Would notify user: ${user.login}`);
+            result.notified.push({
+              user: user.login,
+              // @ts-ignore
+              notification: {
+                id: 0,
+                number: 0,
+                title: user.login,
+                created_at: (/* @__PURE__ */ new Date()).toISOString(),
+                labels: [],
+                state: "open"
+              }
+            });
+          }
+        }
+      } catch (error) {
+        result.errors.push({ user: user.login, error });
+      }
+    }
+    for (const username of reactivatedUsers) {
+      try {
+        const notification = await this.getExistingNotification(username);
+        if (notification) {
+          const user = users.find((u) => u.login === username) || {
+            login: username
+          };
+          if (!this.config.dryRun) {
+            await this.closeNotificationForActiveUser(user, notification);
+          }
+          result.reactivated.push({ user: username, notification });
+        }
+      } catch (error) {
+        result.errors.push({ user: username, error });
+      }
+    }
+    return result;
+  }
+  /**
+   * Find users who have open notifications but are no longer dormant
+   */
+  async findReactivatedUsers(currentDormantUsers) {
+    const dormantLogins = new Set(
+      currentDormantUsers.map((user) => user.login)
+    );
+    const openIssues = await getNotifications({
+      octokit: this.octokit,
+      owner: this.config.repository.owner,
+      repo: this.config.repository.repo,
+      params: {
+        state: "open",
+        labels: this.config.repository.baseLabels.join(",")
+      }
+    });
+    return openIssues.filter((issue) => !dormantLogins.has(issue.title)).map((issue) => issue.title);
+  }
+  /**
+   * Create a notification for a user
+   */
+  async notifyUser(user) {
+    console.log(`Creating notification for ${user.login}`);
+    const notificationBody = typeof this.config.notificationBody === "function" ? this.config.notificationBody({
+      lastActivityRecord: enrichLastActivityRecord(user),
+      gracePeriod: this.config.gracePeriod
+    }) : createDefaultNotificationBodyHandler(this.config.notificationBody);
+    const { data } = await this.octokit.rest.issues.create({
+      owner: this.config.repository.owner,
+      repo: this.config.repository.repo,
+      title: user.login,
+      body: `@${user.login}
+
+${notificationBody}`,
+      labels: [
+        ...this.config.repository.baseLabels,
+        "pending-removal" /* PENDING */
+      ],
+      assignees: this.config.assignUserToIssue ? [user.login] : void 0
+    });
+    console.log(`Notification created for ${user.login}`);
+    return data;
+  }
+  /**
+   * Check if notification grace period has expired
+   */
+  hasGracePeriodExpired(notification) {
+    return compareDatesAgainstDuration(
+      this.config.gracePeriod,
+      new Date(notification.created_at)
+    ).overDuration;
+  }
+  /**
+   * Remove a user after grace period expiration
+   */
+  async removeAccount(user, notification) {
+    console.log(`Removing account ${user.login}`);
+    if (this.config.removeAccount) {
+      try {
+        const removed = await this.config.removeAccount({
+          lastActivityRecord: user
+        });
+        console.log(
+          `Account removal handler executed for ${user.login}: ${Boolean(removed) ? "success" : "failure"}`
+        );
+        if (!removed) {
+          return;
+        }
+      } catch (error) {
+        console.error(
+          `Error executing account removal handler for ${user.login}:`,
+          error
+        );
+        throw error;
+      }
+    } else {
+      console.log(`No account removal handler provided for ${user.login}`);
+    }
+    await this.addCommentToIssue(
+      notification.number,
+      `Account ${user.login} removed due to inactivity after ${this.config.gracePeriod} grace period.`
+    );
+    await this.addLabelToIssue(notification.number, "user-removed" /* REMOVED */);
+    await this.octokit.rest.issues.update({
+      owner: this.config.repository.owner,
+      repo: this.config.repository.repo,
+      issue_number: notification.number,
+      state: "closed"
+    });
+    await this.removeLabelFromIssue(
+      notification.number,
+      "pending-removal" /* PENDING */
+    );
+    console.log(`Notification closed for removed user ${user.login}`);
+  }
+  /**
+   * Close notification for a user who became active
+   */
+  async closeNotificationForActiveUser(user, notification) {
+    console.log(`Closing notification for active user ${user.login}`);
+    await Promise.all([
+      this.addCommentToIssue(
+        notification.number,
+        `User ${user.login} is now active. No removal needed.`
+      ),
+      this.addLabelToIssue(notification.number, "became-active" /* ACTIVE */),
+      this.removeLabelFromIssue(
+        notification.number,
+        "pending-removal" /* PENDING */
+      )
+    ]);
+    await this.octokit.rest.issues.update({
+      owner: this.config.repository.owner,
+      repo: this.config.repository.repo,
+      issue_number: notification.number,
+      state: "closed",
+      state_reason: "not_planned"
+    });
+    console.log(`Notification closed for active user ${user.login}`);
+  }
+  /**
+   * Mark user for admin exclusion
+   */
+  async markAdminExclusion(user, notification, reason) {
+    console.log(`Marking admin exclusion for ${user.login}: ${reason}`);
+    await this.addCommentToIssue(
+      notification.number,
+      `Admin exclusion applied for ${user.login}: ${reason}`
+    );
+    await this.addLabelToIssue(
+      notification.number,
+      "admin-exclusion" /* EXCLUDED */
+    );
+    console.log(`Admin exclusion marked for ${user.login}`);
+  }
+  /**
+   * Get notifications by status
+   */
+  async getNotificationsByStatus(status) {
+    const issues = await getNotifications({
+      octokit: this.octokit,
+      owner: this.config.repository.owner,
+      repo: this.config.repository.repo,
+      params: {
+        state: "open",
+        labels: `${status}`
+      }
+    });
+    return issues.map((issue) => ({
+      user: issue.title,
+      notification: issue
+    }));
+  }
+  // Helper methods
+  /**
+   * Get existing notification for a user
+   */
+  async getExistingNotification(username) {
+    return getExistingNotification({
+      octokit: this.octokit,
+      owner: this.config.repository.owner,
+      repo: this.config.repository.repo,
+      username,
+      baseLabels: this.config.repository.baseLabels,
+      assignUserToIssue: this.config.assignUserToIssue
+    });
+  }
+  /**
+   * Add a comment to an issue
+   */
+  async addCommentToIssue(issueNumber, comment) {
+    await this.octokit.rest.issues.createComment({
+      owner: this.config.repository.owner,
+      repo: this.config.repository.repo,
+      issue_number: issueNumber,
+      body: comment
+    });
+  }
+  /**
+   * Add a label to an issue
+   */
+  async addLabelToIssue(issueNumber, label) {
+    await this.octokit.rest.issues.addLabels({
+      owner: this.config.repository.owner,
+      repo: this.config.repository.repo,
+      issue_number: issueNumber,
+      labels: [label]
+    });
+  }
+  /**
+   * Remove a label from an issue
+   */
+  async removeLabelFromIssue(issueNumber, label) {
+    try {
+      await this.octokit.rest.issues.removeLabel({
+        owner: this.config.repository.owner,
+        repo: this.config.repository.repo,
+        issue_number: issueNumber,
+        name: label
+      });
+      console.log(`Removed label ${label} from issue #${issueNumber}`);
+    } catch (error) {
+      if (error?.status === 404) {
+        console.log(
+          `Label ${label} not found on issue #${issueNumber}, skipping removal`
+        );
+        return;
+      }
+      throw error;
+    }
+  }
+  /**
+   * Check if issue has a specific label
+   */
+  hasLabel(issue, label) {
+    return issue.labels.some(
+      (l) => typeof l === "string" ? l === label : l.name === label
+    );
+  }
+};
+function createDefaultNotificationBodyHandler(notificationTemplate) {
+  return ({
+    lastActivityRecord: { login, lastActivityLocalized, humanFriendlyDuration },
+    gracePeriod
+  }) => {
+    return notificationTemplate.replace("{{lastActivity}}", lastActivityLocalized || "None").replace("{{gracePeriod}}", gracePeriod).replace("{{timeSinceLastActivity}}", humanFriendlyDuration || "N/A").replace("{{account}}", login);
+  };
+}
+
+//# sourceMappingURL=index.js.map
 ;// CONCATENATED MODULE: ../../node_modules/.pnpm/lowdb@7.0.1/node_modules/lowdb/lib/core/Low.js
 function checkArgs(adapter, defaultData) {
     if (adapter === undefined)
@@ -34288,84 +34780,130 @@ function dist_dormancyCheck(config) {
 }
 
 //# sourceMappingURL=index.js.map
-;// CONCATENATED MODULE: ../../packages/github/dist/chunk-I2GDOBCE.js
-// src/provider/audit-log.ts
-
-
-var fetchAuditLogActivity = async ({ lastFetchTime, octokit, org, logger: logger4 }) => {
-  const lastFetchTimeAsDate = new Date(lastFetchTime);
-  const payload = {
-    org,
-    include: "all",
-    phrase: `created:>=${lastFetchTimeAsDate.toISOString()}`,
-    per_page: 100,
-    order: "desc"
-  };
-  logger4.debug(`Fetching audit log for ${org} since ${lastFetchTimeAsDate}`);
-  try {
-    const processed = {};
-    try {
-      for await (const {
-        data: entries
-      } of octokit.paginate.iterator(
-        "GET /orgs/{org}/audit-log",
-        payload
-      )) {
-        for (const entry of entries) {
-          if (!entry.actor)
-            continue;
-          const actor = entry.actor.toLowerCase();
-          const lastActivity = entry["@timestamp"] ? new Date(entry["@timestamp"]) : null;
-          const record = { type: entry.action, login: actor, lastActivity };
-          if (!processed[actor]?.lastActivity || lastActivity && lastActivity > processed[actor].lastActivity) {
-            processed[actor] = record;
-            const log = lastActivity ? `${ms(Date.now() - lastActivity.getTime())} ago` : "unknown";
-            logger4.debug(
-              `Activity record found for ${actor} - ${log}${record.type ? ` - ${record.type}` : ""}`
-            );
-          }
-        }
-      }
-    } catch (err) {
-      if (err.status === 404) {
-        logger4.error(
-          `Audit log not found for organization ${org}. The organization may not have audit log access.`
-        );
-        return [];
-      }
-      throw err;
-    }
-    return Object.values(processed);
-  } catch (error) {
-    logger4.error("Failed to fetch audit log", { error });
-    throw error;
+;// CONCATENATED MODULE: ../../packages/github/dist/copilot.js
+// src/provider/copilot/revokeLicense.ts
+var copilot_logger = console;
+var revokeCopilotLicense = async ({
+  logins,
+  octokit,
+  org,
+  dryRun = false
+}) => {
+  const selected_usernames = Array.isArray(logins) ? logins : [logins];
+  if (dryRun) {
+    copilot_logger.info(`DRY RUN: Removing ${selected_usernames} from ${org}`);
+    return false;
   }
-};
-var defaultWhitelistHandler = async ({ login, logger: logger4 }) => {
-  const resolution = login.includes("[bot]");
-  logger4.debug(`Whitelist check for ${login}: ${resolution}`);
-  return resolution;
-};
-var githubDormancy = (config) => {
   const {
-    type = "github-dormancy",
-    isWhitelisted = defaultWhitelistHandler,
-    fetchLatestActivity = fetchAuditLogActivity,
-    ...rest
-  } = config;
-  return dormancyCheck({
-    type,
-    ...rest,
-    fetchLatestActivity,
-    isWhitelisted
+    data: { seats_cancelled }
+  } = await octokit.rest.copilot.cancelCopilotSeatAssignmentForUsers({
+    org,
+    selected_usernames
+  });
+  copilot_logger.info(`Removed ${seats_cancelled} license from ${org}`);
+  return seats_cancelled === selected_usernames.length;
+};
+
+// src/provider/copilot/removeAccount.ts
+var removeAccount = async ({ login, octokit, org, dryRun }) => {
+  return revokeCopilotLicense({
+    logins: login,
+    octokit,
+    org,
+    dryRun: dryRun === true
   });
 };
 
-// src/provider/copilot.ts
+// src/provider/copilot/isTeamIdpSynced.ts
+var logger2 = console;
+async function isTeamIdpSynced({
+  octokit,
+  org,
+  team_slug
+}) {
+  try {
+    const {
+      data: { groups = [] }
+    } = await octokit.request(
+      "GET /orgs/{org}/teams/{team_slug}/team-sync/group-mappings",
+      {
+        org,
+        team_slug
+      }
+    );
+    if (groups.length > 0) {
+      logger2.debug(
+        `Team ${team_slug} is IdP synced with ${groups.length} group mappings`
+      );
+      return true;
+    }
+    logger2.debug(`Team ${team_slug} is not IdP synced.`);
+    return false;
+  } catch (error) {
+    logger2.error(
+      `Error checking IdP sync status for team ${team_slug}:`,
+      error
+    );
+    throw error;
+  }
+}
+
+// src/provider/copilot/removeCopilotUserFromTeam.ts
+var logger3 = console;
+var removeCopilotUserFromTeam = async ({
+  username,
+  octokit,
+  org,
+  dryRun = false
+}) => {
+  try {
+    const {
+      data: { assigning_team }
+    } = await octokit.rest.copilot.getCopilotSeatDetailsForUser({
+      org,
+      username
+    });
+    if (!assigning_team) {
+      logger3.debug(`User ${username} is not assigned to Copilot via a team`);
+      return false;
+    }
+    const { id, name, slug: team_slug } = assigning_team;
+    logger3.debug(
+      `User ${username} is assigned to Copilot via team ${name} (id: ${id})`
+    );
+    if (await isTeamIdpSynced({ octokit, org, team_slug })) {
+      logger3.info(
+        `User ${username} must be removed from team ${name} via the IdP to revoke Copilot license`
+      );
+      return false;
+    }
+    if (dryRun) {
+      logger3.info(
+        `DRY RUN: Would remove ${username} from team ${name} to revoke Copilot license`
+      );
+      return false;
+    }
+    await octokit.rest.teams.removeMembershipForUserInOrg({
+      org,
+      team_slug,
+      username
+    });
+    logger3.info(
+      `Successfully removed ${username} from team ${team_slug} to revoke Copilot license`
+    );
+    return true;
+  } catch (error) {
+    logger3.error(`Error removing ${username} from team:`, error);
+    return false;
+  }
+};
+
+// src/provider/copilot/dormancy.ts
 
 
-var chunk_I2GDOBCE_logger = console;
-var fetchLatestActivityFromCoPilot = async ({ octokit, org, checkType, logger: logger4 }) => {
+// src/provider/copilot/fetchLatestActivityFromCopilot.ts
+
+var fetchLatestActivityFromCopilot = async ({ octokit, org, checkType, logger: logger4 }) => {
   logger4.debug(checkType, `Fetching audit log for ${org}`);
   const payload = {
     org,
@@ -34418,37 +34956,12 @@ var fetchLatestActivityFromCoPilot = async ({ octokit, org, checkType, logger: l
     throw error;
   }
 };
-var removeAccount = async ({ login, octokit, org, dryRun }) => {
-  return revokeCopilotLicense({
-    logins: login,
-    octokit,
-    org,
-    dryRun: dryRun == true
-  });
-};
-var revokeCopilotLicense = async (config) => {
-  const { octokit, org, logins, dryRun } = config;
-  let selected_usernames = logins;
-  if (typeof selected_usernames === "string") {
-    selected_usernames = [selected_usernames];
-  }
-  if (dryRun) {
-    chunk_I2GDOBCE_logger.info(`DRY RUN: Removing ${selected_usernames} from ${org}`);
-    return false;
-  }
-  const {
-    data: { seats_cancelled }
-  } = await octokit.rest.copilot.cancelCopilotSeatAssignmentForUsers({
-    org,
-    selected_usernames
-  });
-  chunk_I2GDOBCE_logger.info(`Removed ${seats_cancelled} license from ${org}`);
-  return seats_cancelled === selected_usernames.length;
-};
+
+// src/provider/copilot/dormancy.ts
 var copilotDormancy = (config) => {
   const {
     type = "github-copilot-dormancy",
-    fetchLatestActivity = fetchLatestActivityFromCoPilot,
+    fetchLatestActivity = fetchLatestActivityFromCopilot,
     ...rest
   } = config;
   return dist_dormancyCheck({
@@ -34459,517 +34972,7 @@ var copilotDormancy = (config) => {
   });
 };
 
-// src/provider/notifier.ts
-
-
-// src/provider/getNotifications.ts
-async function getNotifications({
-  octokit,
-  owner,
-  repo,
-  params = {}
-}) {
-  const issues = await octokit.paginate(octokit.rest.issues.listForRepo, {
-    owner,
-    repo,
-    per_page: 100,
-    ...params
-  });
-  console.log(`Fetched ${issues.length} total issues from ${owner}/${repo}`);
-  return issues;
-}
-
-// src/provider/getExistingNotification.ts
-async function getExistingNotification(options) {
-  const { octokit, owner, repo, username, baseLabels, assignUserToIssue } = options;
-  const repoQuery = `repo:${owner}/${repo}`;
-  const titleQuery = `in:title ${username}`;
-  const stateQuery = "state:open";
-  const sortQuery = "sort:created-asc";
-  const labelQuery = baseLabels.map((label) => `label:"${label}"`).join(" ");
-  const assigneeQuery = assignUserToIssue ? `assignee:${username}` : "";
-  const searchQuery = [
-    repoQuery,
-    titleQuery,
-    stateQuery,
-    labelQuery,
-    assigneeQuery,
-    sortQuery
-  ].filter(Boolean).join(" ");
-  try {
-    const response = await octokit.graphql(
-      `
-      query GetExistingNotification($searchQuery: String!) {
-        search(query: $searchQuery, type: ISSUE, first: 50) {
-          nodes {
-            ... on Issue {
-              number
-              title
-              url
-              createdAt
-              state
-              labels(first: 10) {
-                nodes {
-                  name
-                }
-              }
-            }
-          }
-        }
-      }
-    `,
-      {
-        searchQuery
-      }
-    );
-    console.debug(
-      `Found ${response.search.nodes.length} issues matching query: ${searchQuery}`
-    );
-    const issueNode = response.search.nodes.find(
-      (node) => node.title === username
-    );
-    if (!issueNode) {
-      return null;
-    }
-    const issue = {
-      number: issueNode.number,
-      title: issueNode.title,
-      html_url: issueNode.url,
-      created_at: issueNode.createdAt,
-      state: issueNode.state,
-      // Transform labels to match the expected format
-      labels: issueNode.labels?.nodes.map((label) => ({ name: label.name })) || []
-    };
-    return issue;
-  } catch (error) {
-    console.error("Error fetching existing notification via GraphQL:", error);
-    console.log("Falling back to REST API for fetching notification");
-    return fallbackToRestApi(options);
-  }
-}
-async function fallbackToRestApi(options) {
-  const { octokit, owner, repo, username, baseLabels, assignUserToIssue } = options;
-  const issues = await getNotifications({
-    octokit,
-    owner,
-    repo,
-    params: {
-      state: "open",
-      labels: baseLabels.join(","),
-      assignee: assignUserToIssue ? username : void 0
-    }
-  });
-  return issues.find((issue) => issue.title === username) || null;
-}
-
-// src/provider/notifier.ts
-var NotificationStatus = /* @__PURE__ */ ((NotificationStatus2) => {
-  NotificationStatus2["ACTIVE"] = "became-active";
-  NotificationStatus2["EXCLUDED"] = "admin-exclusion";
-  NotificationStatus2["PENDING"] = "pending-removal";
-  NotificationStatus2["REMOVED"] = "user-removed";
-  return NotificationStatus2;
-})(NotificationStatus || {});
-var GithubIssueNotifier = class {
-  /**
-   * Initialize the notifier with configuration
-   */
-  constructor(config) {
-    this.config = config;
-    this.octokit = config.githubClient;
-  }
-  /**
-   * Process a list of dormant users
-   */
-  async processDormantUsers(users) {
-    const result = {
-      notified: [],
-      removed: [],
-      reactivated: [],
-      excluded: [],
-      inGracePeriod: [],
-      errors: []
-    };
-    const reactivatedUsers = await this.findReactivatedUsers(users);
-    for (const user of users) {
-      try {
-        if (reactivatedUsers.includes(user.login)) {
-          continue;
-        }
-        const notification = await this.getExistingNotification(user.login);
-        if (notification) {
-          if (this.hasLabel(notification, "admin-exclusion" /* EXCLUDED */)) {
-            result.excluded.push({ user: user.login, notification });
-            continue;
-          }
-          if (this.hasGracePeriodExpired(notification)) {
-            if (!this.config.dryRun) {
-              await this.removeAccount(user, notification);
-            }
-            result.removed.push({ user: user.login, notification });
-          } else {
-            result.inGracePeriod.push({ user: user.login, notification });
-          }
-        } else {
-          if (!this.config.dryRun) {
-            const newNotification = await this.notifyUser(user);
-            result.notified.push({
-              user: user.login,
-              notification: newNotification
-            });
-          } else {
-            console.log(`[DRY RUN] Would notify user: ${user.login}`);
-            result.notified.push({
-              user: user.login,
-              // @ts-ignore
-              notification: {
-                id: 0,
-                number: 0,
-                title: user.login,
-                created_at: (/* @__PURE__ */ new Date()).toISOString(),
-                labels: [],
-                state: "open"
-              }
-            });
-          }
-        }
-      } catch (error) {
-        result.errors.push({ user: user.login, error });
-      }
-    }
-    for (const username of reactivatedUsers) {
-      try {
-        const notification = await this.getExistingNotification(username);
-        if (notification) {
-          const user = users.find((u) => u.login === username) || {
-            login: username
-          };
-          if (!this.config.dryRun) {
-            await this.closeNotificationForActiveUser(user, notification);
-          }
-          result.reactivated.push({ user: username, notification });
-        }
-      } catch (error) {
-        result.errors.push({ user: username, error });
-      }
-    }
-    return result;
-  }
-  /**
-   * Find users who have open notifications but are no longer dormant
-   */
-  async findReactivatedUsers(currentDormantUsers) {
-    const dormantLogins = new Set(
-      currentDormantUsers.map((user) => user.login)
-    );
-    const openIssues = await getNotifications({
-      octokit: this.octokit,
-      owner: this.config.repository.owner,
-      repo: this.config.repository.repo,
-      params: {
-        state: "open",
-        labels: this.config.repository.baseLabels.join(",")
-      }
-    });
-    return openIssues.filter((issue) => !dormantLogins.has(issue.title)).map((issue) => issue.title);
-  }
-  /**
-   * Create a notification for a user
-   */
-  async notifyUser(user) {
-    console.log(`Creating notification for ${user.login}`);
-    const notificationBody = typeof this.config.notificationBody === "function" ? this.config.notificationBody({
-      lastActivityRecord: enrichLastActivityRecord(user),
-      gracePeriod: this.config.gracePeriod
-    }) : createDefaultNotificationBodyHandler(this.config.notificationBody);
-    const { data } = await this.octokit.rest.issues.create({
-      owner: this.config.repository.owner,
-      repo: this.config.repository.repo,
-      title: user.login,
-      body: `@${user.login}
-
-${notificationBody}`,
-      labels: [
-        ...this.config.repository.baseLabels,
-        "pending-removal" /* PENDING */
-      ],
-      assignees: this.config.assignUserToIssue ? [user.login] : void 0
-    });
-    console.log(`Notification created for ${user.login}`);
-    return data;
-  }
-  /**
-   * Check if notification grace period has expired
-   */
-  hasGracePeriodExpired(notification) {
-    return compareDatesAgainstDuration(
-      this.config.gracePeriod,
-      new Date(notification.created_at)
-    ).overDuration;
-  }
-  /**
-   * Remove a user after grace period expiration
-   */
-  async removeAccount(user, notification) {
-    console.log(`Removing account ${user.login}`);
-    if (this.config.removeAccount) {
-      try {
-        const removed = await this.config.removeAccount({
-          lastActivityRecord: user
-        });
-        console.log(
-          `Account removal handler executed for ${user.login}: ${Boolean(removed) ? "success" : "failure"}`
-        );
-        if (!removed) {
-          return;
-        }
-      } catch (error) {
-        console.error(
-          `Error executing account removal handler for ${user.login}:`,
-          error
-        );
-        throw error;
-      }
-    } else {
-      console.log(`No account removal handler provided for ${user.login}`);
-    }
-    await this.addCommentToIssue(
-      notification.number,
-      `Account ${user.login} removed due to inactivity after ${this.config.gracePeriod} grace period.`
-    );
-    await this.addLabelToIssue(notification.number, "user-removed" /* REMOVED */);
-    await this.octokit.rest.issues.update({
-      owner: this.config.repository.owner,
-      repo: this.config.repository.repo,
-      issue_number: notification.number,
-      state: "closed"
-    });
-    await this.removeLabelFromIssue(
-      notification.number,
-      "pending-removal" /* PENDING */
-    );
-    console.log(`Notification closed for removed user ${user.login}`);
-  }
-  /**
-   * Close notification for a user who became active
-   */
-  async closeNotificationForActiveUser(user, notification) {
-    console.log(`Closing notification for active user ${user.login}`);
-    await Promise.all([
-      this.addCommentToIssue(
-        notification.number,
-        `User ${user.login} is now active. No removal needed.`
-      ),
-      this.addLabelToIssue(notification.number, "became-active" /* ACTIVE */),
-      this.removeLabelFromIssue(
-        notification.number,
-        "pending-removal" /* PENDING */
-      )
-    ]);
-    await this.octokit.rest.issues.update({
-      owner: this.config.repository.owner,
-      repo: this.config.repository.repo,
-      issue_number: notification.number,
-      state: "closed",
-      state_reason: "not_planned"
-    });
-    console.log(`Notification closed for active user ${user.login}`);
-  }
-  /**
-   * Mark user for admin exclusion
-   */
-  async markAdminExclusion(user, notification, reason) {
-    console.log(`Marking admin exclusion for ${user.login}: ${reason}`);
-    await this.addCommentToIssue(
-      notification.number,
-      `Admin exclusion applied for ${user.login}: ${reason}`
-    );
-    await this.addLabelToIssue(
-      notification.number,
-      "admin-exclusion" /* EXCLUDED */
-    );
-    console.log(`Admin exclusion marked for ${user.login}`);
-  }
-  /**
-   * Get notifications by status
-   */
-  async getNotificationsByStatus(status) {
-    const issues = await getNotifications({
-      octokit: this.octokit,
-      owner: this.config.repository.owner,
-      repo: this.config.repository.repo,
-      params: {
-        state: "open",
-        labels: `${status}`
-      }
-    });
-    return issues.map((issue) => ({
-      user: issue.title,
-      notification: issue
-    }));
-  }
-  // Helper methods
-  /**
-   * Get existing notification for a user
-   */
-  async getExistingNotification(username) {
-    return getExistingNotification({
-      octokit: this.octokit,
-      owner: this.config.repository.owner,
-      repo: this.config.repository.repo,
-      username,
-      baseLabels: this.config.repository.baseLabels,
-      assignUserToIssue: this.config.assignUserToIssue
-    });
-  }
-  /**
-   * Add a comment to an issue
-   */
-  async addCommentToIssue(issueNumber, comment) {
-    await this.octokit.rest.issues.createComment({
-      owner: this.config.repository.owner,
-      repo: this.config.repository.repo,
-      issue_number: issueNumber,
-      body: comment
-    });
-  }
-  /**
-   * Add a label to an issue
-   */
-  async addLabelToIssue(issueNumber, label) {
-    await this.octokit.rest.issues.addLabels({
-      owner: this.config.repository.owner,
-      repo: this.config.repository.repo,
-      issue_number: issueNumber,
-      labels: [label]
-    });
-  }
-  /**
-   * Remove a label from an issue
-   */
-  async removeLabelFromIssue(issueNumber, label) {
-    try {
-      await this.octokit.rest.issues.removeLabel({
-        owner: this.config.repository.owner,
-        repo: this.config.repository.repo,
-        issue_number: issueNumber,
-        name: label
-      });
-      console.log(`Removed label ${label} from issue #${issueNumber}`);
-    } catch (error) {
-      if (error?.status === 404) {
-        console.log(
-          `Label ${label} not found on issue #${issueNumber}, skipping removal`
-        );
-        return;
-      }
-      throw error;
-    }
-  }
-  /**
-   * Check if issue has a specific label
-   */
-  hasLabel(issue, label) {
-    return issue.labels.some(
-      (l) => typeof l === "string" ? l === label : l.name === label
-    );
-  }
-};
-function createDefaultNotificationBodyHandler(notificationTemplate) {
-  return ({
-    lastActivityRecord: { login, lastActivityLocalized, humanFriendlyDuration },
-    gracePeriod
-  }) => {
-    return notificationTemplate.replace("{{lastActivity}}", lastActivityLocalized || "None").replace("{{gracePeriod}}", gracePeriod).replace("{{timeSinceLastActivity}}", humanFriendlyDuration || "N/A").replace("{{account}}", login);
-  };
-}
-
-// src/provider/isTeamIdpSynced.ts
-var logger2 = console;
-async function isTeamIdpSynced({
-  octokit,
-  org,
-  team_slug
-}) {
-  try {
-    const {
-      data: { groups = [] }
-    } = await octokit.request(
-      "GET /orgs/{org}/teams/{team_slug}/team-sync/group-mappings",
-      {
-        org,
-        team_slug
-      }
-    );
-    if (groups.length > 0) {
-      logger2.debug(
-        `Team ${team_slug} is IdP synced with ${groups.length} group mappings`
-      );
-      return true;
-    }
-    logger2.debug(`Team ${team_slug} is not IdP synced.`);
-    return false;
-  } catch (error) {
-    logger2.error(
-      `Error checking IdP sync status for team ${team_slug}:`,
-      error
-    );
-    throw error;
-  }
-}
-
-// src/provider/removeCopilotUserFromTeam.ts
-var logger3 = console;
-var removeCopilotUserFromTeam = async ({
-  username,
-  octokit,
-  org,
-  dryRun = false
-}) => {
-  try {
-    const {
-      data: { assigning_team }
-    } = await octokit.rest.copilot.getCopilotSeatDetailsForUser({
-      org,
-      username
-    });
-    if (!assigning_team) {
-      logger3.debug(`User ${username} is not assigned to Copilot via a team`);
-      return false;
-    }
-    const { id, name, slug: team_slug } = assigning_team;
-    logger3.debug(
-      `User ${username} is assigned to Copilot via team ${name} (id: ${id})`
-    );
-    if (await isTeamIdpSynced({ octokit, org, team_slug })) {
-      logger3.info(
-        `User ${username} must be removed from team ${name} via the IdP to revoke Copilot license`
-      );
-      return false;
-    }
-    if (dryRun) {
-      logger3.info(
-        `DRY RUN: Would remove ${username} from team ${name} to revoke Copilot license`
-      );
-      return false;
-    }
-    await octokit.rest.teams.removeMembershipForUserInOrg({
-      org,
-      team_slug,
-      username
-    });
-    logger3.info(
-      `Successfully removed ${username} from team ${team_slug} to revoke Copilot license`
-    );
-    return true;
-  } catch (error) {
-    logger3.error(`Error removing ${username} from team:`, error);
-    return false;
-  }
-};
-
-
-//# sourceMappingURL=chunk-I2GDOBCE.js.map
+//# sourceMappingURL=copilot.js.map
 ;// CONCATENATED MODULE: ./src/utils/createBranch.ts
 
 /**
@@ -39623,6 +39626,7 @@ async function updateActivityLog(octokit, context, options) {
 }
 
 ;// CONCATENATED MODULE: ./src/run.ts
+
 
 
 

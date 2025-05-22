@@ -1,4 +1,4 @@
-import { OctokitClient } from './types';
+import { OctokitClient } from '../types';
 import { isTeamIdpSynced } from './isTeamIdpSynced';
 
 const logger = console;

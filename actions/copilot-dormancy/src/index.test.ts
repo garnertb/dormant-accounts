@@ -22,9 +22,11 @@ vi.mock('./utils/getActivityLog', () => ({
   }),
 }));
 vi.mock('./utils/getNotificationContext');
+vi.mock('@dormant-accounts/github/copilot', () => ({
+  copilotDormancy: vi.fn(),
+}));
 vi.mock('@dormant-accounts/github', () => {
   return {
-    copilotDormancy: vi.fn(),
     GithubIssueNotifier: vi.fn().mockImplementation(() => ({
       processDormantUsers: vi.fn().mockResolvedValue({
         notified: [],
@@ -113,8 +115,10 @@ describe('Copilot Dormancy Action', () => {
     });
 
     // Setup a fresh mock for the check object
-    const { copilotDormancy } = await import('@dormant-accounts/github');
-    //@ts-expect-error
+    const { copilotDormancy } = await import(
+      '@dormant-accounts/github/copilot'
+    );
+    // @ts-expect-error
     vi.mocked(copilotDormancy).mockResolvedValue(createMockCheckObject());
 
     // Setup input mocks
@@ -192,7 +196,9 @@ describe('Copilot Dormancy Action', () => {
     vi.mocked(getNotificationContext).mockReturnValue(false);
 
     // Setup a fresh mock for the check object
-    const { copilotDormancy } = await import('@dormant-accounts/github');
+    const { copilotDormancy } = await import(
+      '@dormant-accounts/github/copilot'
+    );
     // @ts-expect-error
     vi.mocked(copilotDormancy).mockResolvedValue(createMockCheckObject());
 
@@ -244,7 +250,9 @@ describe('Copilot Dormancy Action', () => {
     });
 
     // Mock copilotDormancy to throw an error
-    const { copilotDormancy } = await import('@dormant-accounts/github');
+    const { copilotDormancy } = await import(
+      '@dormant-accounts/github/copilot'
+    );
     vi.mocked(copilotDormancy).mockRejectedValueOnce(new Error('Test error'));
 
     // Import the run function
