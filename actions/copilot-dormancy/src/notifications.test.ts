@@ -116,7 +116,7 @@ describe('Notification Processing', () => {
           'notifications-duration': '30d',
           'notifications-body': 'Test notification body',
           'notifications-dry-run': 'false',
-          'allow-team-removal': 'false',
+          'remove-user-from-assigning-team': 'false',
         };
         return inputs[name] || '';
       });

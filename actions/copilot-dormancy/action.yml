@@ -46,8 +46,8 @@ inputs:
     description: 'Remove dormant accounts after the grace period, only if notifications are enabled'
     required: false
     default: 'true'
-  allow-team-removal:
-    description: 'Allow removing users from teams that provision Copilot'
+  remove-user-from-assigning-team:
+    description: 'Allow removing users from team that assigned Copilot'
     required: false
     default: 'false'
   notifications-body:

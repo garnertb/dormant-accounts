@@ -45,7 +45,7 @@ export function getNotificationContext(): NotificationContext | false {
       'assign-user-to-notification-issue',
     ),
     removeDormantAccounts: core.getBooleanInput('remove-dormant-accounts'),
-    allowTeamRemoval: core.getBooleanInput('allow-team-removal'),
+    allowTeamRemoval: core.getBooleanInput('remove-user-from-assigning-team'),
   });
 
   if (!parsedNotification.success) {
