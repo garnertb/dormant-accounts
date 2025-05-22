@@ -1,10 +1,9 @@
 import * as core from '@actions/core';
+import { OctokitClient, LastActivityRecord } from '@dormant-accounts/github';
 import {
   revokeCopilotLicense,
   removeCopilotUserFromTeam,
-  OctokitClient,
-  LastActivityRecord,
-} from '@dormant-accounts/github';
+} from '@dormant-accounts/github/copilot';
 import { Activity } from 'dormant-accounts';
 
 interface RemoveCopilotAccountParams {

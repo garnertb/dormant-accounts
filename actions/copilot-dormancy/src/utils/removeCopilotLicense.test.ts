@@ -5,7 +5,7 @@ vi.mock('@actions/core', () => ({
   info: vi.fn(),
 }));
 
-vi.mock('@dormant-accounts/github', () => ({
+vi.mock('@dormant-accounts/github/copilot', () => ({
   revokeCopilotLicense: vi.fn(),
   removeCopilotUserFromTeam: vi.fn(),
 }));
@@ -16,7 +16,7 @@ import * as core from '@actions/core';
 import {
   revokeCopilotLicense,
   removeCopilotUserFromTeam,
-} from '@dormant-accounts/github';
+} from '@dormant-accounts/github/copilot';
 
 describe('removeCopilotAccount', () => {
   const mockOctokit = {

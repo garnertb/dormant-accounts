@@ -1,13 +1,13 @@
 import * as core from '@actions/core';
 import * as github from '@actions/github';
 import {
-  copilotDormancy,
   GithubIssueNotifier,
   OctokitClient,
   LastActivityRecord,
   createDefaultNotificationBodyHandler,
   ProcessingResult,
 } from '@dormant-accounts/github';
+import { copilotDormancy } from '@dormant-accounts/github/copilot';
 import { createBranch } from './utils/createBranch';
 import { removeCopilotLicense } from './utils/removeCopilotLicense';
 import { getActivityLog } from './utils/getActivityLog';

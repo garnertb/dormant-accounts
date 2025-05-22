@@ -11,14 +11,23 @@
     ".": {
       "import": "./dist/index.js",
       "require": "./dist/index.cjs"
+    },
+    "./copilot": {
+      "import": "./dist/copilot.js",
+      "require": "./dist/copilot.cjs",
+      "types:": "./dist/copilot.*.ts"
     }
   },
   "main": "./dist/index.js",
   "typesVersions": {
     "*": {
-      ".": [
-        "dist/*.d.ts",
-        "dist/*.d.cts"
+      "*": [
+        "dist/index.d.ts",
+        "dist/index.d.cts"
+      ],
+      "copilot": [
+        "dist/copilot.d.ts",
+        "dist/copilot.d.cts"
       ]
     }
   },

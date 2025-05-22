@@ -1,10 +1,7 @@
 export {
   githubDormancy,
-  copilotDormancy,
   GithubIssueNotifier,
   createDefaultNotificationBodyHandler,
-  revokeCopilotLicense,
-  removeCopilotUserFromTeam,
   type ProcessingResult,
 } from './provider';
 

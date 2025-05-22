@@ -1,6 +1,6 @@
 import { describe, expect, it, vi, beforeEach } from 'vitest';
 import { isTeamIdpSynced } from './isTeamIdpSynced';
-import type { OctokitClient } from './types';
+import type { OctokitClient } from '../types';
 
 describe('isTeamIdpSynced', () => {
   // Setup mock Octokit with properly typed mock function

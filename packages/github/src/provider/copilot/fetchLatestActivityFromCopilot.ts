@@ -2,7 +2,7 @@ import type {
   FetchActivityHandler,
   LastActivityRecord,
 } from 'dormant-accounts';
-import { GitHubHandlerConfig } from './types';
+import { GitHubHandlerConfig } from '../types';
 import ms from 'ms';
 
 /**
