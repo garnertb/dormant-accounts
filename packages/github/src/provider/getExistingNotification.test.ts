@@ -7,7 +7,6 @@ import { OctokitClient } from './types';
 import * as notificationsModule from './getNotifications';
 
 describe('getExistingNotification', () => {
-  // Remove the problematic type definition
   let mockOctokit: any;
 
   beforeEach(() => {
