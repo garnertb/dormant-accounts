@@ -2,7 +2,6 @@ import { getOctokit } from '@actions/github';
 import {
   compareDatesAgainstDuration,
   enrichLastActivityRecord,
-  EnrichedLastActivityRecord,
 } from 'dormant-accounts/utils';
 import { LastActivityRecord } from 'dormant-accounts';
 import { getNotifications } from './getNotifications';
@@ -10,18 +9,10 @@ import {
   getExistingNotification,
   NotificationIssue,
 } from './getExistingNotification';
-
-type NotificationHandlerContext = {
-  lastActivityRecord: EnrichedLastActivityRecord;
-  gracePeriod: string;
-};
-
-/**
- * Function type that generates notification body text based on user information
- */
-export type NotificationBodyHandler = (
-  context: NotificationHandlerContext,
-) => string;
+import {
+  NotificationBodyHandler,
+  createDefaultNotificationBodyHandler,
+} from './templateHandler';
 
 /**
  * Status labels for notification issues
@@ -37,6 +28,7 @@ export enum NotificationStatus {
  * Configuration for the notification system
  */
 export interface NotificationConfig {
+  dormantAfter?: string;
   gracePeriod: string; // e.g. '7d', '30d'
   notificationBody: string | NotificationBodyHandler;
   repository: {
@@ -251,8 +243,13 @@ export class GithubIssueNotifier implements DormantAccountNotifier {
         ? this.config.notificationBody({
             lastActivityRecord: enrichLastActivityRecord(user),
             gracePeriod: this.config.gracePeriod,
+            dormantAfter: this.config.dormantAfter,
           })
-        : createDefaultNotificationBodyHandler(this.config.notificationBody);
+        : createDefaultNotificationBodyHandler(this.config.notificationBody)({
+            lastActivityRecord: enrichLastActivityRecord(user),
+            gracePeriod: this.config.gracePeriod,
+            dormantAfter: this.config.dormantAfter,
+          });
 
     const { data } = await this.octokit.rest.issues.create({
       owner: this.config.repository.owner,
@@ -501,39 +498,4 @@ export class GithubIssueNotifier implements DormantAccountNotifier {
       typeof l === 'string' ? l === label : l.name === label,
     );
   }
-}
-
-/**
- * Creates a handler for generating notification bodies.
- * @param notificationTemplate - Template string for the notification body
- * @returns handler function that receives a context object and returns the formatted notification body
- *
- * The template string can include placeholders for user information:
- * - `{{account}}`: The account identification
- * - `{{lastActivity}}`: The last activity date (localized)
- * - `{{gracePeriod}}`: The grace period for reactivation
- * - `{{timeSinceLastActivity}}`: The time since the last activity
- *
- * @example
- * ```ts
- * const handler = createDefaultNotificationBodyHandler(
- *  'Hello {{account}}, your last activity was on {{lastActivity}}. ' +
- *  'You have {{gracePeriod}} to reactivate your account. ' +
- *  'Time since last activity: {{timeSinceLastActivity}}'
- * );
- * ```
- */
-export function createDefaultNotificationBodyHandler(
-  notificationTemplate: string,
-): NotificationBodyHandler {
-  return ({
-    lastActivityRecord: { login, lastActivityLocalized, humanFriendlyDuration },
-    gracePeriod,
-  }): string => {
-    return notificationTemplate
-      .replace('{{lastActivity}}', lastActivityLocalized || 'None')
-      .replace('{{gracePeriod}}', gracePeriod)
-      .replace('{{timeSinceLastActivity}}', humanFriendlyDuration || 'N/A')
-      .replace('{{account}}', login);
-  };
 }

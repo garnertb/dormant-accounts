@@ -4,7 +4,6 @@ import {
   GithubIssueNotifier,
   OctokitClient,
   LastActivityRecord,
-  createDefaultNotificationBodyHandler,
   ProcessingResult,
 } from '@dormant-accounts/github';
 import { copilotDormancy } from '@dormant-accounts/github/copilot';
@@ -74,7 +73,7 @@ export async function processNotifications(
       ...repo,
       baseLabels,
     },
-    notificationBody: createDefaultNotificationBodyHandler(body),
+    notificationBody: body,
     assignUserToIssue,
     dryRun,
     removeAccount: async ({ lastActivityRecord }) => {

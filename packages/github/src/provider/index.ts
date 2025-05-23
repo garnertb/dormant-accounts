@@ -3,3 +3,4 @@ export * from './audit-log';
 export * from './notifier';
 export * from './getExistingNotification';
 export * from './getNotifications';
+export * from './templateHandler';
