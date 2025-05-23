@@ -121,7 +121,7 @@ export async function getExistingNotification(
     );
 
     console.debug(
-      `Found ${response.search.nodes.length} issues matching query: ${searchQuery}`,
+      `Found ${response.search.nodes.length} issues for user ${username} in repo ${owner}/${repo}`,
     );
 
     // Find the issue with exact title match

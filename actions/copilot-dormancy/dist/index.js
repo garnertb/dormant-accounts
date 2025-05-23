@@ -33757,7 +33757,7 @@ async function getExistingNotification(options) {
       }
     );
     console.debug(
-      `Found ${response.search.nodes.length} issues matching query: ${searchQuery}`
+      `Found ${response.search.nodes.length} issues for user ${username} in repo ${owner}/${repo}`
     );
     const issueNode = response.search.nodes.find(
       (node) => node.title === username
@@ -39676,7 +39676,7 @@ const formatDate = (isoString) => {
         return isoString;
     }
 };
-async function processNotifications(octokit, context, dormantAccounts, check) {
+async function processNotifications(octokit, context, dormantAccounts, check, dormantAfter) {
     const { duration: gracePeriod, body, assignUserToIssue, removeDormantAccounts, allowTeamRemoval, repo, baseLabels, dryRun, } = context;
     const notifier = new GithubIssueNotifier({
         githubClient: octokit,
@@ -39688,6 +39688,7 @@ async function processNotifications(octokit, context, dormantAccounts, check) {
         notificationBody: body,
         assignUserToIssue,
         dryRun,
+        dormantAfter,
         removeAccount: async ({ lastActivityRecord }) => {
             return removeCopilotLicense({
                 lastActivityRecord,
@@ -39813,7 +39814,7 @@ async function run() {
         }
         if (sendNotifications) {
             core.debug('Notification context: ' + safeStringify(notificationsContext));
-            notificationsResults = await processNotifications(octokit, notificationsContext, dormantAccounts, check);
+            notificationsResults = await processNotifications(octokit, notificationsContext, dormantAccounts, check, duration);
             core.setOutput('notification-results', safeStringify(notificationsResults));
             core.info(`Created notifications for ${notificationsResults.notified.length} dormant accounts`);
             core.info(`Closed notifications for ${notificationsResults.reactivated.length} no longer dormant accounts`);

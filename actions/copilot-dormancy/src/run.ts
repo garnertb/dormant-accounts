@@ -54,6 +54,7 @@ export async function processNotifications(
   check: {
     activity: Activity;
   },
+  dormantAfter: string,
 ) {
   const {
     duration: gracePeriod,
@@ -76,6 +77,7 @@ export async function processNotifications(
     notificationBody: body,
     assignUserToIssue,
     dryRun,
+    dormantAfter,
     removeAccount: async ({ lastActivityRecord }) => {
       return removeCopilotLicense({
         lastActivityRecord,
@@ -259,6 +261,7 @@ async function run(): Promise<void> {
         notificationsContext,
         dormantAccounts,
         check,
+        duration,
       );
 
       core.setOutput(
