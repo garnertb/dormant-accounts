@@ -32024,7 +32024,7 @@ var core = __nccwpck_require__(99);
 var github = __nccwpck_require__(6495);
 // EXTERNAL MODULE: ../../node_modules/.pnpm/ms@2.1.3/node_modules/ms/index.js
 var node_modules_ms = __nccwpck_require__(9258);
-;// CONCATENATED MODULE: ../../node_modules/.pnpm/consola@3.4.0/node_modules/consola/dist/core.mjs
+;// CONCATENATED MODULE: ../../node_modules/.pnpm/consola@3.4.2/node_modules/consola/dist/core.mjs
 const LogLevels = {
   silent: Number.NEGATIVE_INFINITY,
   fatal: 0,
@@ -32121,7 +32121,7 @@ function _defu(baseObject, defaults, namespace = ".", merger) {
       continue;
     }
     const value = baseObject[key];
-    if (value === null || value === undefined) {
+    if (value === null || value === void 0) {
       continue;
     }
     if (merger && merger(object, key, value, namespace)) {
@@ -32514,13 +32514,13 @@ class Consola {
   }
 }
 function _normalizeLogLevel(input, types = {}, defaultLevel = 3) {
-  if (input === undefined) {
+  if (input === void 0) {
     return defaultLevel;
   }
   if (typeof input === "number") {
     return input;
   }
-  if (types[input] && types[input].level !== undefined) {
+  if (types[input] && types[input].level !== void 0) {
     return types[input].level;
   }
   return defaultLevel;
@@ -32542,13 +32542,13 @@ function createConsola(options = {}) {
 var external_node_util_ = __nccwpck_require__(7975);
 ;// CONCATENATED MODULE: external "node:path"
 const external_node_path_namespaceObject = __WEBPACK_EXTERNAL_createRequire(import.meta.url)("node:path");
-;// CONCATENATED MODULE: ../../node_modules/.pnpm/consola@3.4.0/node_modules/consola/dist/shared/consola.Cs5FdtHD.mjs
+;// CONCATENATED MODULE: ../../node_modules/.pnpm/consola@3.4.2/node_modules/consola/dist/shared/consola.DRwqZj3T.mjs
 
 
 
-function parseStack(stack) {
+function parseStack(stack, message) {
   const cwd = process.cwd() + external_node_path_namespaceObject.sep;
-  const lines = stack.split("\n").splice(1).map((l) => l.trim().replace("file://", "").replace(cwd, ""));
+  const lines = stack.split("\n").splice(message.split("\n").length).map((l) => l.trim().replace("file://", "").replace(cwd, ""));
   return lines;
 }
 
@@ -32559,14 +32559,14 @@ function writeStream(data, stream) {
 
 const bracket = (x) => x ? `[${x}]` : "";
 class BasicReporter {
-  formatStack(stack, opts) {
+  formatStack(stack, message, opts) {
     const indent = "  ".repeat((opts?.errorLevel || 0) + 1);
-    return indent + parseStack(stack).join(`
+    return indent + parseStack(stack, message).join(`
 ${indent}`);
   }
   formatError(err, opts) {
     const message = err.message ?? (0,external_node_util_.formatWithOptions)(opts, err);
-    const stack = err.stack ? this.formatStack(err.stack, opts) : "";
+    const stack = err.stack ? this.formatStack(err.stack, message, opts) : "";
     const level = opts?.errorLevel || 0;
     const causedPrefix = level > 0 ? `${"  ".repeat(level)}[cause]: ` : "";
     const causedError = err.cause ? "\n\n" + this.formatError(err.cause, { ...opts, errorLevel: level + 1 }) : "";
@@ -32621,7 +32621,7 @@ var external_node_process_ = __nccwpck_require__(1708);
 // EXTERNAL MODULE: external "node:tty"
 var external_node_tty_ = __nccwpck_require__(7066);
 var external_node_tty_namespaceObject = /*#__PURE__*/__nccwpck_require__.t(external_node_tty_, 2);
-;// CONCATENATED MODULE: ../../node_modules/.pnpm/consola@3.4.0/node_modules/consola/dist/shared/consola.lX6kr4n8.mjs
+;// CONCATENATED MODULE: ../../node_modules/.pnpm/consola@3.4.2/node_modules/consola/dist/shared/consola.DXBYu-KD.mjs
 
 
 const {
@@ -32643,7 +32643,7 @@ function clearBleed(index, string, open, close, replace) {
   return index < 0 ? open + string + close : open + replaceClose(index, string, close, replace) + close;
 }
 function filterEmpty(open, close, replace = open, at = open.length + 1) {
-  return (string) => string || !(string === "" || string === undefined) ? clearBleed(
+  return (string) => string || !(string === "" || string === void 0) ? clearBleed(
     ("" + string).indexOf(close, at),
     string,
     open,
@@ -32860,7 +32860,10 @@ function box(text, _opts = {}) {
   }
   const paddingOffset = opts.style.padding % 2 === 0 ? opts.style.padding : opts.style.padding + 1;
   const height = textLines.length + paddingOffset;
-  const width = Math.max(...textLines.map((line) => stripAnsi(line).length)) + paddingOffset;
+  const width = Math.max(
+    ...textLines.map((line) => stripAnsi(line).length),
+    opts.title ? stripAnsi(opts.title).length : 0
+  ) + paddingOffset;
   const widthOffset = width + paddingOffset;
   const leftSpace = opts.style.marginLeft > 0 ? " ".repeat(opts.style.marginLeft) : "";
   if (opts.style.marginTop > 0) {
@@ -32908,7 +32911,7 @@ function box(text, _opts = {}) {
 
 
 
-;// CONCATENATED MODULE: ../../node_modules/.pnpm/consola@3.4.0/node_modules/consola/dist/index.mjs
+;// CONCATENATED MODULE: ../../node_modules/.pnpm/consola@3.4.2/node_modules/consola/dist/index.mjs
 
 
 
@@ -32918,7 +32921,7 @@ function box(text, _opts = {}) {
 
 
 
-const r=Object.create(null),i=e=>globalThis.process?.env||import.meta.env||globalThis.Deno?.env.toObject()||globalThis.__env__||(e?r:globalThis),s$1=new Proxy(r,{get(e,o){return i()[o]??r[o]},has(e,o){const E=i();return o in E||o in r},set(e,o,E){const b=i(true);return b[o]=E,true},deleteProperty(e,o){if(!o)return  false;const E=i(true);return delete E[o],true},ownKeys(){const e=i(true);return Object.keys(e)}}),t=typeof process<"u"&&process.env&&process.env.NODE_ENV||"",B=[["APPVEYOR"],["AWS_AMPLIFY","AWS_APP_ID",{ci:true}],["AZURE_PIPELINES","SYSTEM_TEAMFOUNDATIONCOLLECTIONURI"],["AZURE_STATIC","INPUT_AZURE_STATIC_WEB_APPS_API_TOKEN"],["APPCIRCLE","AC_APPCIRCLE"],["BAMBOO","bamboo_planKey"],["BITBUCKET","BITBUCKET_COMMIT"],["BITRISE","BITRISE_IO"],["BUDDY","BUDDY_WORKSPACE_ID"],["BUILDKITE"],["CIRCLE","CIRCLECI"],["CIRRUS","CIRRUS_CI"],["CLOUDFLARE_PAGES","CF_PAGES",{ci:true}],["CODEBUILD","CODEBUILD_BUILD_ARN"],["CODEFRESH","CF_BUILD_ID"],["DRONE"],["DRONE","DRONE_BUILD_EVENT"],["DSARI"],["GITHUB_ACTIONS"],["GITLAB","GITLAB_CI"],["GITLAB","CI_MERGE_REQUEST_ID"],["GOCD","GO_PIPELINE_LABEL"],["LAYERCI"],["HUDSON","HUDSON_URL"],["JENKINS","JENKINS_URL"],["MAGNUM"],["NETLIFY"],["NETLIFY","NETLIFY_LOCAL",{ci:false}],["NEVERCODE"],["RENDER"],["SAIL","SAILCI"],["SEMAPHORE"],["SCREWDRIVER"],["SHIPPABLE"],["SOLANO","TDDIUM"],["STRIDER"],["TEAMCITY","TEAMCITY_VERSION"],["TRAVIS"],["VERCEL","NOW_BUILDER"],["VERCEL","VERCEL",{ci:false}],["VERCEL","VERCEL_ENV",{ci:false}],["APPCENTER","APPCENTER_BUILD_ID"],["CODESANDBOX","CODESANDBOX_SSE",{ci:false}],["STACKBLITZ"],["STORMKIT"],["CLEAVR"],["ZEABUR"],["CODESPHERE","CODESPHERE_APP_ID",{ci:true}],["RAILWAY","RAILWAY_PROJECT_ID"],["RAILWAY","RAILWAY_SERVICE_ID"],["DENO-DEPLOY","DENO_DEPLOYMENT_ID"],["FIREBASE_APP_HOSTING","FIREBASE_APP_HOSTING",{ci:true}]];function p(){if(globalThis.process?.env)for(const e of B){const o=e[1]||e[0];if(globalThis.process?.env[o])return {name:e[0].toLowerCase(),...e[2]}}return globalThis.process?.env?.SHELL==="/bin/jsh"&&globalThis.process?.versions?.webcontainer?{name:"stackblitz",ci:false}:{name:"",ci:false}}const l=p();l.name;function n(e){return e?e!=="false":false}const I=globalThis.process?.platform||"",T=n(s$1.CI)||l.ci!==false,R=n(globalThis.process?.stdout&&globalThis.process?.stdout.isTTY),U=n(s$1.DEBUG),A=t==="test"||n(s$1.TEST);n(s$1.MINIMAL)||T||A||!R;const _=/^win/i.test(I);!n(s$1.NO_COLOR)&&(n(s$1.FORCE_COLOR)||(R||_)&&s$1.TERM!=="dumb"||T);const C=(globalThis.process?.versions?.node||"").replace(/^v/,"")||null;Number(C?.split(".")[0])||null;const y=globalThis.process||Object.create(null),c={versions:{}};new Proxy(y,{get(e,o){if(o==="env")return s$1;if(o in e)return e[o];if(o in c)return c[o]}});const L=globalThis.process?.release?.name==="node",a=!!globalThis.Bun||!!globalThis.process?.versions?.bun,D=!!globalThis.Deno,O=!!globalThis.fastly,S=!!globalThis.Netlify,N=!!globalThis.EdgeRuntime,P=globalThis.navigator?.userAgent==="Cloudflare-Workers",F=[[S,"netlify"],[N,"edge-light"],[P,"workerd"],[O,"fastly"],[D,"deno"],[a,"bun"],[L,"node"]];function G(){const e=F.find(o=>o[0]);if(e)return {name:e[1]}}const u=G();u?.name||"";
+const r=Object.create(null),i=e=>globalThis.process?.env||import.meta.env||globalThis.Deno?.env.toObject()||globalThis.__env__||(e?r:globalThis),o=new Proxy(r,{get(e,s){return i()[s]??r[s]},has(e,s){const E=i();return s in E||s in r},set(e,s,E){const B=i(true);return B[s]=E,true},deleteProperty(e,s){if(!s)return  false;const E=i(true);return delete E[s],true},ownKeys(){const e=i(true);return Object.keys(e)}}),t=typeof process<"u"&&process.env&&process.env.NODE_ENV||"",f=[["APPVEYOR"],["AWS_AMPLIFY","AWS_APP_ID",{ci:true}],["AZURE_PIPELINES","SYSTEM_TEAMFOUNDATIONCOLLECTIONURI"],["AZURE_STATIC","INPUT_AZURE_STATIC_WEB_APPS_API_TOKEN"],["APPCIRCLE","AC_APPCIRCLE"],["BAMBOO","bamboo_planKey"],["BITBUCKET","BITBUCKET_COMMIT"],["BITRISE","BITRISE_IO"],["BUDDY","BUDDY_WORKSPACE_ID"],["BUILDKITE"],["CIRCLE","CIRCLECI"],["CIRRUS","CIRRUS_CI"],["CLOUDFLARE_PAGES","CF_PAGES",{ci:true}],["CODEBUILD","CODEBUILD_BUILD_ARN"],["CODEFRESH","CF_BUILD_ID"],["DRONE"],["DRONE","DRONE_BUILD_EVENT"],["DSARI"],["GITHUB_ACTIONS"],["GITLAB","GITLAB_CI"],["GITLAB","CI_MERGE_REQUEST_ID"],["GOCD","GO_PIPELINE_LABEL"],["LAYERCI"],["HUDSON","HUDSON_URL"],["JENKINS","JENKINS_URL"],["MAGNUM"],["NETLIFY"],["NETLIFY","NETLIFY_LOCAL",{ci:false}],["NEVERCODE"],["RENDER"],["SAIL","SAILCI"],["SEMAPHORE"],["SCREWDRIVER"],["SHIPPABLE"],["SOLANO","TDDIUM"],["STRIDER"],["TEAMCITY","TEAMCITY_VERSION"],["TRAVIS"],["VERCEL","NOW_BUILDER"],["VERCEL","VERCEL",{ci:false}],["VERCEL","VERCEL_ENV",{ci:false}],["APPCENTER","APPCENTER_BUILD_ID"],["CODESANDBOX","CODESANDBOX_SSE",{ci:false}],["CODESANDBOX","CODESANDBOX_HOST",{ci:false}],["STACKBLITZ"],["STORMKIT"],["CLEAVR"],["ZEABUR"],["CODESPHERE","CODESPHERE_APP_ID",{ci:true}],["RAILWAY","RAILWAY_PROJECT_ID"],["RAILWAY","RAILWAY_SERVICE_ID"],["DENO-DEPLOY","DENO_DEPLOYMENT_ID"],["FIREBASE_APP_HOSTING","FIREBASE_APP_HOSTING",{ci:true}]];function b(){if(globalThis.process?.env)for(const e of f){const s=e[1]||e[0];if(globalThis.process?.env[s])return {name:e[0].toLowerCase(),...e[2]}}return globalThis.process?.env?.SHELL==="/bin/jsh"&&globalThis.process?.versions?.webcontainer?{name:"stackblitz",ci:false}:{name:"",ci:false}}const l=b();l.name;function n(e){return e?e!=="false":false}const I=globalThis.process?.platform||"",T=n(o.CI)||l.ci!==false,a=n(globalThis.process?.stdout&&globalThis.process?.stdout.isTTY),g=n(o.DEBUG),R=t==="test"||n(o.TEST);n(o.MINIMAL)||T||R||!a;const A=/^win/i.test(I);!n(o.NO_COLOR)&&(n(o.FORCE_COLOR)||(a||A)&&o.TERM!=="dumb"||T);const C=(globalThis.process?.versions?.node||"").replace(/^v/,"")||null;Number(C?.split(".")[0])||null;const y=globalThis.process||Object.create(null),_={versions:{}};new Proxy(y,{get(e,s){if(s==="env")return o;if(s in e)return e[s];if(s in _)return _[s]}});const c=globalThis.process?.release?.name==="node",O=!!globalThis.Bun||!!globalThis.process?.versions?.bun,D=!!globalThis.Deno,L=!!globalThis.fastly,S=!!globalThis.Netlify,u=!!globalThis.EdgeRuntime,N=globalThis.navigator?.userAgent==="Cloudflare-Workers",F=[[S,"netlify"],[u,"edge-light"],[N,"workerd"],[L,"fastly"],[D,"deno"],[O,"bun"],[c,"node"]];function G(){const e=F.find(s=>s[0]);if(e)return {name:e[1]}}const P=G();P?.name||"";
 
 function dist_ansiRegex({onlyFirst = false} = {}) {
 	// Valid string terminator sequences are BEL, ESC\, and 0x9c
@@ -33467,10 +33470,10 @@ function stringWidth(str) {
   return stringWidth$1(str);
 }
 class FancyReporter extends BasicReporter {
-  formatStack(stack, opts) {
+  formatStack(stack, message, opts) {
     const indent = "  ".repeat((opts?.errorLevel || 0) + 1);
     return `
-${indent}` + parseStack(stack).map(
+${indent}` + parseStack(stack, message).map(
       (line) => "  " + line.replace(/^at +/, (m) => colors.gray(m)).replace(/\((.+)\)/, (_, m) => `(${colors.cyan(m)})`)
     ).join(`
 ${indent}`);
@@ -33495,7 +33498,7 @@ ${indent}`);
           message + (additional.length > 0 ? "\n" + additional.join("\n") : "")
         ),
         {
-          title: logObj.title ? characterFormat(logObj.title) : undefined,
+          title: logObj.title ? characterFormat(logObj.title) : void 0,
           style: logObj.style
         }
       );
@@ -33515,7 +33518,7 @@ ${indent}`);
     );
     if (logObj.type === "trace") {
       const _err = new Error("Trace: " + logObj.message);
-      line += this.formatStack(_err.stack || "");
+      line += this.formatStack(_err.stack || "", _err.message);
     }
     return isBadge ? "\n" + line + "\n" : line;
   }
@@ -33540,19 +33543,19 @@ function dist_createConsola(options = {}) {
     defaults: { level },
     stdout: process.stdout,
     stderr: process.stderr,
-    prompt: (...args) => __nccwpck_require__.e(/* import() */ 779).then(__nccwpck_require__.bind(__nccwpck_require__, 1779)).then((m) => m.prompt(...args)),
+    prompt: (...args) => __nccwpck_require__.e(/* import() */ 481).then(__nccwpck_require__.bind(__nccwpck_require__, 8481)).then((m) => m.prompt(...args)),
     reporters: options.reporters || [
-      options.fancy ?? !(T || A) ? new FancyReporter() : new BasicReporter()
+      options.fancy ?? !(T || R) ? new FancyReporter() : new BasicReporter()
     ],
     ...options
   });
   return consola2;
 }
 function _getDefaultLogLevel() {
-  if (U) {
+  if (g) {
     return LogLevels.debug;
   }
-  if (A) {
+  if (R) {
     return LogLevels.warn;
   }
   return LogLevels.info;

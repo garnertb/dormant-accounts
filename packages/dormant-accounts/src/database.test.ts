@@ -2,7 +2,9 @@ import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { Database } from './database';
 import { Low } from 'lowdb';
 import { JSONFile } from 'lowdb/node';
-import * as fs from 'fs';
+import { logger } from './utils';
+
+logger.mockTypes(() => vi.fn());
 
 vi.mock('lowdb');
 vi.mock('lowdb/node');

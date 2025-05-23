@@ -2,6 +2,9 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { dormancyCheck } from '.';
 import { LastActivityRecord, DormancyCheckConfig } from './types';
 import { Database } from './database';
+import { logger } from './utils';
+
+logger.mockTypes(() => vi.fn());
 
 vi.mock('./database', () => {
   const mockDb = {
