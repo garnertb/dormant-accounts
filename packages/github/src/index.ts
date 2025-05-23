@@ -2,6 +2,8 @@ export {
   githubDormancy,
   GithubIssueNotifier,
   createDefaultNotificationBodyHandler,
+  type NotificationHandlerContext,
+  type NotificationBodyHandler,
   type ProcessingResult,
 } from './provider';
 

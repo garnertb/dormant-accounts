@@ -154,7 +154,7 @@ describe('Notification Processing', () => {
         ...notificationContext.repo,
         baseLabels: notificationContext.baseLabels,
       },
-      notificationBody: expect.any(Function),
+      notificationBody: 'Test notification body',
       removeAccount: expect.any(Function),
       dryRun: notificationContext.dryRun,
     });
