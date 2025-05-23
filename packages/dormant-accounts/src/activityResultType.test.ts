@@ -2,7 +2,6 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { DormantAccountCheck } from './index';
 import { Database } from './database';
 import { LastActivityRecord } from './types';
-import { logger } from './utils';
 
 // Mock Database
 vi.mock('./database', () => {
@@ -19,21 +18,12 @@ vi.mock('./database', () => {
 });
 
 // Mock Logger
-vi.mock('./utils', () => {
+vi.mock('./utils', async () => {
+  const { logger } = await vi.importActual<typeof import('./utils')>('./utils');
+  logger.mockTypes(() => vi.fn());
+
   return {
-    logger: {
-      withTag: () => ({
-        debug: vi.fn(),
-        info: vi.fn(),
-        trace: vi.fn(),
-        warn: vi.fn(),
-        error: vi.fn(),
-        start: vi.fn(),
-        success: vi.fn(),
-      }),
-      debug: vi.fn(),
-      error: vi.fn(),
-    },
+    logger,
     durationToMillis: vi.fn().mockReturnValue(1000 * 60 * 60 * 24 * 30), // 30 days
     compareDatesAgainstDuration: vi.fn().mockReturnValue({
       overDuration: false,

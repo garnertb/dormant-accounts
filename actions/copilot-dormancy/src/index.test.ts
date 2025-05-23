@@ -2,10 +2,20 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import * as core from '@actions/core';
 import * as github from '@actions/github';
 import { getNotificationContext } from './utils/getNotificationContext';
+import {
+  setupDatabaseMocks,
+  type MockDatabaseAdapter,
+} from 'dormant-accounts/test-utils';
+import { Low } from 'lowdb';
+import { JSONFile } from 'lowdb/node';
 
 // Mock dependencies
 vi.mock('@actions/core');
 vi.mock('@actions/github');
+// Mock database dependencies to prevent JSON file writes during testing
+vi.mock('lowdb');
+vi.mock('lowdb/node');
+vi.mock('fs');
 vi.mock('./utils/updateActivityLog', () => ({
   updateActivityLog: vi.fn().mockResolvedValue({}),
 }));
@@ -41,9 +51,6 @@ vi.mock('@dormant-accounts/github', () => {
   };
 });
 
-// Mock process.env
-const originalEnv = process.env;
-
 describe('Copilot Dormancy Action', () => {
   // Create a mock check object to reuse
   const createMockCheckObject = () => ({
@@ -68,9 +75,14 @@ describe('Copilot Dormancy Action', () => {
   });
 
   beforeEach(() => {
-    // Reset modules and mocks
-    vi.resetModules();
+    // Reset mocks only
     vi.resetAllMocks();
+
+    // Setup database mocks to prevent JSON file writes
+    const { mockAdapter, mockDb } = setupDatabaseMocks('copilot-dormancy');
+
+    vi.mocked(JSONFile).mockImplementation(() => mockAdapter as any);
+    vi.mocked(Low).mockImplementation(() => mockDb as any);
 
     // Setup GitHub mocks
     vi.mocked(github.getOctokit).mockReturnValue({
