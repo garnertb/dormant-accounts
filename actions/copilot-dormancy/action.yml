@@ -53,10 +53,32 @@ inputs:
   notifications-body:
     description: 'Custom message template for user notifications'
     required: false
-    default: >+
-      This organization automatically revokes GitHub Copilot licenses for inactive users. Your account is inactive and pending removal.  
-      <br/><br/>
-      You can maintain your Copilot license by using Copilot within {{gracePeriod}}.
+    default: |
+      The ${{ github.repository_owner }} organization automatically revokes GitHub Copilot licenses that have been inactive for {{dormantAfter}} days. According to GitHub Copilot usage data, your account has not used Copilot in this timeframe and is at risk of having its license revoked.
+
+      > [!NOTE]
+      >  Use Copilot within **{{gracePeriod}}** to maintain access.  Examples of Copilot usage include:
+      >  
+      > - Receiving a code suggestion in an IDE
+      > - Chatting with Copilot Chat in an IDE
+      > - Creating or updating a knowledge base
+      > - Creating a pull request summary
+      > - Interacting with Copilot Chat in GitHub
+      > - Interacting with Copilot on a mobile device
+      > - Interacting with Copilot Chat for CLI
+
+      This issue will be automatically closed when new activity is detected or once the license is revoked.
+
+      <details>
+      <summary>I actively use Copilot, why did I receive this?</summary>
+      <br/>
+      Latest activity is determined by the <code>last_activity_at</code> field from Copilot Billing APIs. This API attempts to align with actual usage, however there are Copilot interactions that may not be captured, and IDE settings which may affect the reported activity. See <a href="https://docs.github.com/en/enterprise-cloud@latest/copilot/managing-copilot/managing-github-copilot-in-your-organization/reviewing-activity-related-to-github-copilot-in-your-organization/reviewing-user-activity-data-for-copilot-in-your-organization#understanding-the-last_activity_at-calculation">GitHub Docs</a> for more information.
+      </details>
+      <details>
+      <summary>When was my last activity?</summary>
+      <br/>
+      Your last activity was on <b>{{lastActivity}}</b>.
+      </details>
 outputs:
   dormant-users:
     description: 'JSON string containing list of dormant accounts'

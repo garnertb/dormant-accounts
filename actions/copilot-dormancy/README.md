@@ -61,7 +61,6 @@ This GitHub Action identifies dormant GitHub Copilot accounts in your organizati
     remove-user-from-assigning-team: ''
 
     # Custom message template for user notifications
-    # Default: "This organization automatically revokes GitHub Copilot licenses for inactive users. Your account is inactive and pending removal.  \n<br/><br/>\nYou can maintain your Copilot license by using Copilot within {{gracePeriod}}."
     notifications-body: ''
 ```
 
