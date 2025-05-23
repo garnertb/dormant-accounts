@@ -144,6 +144,7 @@ describe('Notification Processing', () => {
       notificationContext,
       mockDormantAccounts,
       createMockCheckObject(),
+      '30d',
     );
 
     expect(GithubIssueNotifier).toHaveBeenCalledWith({
@@ -157,6 +158,7 @@ describe('Notification Processing', () => {
       notificationBody: 'Test notification body',
       removeAccount: expect.any(Function),
       dryRun: notificationContext.dryRun,
+      dormantAfter: '30d',
     });
   });
 
@@ -166,6 +168,7 @@ describe('Notification Processing', () => {
       notificationContext,
       mockDormantAccounts,
       createMockCheckObject(),
+      '30d',
     );
 
     expect(result).toEqual({
