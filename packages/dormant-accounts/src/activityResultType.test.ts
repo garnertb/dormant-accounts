@@ -2,6 +2,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { DormantAccountCheck } from './index';
 import { Database } from './database';
 import { LastActivityRecord } from './types';
+import { mock } from 'node:test';
 
 // Mock Database
 vi.mock('./database', () => {
@@ -111,12 +112,12 @@ describe('DormantAccountCheck with activityResultType', () => {
       expect(mockRemoveUser).toHaveBeenCalledTimes(2);
 
       // Check for user2
-      const call1Args = mockRemoveUser.mock.calls[0][0];
+      const call1Args = mockRemoveUser.mock.calls[0]?.[0];
       expect(typeof call1Args).toBe('object');
       expect((call1Args as LastActivityRecord).login).toBe('user2');
 
       // Check for user3
-      const call2Args = mockRemoveUser.mock.calls[1][0];
+      const call2Args = mockRemoveUser.mock.calls[1]?.[0];
       expect(typeof call2Args).toBe('object');
       expect((call2Args as LastActivityRecord).login).toBe('user3');
     });
