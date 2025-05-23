@@ -236,20 +236,18 @@ export class GithubIssueNotifier implements DormantAccountNotifier {
    */
   async notifyUser(user: LastActivityRecord): Promise<NotificationIssue> {
     console.log(`Creating notification for ${user.login}`);
-
+    const notificationContext = {
+      lastActivityRecord: enrichLastActivityRecord(user),
+      gracePeriod: this.config.gracePeriod,
+      dormantAfter: this.config.dormantAfter,
+    };
     // Generate notification body based on whether it's a string or function
     const notificationBody =
       typeof this.config.notificationBody === 'function'
-        ? this.config.notificationBody({
-            lastActivityRecord: enrichLastActivityRecord(user),
-            gracePeriod: this.config.gracePeriod,
-            dormantAfter: this.config.dormantAfter,
-          })
-        : createDefaultNotificationBodyHandler(this.config.notificationBody)({
-            lastActivityRecord: enrichLastActivityRecord(user),
-            gracePeriod: this.config.gracePeriod,
-            dormantAfter: this.config.dormantAfter,
-          });
+        ? this.config.notificationBody(notificationContext)
+        : createDefaultNotificationBodyHandler(this.config.notificationBody)(
+            notificationContext,
+          );
 
     const { data } = await this.octokit.rest.issues.create({
       owner: this.config.repository.owner,

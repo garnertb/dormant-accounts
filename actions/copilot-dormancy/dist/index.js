@@ -33805,10 +33805,7 @@ function createDefaultNotificationBodyHandler(notificationTemplate) {
   }) => {
     let body = notificationTemplate.replace(/{{lastActivity}}/g, lastActivityLocalized || "None").replace(/{{gracePeriod}}/g, gracePeriod).replace(/{{timeSinceLastActivity}}/g, humanFriendlyDuration || "N/A").replace(/{{account}}/g, login);
     if (dormantAfter) {
-      body = body.replace(
-        /{{dormantAfter}}/g,
-        dormantAfter
-      );
+      body = body.replace(/{{dormantAfter}}/g, dormantAfter);
     }
     return body;
   };
@@ -33923,15 +33920,14 @@ var GithubIssueNotifier = class {
    */
   async notifyUser(user) {
     console.log(`Creating notification for ${user.login}`);
-    const notificationBody = typeof this.config.notificationBody === "function" ? this.config.notificationBody({
+    const notificationContext = {
       lastActivityRecord: enrichLastActivityRecord(user),
       gracePeriod: this.config.gracePeriod,
       dormantAfter: this.config.dormantAfter
-    }) : createDefaultNotificationBodyHandler(this.config.notificationBody)({
-      lastActivityRecord: enrichLastActivityRecord(user),
-      gracePeriod: this.config.gracePeriod,
-      dormantAfter: this.config.dormantAfter
-    });
+    };
+    const notificationBody = typeof this.config.notificationBody === "function" ? this.config.notificationBody(notificationContext) : createDefaultNotificationBodyHandler(this.config.notificationBody)(
+      notificationContext
+    );
     const { data } = await this.octokit.rest.issues.create({
       owner: this.config.repository.owner,
       repo: this.config.repository.repo,
