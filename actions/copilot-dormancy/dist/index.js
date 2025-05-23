@@ -33925,7 +33925,9 @@ var GithubIssueNotifier = class {
       gracePeriod: this.config.gracePeriod,
       dormantAfter: this.config.dormantAfter
     };
-    const notificationBody = typeof this.config.notificationBody === "function" ? this.config.notificationBody(notificationContext) : createDefaultNotificationBodyHandler(this.config.notificationBody)(notificationContext);
+    const notificationBody = typeof this.config.notificationBody === "function" ? this.config.notificationBody(notificationContext) : createDefaultNotificationBodyHandler(this.config.notificationBody)(
+      notificationContext
+    );
     const { data } = await this.octokit.rest.issues.create({
       owner: this.config.repository.owner,
       repo: this.config.repository.repo,
