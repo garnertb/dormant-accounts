@@ -18,6 +18,9 @@ import {
 } from './utils/getNotificationContext';
 import { updateActivityLog } from './utils/updateActivityLog';
 import { Activity } from 'dormant-accounts';
+import { throttling } from '@octokit/plugin-throttling';
+
+import { GitHub, getOctokitOptions } from '@actions/github/lib/utils';
 
 // Function to safely stringify data for output
 const safeStringify = (data: unknown): string => {
@@ -139,8 +142,42 @@ async function run(): Promise<void> {
       );
     }
 
+    const rateLimitCallBack = (
+      retryAfter: number,
+      options: any,
+      octokit: OctokitClient,
+    ) => {
+      octokit.log.warn(
+        `Request quota exhausted for request ${options.method} ${options.url}`,
+      );
+
+      if (options.request.retryCount === 0) {
+        // only retries once
+        octokit.log.info(`Retrying after ${retryAfter} seconds!`);
+        return true;
+      }
+    };
+
+    //@ts-ignore
+    const ThrottledOctokit = GitHub.plugin(throttling);
     // Initialize GitHub client
-    const octokit = github.getOctokit(token);
+    const octokit = new ThrottledOctokit({
+      ...getOctokitOptions(token),
+      throttle: {
+        onRateLimit: rateLimitCallBack,
+        onSecondaryRateLimit: rateLimitCallBack,
+        onAbuseLimit: (
+          _retryAfter: number,
+          options: any,
+          octokit: OctokitClient,
+        ) => {
+          // does not retry, only logs a warning
+          octokit.log.warn(
+            `Abuse detected for request ${options.method} ${options.url}`,
+          );
+        },
+      },
+    });
 
     const activityLog = await getActivityLog(
       octokit,
