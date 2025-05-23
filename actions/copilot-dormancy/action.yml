@@ -54,7 +54,7 @@ inputs:
     description: 'Custom message template for user notifications'
     required: false
     default: |
-      The ${{ github.repository_owner }} organization automatically revokes GitHub Copilot licenses that have been inactive for {{dormantAfter}} days. According to GitHub Copilot usage data, your account has not used Copilot in this timeframe and is at risk of having it's license revoked.
+      The ${{ github.repository_owner }} organization automatically revokes GitHub Copilot licenses that have been inactive for {{dormantAfter}} days. According to GitHub Copilot usage data, your account has not used Copilot in this timeframe and is at risk of having its license revoked.
 
       > [!NOTE]
       >  Use Copilot within **{{gracePeriod}}** to maintain access.  Examples of Copilot usage include:
