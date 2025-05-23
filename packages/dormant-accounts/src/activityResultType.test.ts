@@ -2,7 +2,6 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { DormantAccountCheck } from './index';
 import { Database } from './database';
 import { LastActivityRecord } from './types';
-import { mock } from 'node:test';
 
 // Mock Database
 vi.mock('./database', () => {
