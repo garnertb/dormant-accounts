@@ -41353,8 +41353,46 @@ throttling.triggersNotification = triggersNotification;
 
 // EXTERNAL MODULE: ../../node_modules/.pnpm/@actions+github@6.0.1/node_modules/@actions/github/lib/utils.js
 var utils = __nccwpck_require__(7170);
-;// CONCATENATED MODULE: ./src/run.ts
+;// CONCATENATED MODULE: ./src/utils/octokit.ts
 
+
+/**
+ * Creates a throttled Octokit client with rate limiting and abuse detection handlers.
+ *
+ * @param options - Configuration options for the Octokit client
+ * @returns A configured Octokit client instance with throttling enabled
+ */
+function createThrottledOctokit({ token }) {
+    /**
+     * Rate limit callback handler for both primary and secondary rate limits.
+     * Retries once when rate limit is hit.
+     */
+    const rateLimitCallBack = (retryAfter, options, octokit) => {
+        octokit.log.warn(`Request quota exhausted for request ${options.method} ${options.url}`);
+        if (options.request.retryCount === 0) {
+            // only retries once
+            octokit.log.info(`Retrying after ${retryAfter} seconds!`);
+            return true;
+        }
+    };
+    //@ts-ignore
+    const ThrottledOctokit = utils.GitHub.plugin(throttling);
+    // Initialize GitHub client with throttling
+    const octokit = new ThrottledOctokit({
+        ...(0,utils.getOctokitOptions)(token),
+        throttle: {
+            onRateLimit: rateLimitCallBack,
+            onSecondaryRateLimit: rateLimitCallBack,
+            onAbuseLimit: (_retryAfter, options, octokit) => {
+                // does not retry, only logs a warning
+                octokit.log.warn(`Abuse detected for request ${options.method} ${options.url}`);
+            },
+        },
+    });
+    return octokit;
+}
+
+;// CONCATENATED MODULE: ./src/run.ts
 
 
 
@@ -41452,28 +41490,8 @@ async function run() {
             core.info(`Notifications enabled with grace period: ${notificationsContext.duration}`);
             core.info(`Notification repository: ${notificationsContext.repo.owner}/${notificationsContext.repo.repo}`);
         }
-        const rateLimitCallBack = (retryAfter, options, octokit) => {
-            octokit.log.warn(`Request quota exhausted for request ${options.method} ${options.url}`);
-            if (options.request.retryCount === 0) {
-                // only retries once
-                octokit.log.info(`Retrying after ${retryAfter} seconds!`);
-                return true;
-            }
-        };
-        //@ts-ignore
-        const ThrottledOctokit = utils.GitHub.plugin(throttling);
-        // Initialize GitHub client
-        const octokit = new ThrottledOctokit({
-            ...(0,utils.getOctokitOptions)(token),
-            throttle: {
-                onRateLimit: rateLimitCallBack,
-                onSecondaryRateLimit: rateLimitCallBack,
-                onAbuseLimit: (_retryAfter, options, octokit) => {
-                    // does not retry, only logs a warning
-                    octokit.log.warn(`Abuse detected for request ${options.method} ${options.url}`);
-                },
-            },
-        });
+        // Initialize GitHub client with throttling
+        const octokit = createThrottledOctokit({ token });
         const activityLog = await getActivityLog(octokit, activityLogContext.repo, branchName, activityLogContext.path);
         if (activityLog) {
             core.info('Activity log exists, fetching latest activity...');
