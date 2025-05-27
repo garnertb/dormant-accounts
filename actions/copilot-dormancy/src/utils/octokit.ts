@@ -2,6 +2,8 @@ import { throttling } from '@octokit/plugin-throttling';
 import { GitHub, getOctokitOptions } from '@actions/github/lib/utils';
 import { OctokitClient } from '@dormant-accounts/github';
 
+const MAX_RETRY_COUNT = 3;
+
 /**
  * Configuration options for creating a throttled Octokit client
  */
@@ -32,8 +34,7 @@ export function createThrottledOctokit({
       `Request quota exhausted for request ${options.method} ${options.url}`,
     );
 
-    if (options.request.retryCount === 0) {
-      // only retries once
+    if (options.request.retryCount <= MAX_RETRY_COUNT) {
       octokit.log.info(`Retrying after ${retryAfter} seconds!`);
       return true;
     }
