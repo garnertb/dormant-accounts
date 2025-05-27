@@ -18,6 +18,7 @@ import {
 } from './utils/getNotificationContext';
 import { updateActivityLog } from './utils/updateActivityLog';
 import { Activity } from 'dormant-accounts';
+import { createThrottledOctokit } from './utils/octokit';
 
 // Function to safely stringify data for output
 const safeStringify = (data: unknown): string => {
@@ -139,8 +140,8 @@ async function run(): Promise<void> {
       );
     }
 
-    // Initialize GitHub client
-    const octokit = github.getOctokit(token);
+    // Initialize GitHub client with throttling
+    const octokit = createThrottledOctokit({ token });
 
     const activityLog = await getActivityLog(
       octokit,
