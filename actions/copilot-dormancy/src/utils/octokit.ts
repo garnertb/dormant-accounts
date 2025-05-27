@@ -40,7 +40,7 @@ export function createThrottledOctokit({
     }
   };
 
-  //@ts-ignore
+  // @ts-expect-error
   const ThrottledOctokit = GitHub.plugin(throttling);
 
   // Initialize GitHub client with throttling
