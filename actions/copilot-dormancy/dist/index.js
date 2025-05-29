@@ -36415,7 +36415,7 @@ var removeCopilotUserFromTeam = async ({
   octokit,
   org,
   dryRun = false,
-  useLegacyEndpoint = true
+  fallbackToLegacy = true
 }) => {
   try {
     const {
@@ -36450,19 +36450,27 @@ var removeCopilotUserFromTeam = async ({
       );
       return false;
     }
-    if (useLegacyEndpoint) {
-      await removeUserFromTeamLegacy({
-        octokit,
-        team_id: teamId,
-        username
-      });
-    } else {
+    try {
       await removeUserFromTeamModern({
         octokit,
         org,
         team_slug: teamSlug,
         username
       });
+    } catch (modernError) {
+      if (fallbackToLegacy) {
+        logger3.debug(
+          `Modern endpoint failed for ${username}, falling back to legacy endpoint:`,
+          modernError
+        );
+        await removeUserFromTeamLegacy({
+          octokit,
+          team_id: teamId,
+          username
+        });
+      } else {
+        throw modernError;
+      }
     }
     logger3.info(
       `Successfully removed ${username} from team ${teamName} to revoke Copilot license`

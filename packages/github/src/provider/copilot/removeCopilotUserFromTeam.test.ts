@@ -89,43 +89,12 @@ describe('removeCopilotUserFromTeam', () => {
     expect(mockOctokit.request).not.toHaveBeenCalled();
   });
 
-  it('should remove user from team successfully using legacy endpoint by default', async () => {
-    mockOctokit.request.mockResolvedValue({} as any);
-
-    const result = await removeCopilotUserFromTeam(defaultParams);
-
-    expect(result).toBe(true);
-    expect(mockOctokit.request).toHaveBeenCalledWith(
-      'DELETE /teams/{team_id}/members/{username}',
-      {
-        team_id: 123,
-        username: 'testuser',
-        headers: {
-          'X-GitHub-Api-Version': '2022-11-28',
-        },
-      },
-    );
-    expect(
-      mockOctokit.rest.teams.removeMembershipForUserInOrg,
-    ).not.toHaveBeenCalled();
-  });
-
-  it('should handle errors and return false', async () => {
-    const error = new Error('API error');
-    mockOctokit.request.mockRejectedValue(error);
-
-    const result = await removeCopilotUserFromTeam(defaultParams);
-
-    expect(result).toBe(false);
-  });
-
-  it('should remove user from team using modern endpoint when useLegacyEndpoint is false', async () => {
+  it('should remove user from team successfully using modern endpoint', async () => {
     mockOctokit.rest.teams.removeMembershipForUserInOrg.mockResolvedValue(
       {} as any,
     );
 
-    const params = { ...defaultParams, useLegacyEndpoint: false };
-    const result = await removeCopilotUserFromTeam(params);
+    const result = await removeCopilotUserFromTeam(defaultParams);
 
     expect(result).toBe(true);
     expect(
@@ -138,16 +107,106 @@ describe('removeCopilotUserFromTeam', () => {
     expect(mockOctokit.request).not.toHaveBeenCalled();
   });
 
-  it('should handle modern endpoint errors and return false', async () => {
-    const error = new Error('Modern API error');
+  it('should handle errors and return false', async () => {
+    const error = new Error('API error');
     mockOctokit.rest.teams.removeMembershipForUserInOrg.mockRejectedValue(
       error,
     );
 
-    const params = { ...defaultParams, useLegacyEndpoint: false };
+    const params = { ...defaultParams, fallbackToLegacy: false };
     const result = await removeCopilotUserFromTeam(params);
 
     expect(result).toBe(false);
+  });
+
+  it('should fallback to legacy endpoint when modern endpoint fails and fallbackToLegacy is true', async () => {
+    const modernError = new Error('Modern API error');
+    mockOctokit.rest.teams.removeMembershipForUserInOrg.mockRejectedValue(
+      modernError,
+    );
+    mockOctokit.request.mockResolvedValue({} as any);
+
+    const params = {
+      ...defaultParams,
+      fallbackToLegacy: true,
+    };
+    const result = await removeCopilotUserFromTeam(params);
+
+    expect(result).toBe(true);
+    expect(
+      mockOctokit.rest.teams.removeMembershipForUserInOrg,
+    ).toHaveBeenCalledWith({
+      org: 'test-org',
+      team_slug: 'copilot-team',
+      username: 'testuser',
+    });
+    expect(mockOctokit.request).toHaveBeenCalledWith(
+      'DELETE /teams/{team_id}/members/{username}',
+      {
+        team_id: 123,
+        username: 'testuser',
+        headers: {
+          'X-GitHub-Api-Version': '2022-11-28',
+        },
+      },
+    );
+  });
+
+  it('should not fallback to legacy endpoint when modern endpoint fails and fallbackToLegacy is false', async () => {
+    const modernError = new Error('Modern API error');
+    mockOctokit.rest.teams.removeMembershipForUserInOrg.mockRejectedValue(
+      modernError,
+    );
+
+    const params = {
+      ...defaultParams,
+      fallbackToLegacy: false,
+    };
+    const result = await removeCopilotUserFromTeam(params);
+
+    expect(result).toBe(false);
+    expect(
+      mockOctokit.rest.teams.removeMembershipForUserInOrg,
+    ).toHaveBeenCalledWith({
+      org: 'test-org',
+      team_slug: 'copilot-team',
+      username: 'testuser',
+    });
+    expect(mockOctokit.request).not.toHaveBeenCalled();
+  });
+
+  it('should handle fallback endpoint errors and return false', async () => {
+    const modernError = new Error('Modern API error');
+    const legacyError = new Error('Legacy API error');
+    mockOctokit.rest.teams.removeMembershipForUserInOrg.mockRejectedValue(
+      modernError,
+    );
+    mockOctokit.request.mockRejectedValue(legacyError);
+
+    const params = {
+      ...defaultParams,
+      fallbackToLegacy: true,
+    };
+    const result = await removeCopilotUserFromTeam(params);
+
+    expect(result).toBe(false);
+    expect(
+      mockOctokit.rest.teams.removeMembershipForUserInOrg,
+    ).toHaveBeenCalledWith({
+      org: 'test-org',
+      team_slug: 'copilot-team',
+      username: 'testuser',
+    });
+    expect(mockOctokit.request).toHaveBeenCalledWith(
+      'DELETE /teams/{team_id}/members/{username}',
+      {
+        team_id: 123,
+        username: 'testuser',
+        headers: {
+          'X-GitHub-Api-Version': '2022-11-28',
+        },
+      },
+    );
   });
 
   it('should handle getTeamDetails errors and return false', async () => {

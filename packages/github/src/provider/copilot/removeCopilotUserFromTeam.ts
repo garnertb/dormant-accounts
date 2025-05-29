@@ -15,8 +15,8 @@ export interface RemoveCopilotUserFromTeamParams {
   readonly org: string;
   /** If true, only logs the actions without executing them */
   readonly dryRun?: boolean;
-  /** If true, use the legacy endpoint instead of modern (defaults to true for GitHub App compatibility) */
-  readonly useLegacyEndpoint?: boolean;
+  /** If true, fallback to legacy endpoint if modern endpoint fails (defaults to true) */
+  readonly fallbackToLegacy?: boolean;
 }
 
 /**
@@ -88,7 +88,7 @@ export const removeUserFromTeamModern = async ({
 
 /**
  * Attempts to remove a user from a team that granted them Copilot access.
- * Uses the modern endpoint by default, with option to use legacy endpoint for GitHub App authentication.
+ * Uses the modern endpoint by default with fallback to legacy endpoint if it fails.
  *
  * @param params - The parameters for removing a user from a Copilot team
  * @returns Promise that resolves to true if the user was successfully removed, false otherwise
@@ -98,7 +98,7 @@ export const removeCopilotUserFromTeam = async ({
   octokit,
   org,
   dryRun = false,
-  useLegacyEndpoint = true,
+  fallbackToLegacy = true,
 }: RemoveCopilotUserFromTeamParams): Promise<boolean> => {
   try {
     const {
@@ -139,19 +139,27 @@ export const removeCopilotUserFromTeam = async ({
       return false;
     }
 
-    if (useLegacyEndpoint) {
-      await removeUserFromTeamLegacy({
-        octokit,
-        team_id: teamId,
-        username,
-      });
-    } else {
+    try {
       await removeUserFromTeamModern({
         octokit,
         org,
         team_slug: teamSlug,
         username,
       });
+    } catch (modernError: unknown) {
+      if (fallbackToLegacy) {
+        logger.debug(
+          `Modern endpoint failed for ${username}, falling back to legacy endpoint:`,
+          modernError,
+        );
+        await removeUserFromTeamLegacy({
+          octokit,
+          team_id: teamId,
+          username,
+        });
+      } else {
+        throw modernError;
+      }
     }
 
     logger.info(
