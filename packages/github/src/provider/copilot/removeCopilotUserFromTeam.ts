@@ -20,20 +20,30 @@ export interface RemoveCopilotUserFromTeamParams {
 }
 
 /**
+ * Parameters for removeUserFromTeamLegacy function
+ */
+export interface RemoveUserFromTeamLegacyParams {
+  /** The Octokit instance for making API calls */
+  readonly octokit: OctokitClient;
+  /** The team ID */
+  readonly team_id: number;
+  /** The username to remove */
+  readonly username: string;
+}
+
+/**
  * Removes a user from a team using the legacy endpoint
  *
  * This is primarily for compatibility with GitHub Apps that do not support the modern endpoint.
  *
- * @param octokit - The Octokit instance for making API calls
- * @param team_id - The team ID
- * @param username - The username to remove
+ * @param params - The parameters for removing a user from a team using legacy endpoint
  * @returns Promise that resolves when the user is removed
  */
-const removeUserFromTeamLegacy = async (
-  octokit: OctokitClient,
-  team_id: number,
-  username: string,
-): Promise<void> => {
+export const removeUserFromTeamLegacy = async ({
+  octokit,
+  team_id,
+  username,
+}: RemoveUserFromTeamLegacyParams): Promise<void> => {
   await octokit.request('DELETE /teams/{team_id}/members/{username}', {
     team_id,
     username,
@@ -44,20 +54,31 @@ const removeUserFromTeamLegacy = async (
 };
 
 /**
+ * Parameters for removeUserFromTeamModern function
+ */
+export interface RemoveUserFromTeamModernParams {
+  /** The Octokit instance for making API calls */
+  readonly octokit: OctokitClient;
+  /** The organization name */
+  readonly org: string;
+  /** The team slug */
+  readonly team_slug: string;
+  /** The username to remove */
+  readonly username: string;
+}
+
+/**
  * Removes a user from a team using the modern endpoint
  *
- * @param octokit - The Octokit instance for making API calls
- * @param org - The organization name
- * @param team_slug - The team slug
- * @param username - The username to remove
+ * @param params - The parameters for removing a user from a team using modern endpoint
  * @returns Promise that resolves when the user is removed
  */
-const removeUserFromTeamModern = async (
-  octokit: OctokitClient,
-  org: string,
-  team_slug: string,
-  username: string,
-): Promise<void> => {
+export const removeUserFromTeamModern = async ({
+  octokit,
+  org,
+  team_slug,
+  username,
+}: RemoveUserFromTeamModernParams): Promise<void> => {
   await octokit.rest.teams.removeMembershipForUserInOrg({
     org,
     team_slug,
@@ -119,9 +140,18 @@ export const removeCopilotUserFromTeam = async ({
     }
 
     if (useLegacyEndpoint) {
-      await removeUserFromTeamLegacy(octokit, teamId, username);
+      await removeUserFromTeamLegacy({
+        octokit,
+        team_id: teamId,
+        username,
+      });
     } else {
-      await removeUserFromTeamModern(octokit, org, teamSlug, username);
+      await removeUserFromTeamModern({
+        octokit,
+        org,
+        team_slug: teamSlug,
+        username,
+      });
     }
 
     logger.info(
