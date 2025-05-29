@@ -43,11 +43,11 @@ describe('getTeamDetails', () => {
   });
 
   it('should fetch team data and cache it', async () => {
-    const result = await getTeamDetails(
-      mockOctokit as any,
-      'test-org',
-      'test-team',
-    );
+    const result = await getTeamDetails({
+      octokit: mockOctokit as any,
+      org: 'test-org',
+      team_slug: 'test-team',
+    });
 
     expect(result).toEqual(expectedTeamData);
     expect(mockOctokit.rest.teams.getByName).toHaveBeenCalledWith({
@@ -63,18 +63,18 @@ describe('getTeamDetails', () => {
 
   it('should return cached data on subsequent calls', async () => {
     // First call
-    const result1 = await getTeamDetails(
-      mockOctokit as any,
-      'test-org',
-      'test-team',
-    );
+    const result1 = await getTeamDetails({
+      octokit: mockOctokit as any,
+      org: 'test-org',
+      team_slug: 'test-team',
+    });
 
     // Second call
-    const result2 = await getTeamDetails(
-      mockOctokit as any,
-      'test-org',
-      'test-team',
-    );
+    const result2 = await getTeamDetails({
+      octokit: mockOctokit as any,
+      org: 'test-org',
+      team_slug: 'test-team',
+    });
 
     expect(result1).toEqual(expectedTeamData);
     expect(result2).toEqual(expectedTeamData);
@@ -101,16 +101,16 @@ describe('getTeamDetails', () => {
       .mockResolvedValueOnce(false)
       .mockResolvedValueOnce(true);
 
-    const result1 = await getTeamDetails(
-      mockOctokit as any,
-      'test-org',
-      'test-team',
-    );
-    const result2 = await getTeamDetails(
-      mockOctokit as any,
-      'test-org',
-      'another-team',
-    );
+    const result1 = await getTeamDetails({
+      octokit: mockOctokit as any,
+      org: 'test-org',
+      team_slug: 'test-team',
+    });
+    const result2 = await getTeamDetails({
+      octokit: mockOctokit as any,
+      org: 'test-org',
+      team_slug: 'another-team',
+    });
 
     expect(result1).toEqual({
       id: 123,
@@ -130,16 +130,16 @@ describe('getTeamDetails', () => {
   });
 
   it('should handle different organizations with separate cache entries', async () => {
-    const result1 = await getTeamDetails(
-      mockOctokit as any,
-      'org1',
-      'test-team',
-    );
-    const result2 = await getTeamDetails(
-      mockOctokit as any,
-      'org2',
-      'test-team',
-    );
+    const result1 = await getTeamDetails({
+      octokit: mockOctokit as any,
+      org: 'org1',
+      team_slug: 'test-team',
+    });
+    const result2 = await getTeamDetails({
+      octokit: mockOctokit as any,
+      org: 'org2',
+      team_slug: 'test-team',
+    });
 
     expect(result1).toEqual(expectedTeamData);
     expect(result2).toEqual(expectedTeamData);
@@ -159,11 +159,11 @@ describe('getTeamDetails', () => {
   it('should include IdP sync status when team is IdP synced', async () => {
     vi.mocked(isTeamIdpSyncedModule.isTeamIdpSynced).mockResolvedValue(true);
 
-    const result = await getTeamDetails(
-      mockOctokit as any,
-      'test-org',
-      'test-team',
-    );
+    const result = await getTeamDetails({
+      octokit: mockOctokit as any,
+      org: 'test-org',
+      team_slug: 'test-team',
+    });
 
     expect(result).toEqual({
       ...expectedTeamData,
@@ -176,7 +176,11 @@ describe('getTeamDetails', () => {
     mockOctokit.rest.teams.getByName.mockRejectedValue(apiError);
 
     await expect(
-      getTeamDetails(mockOctokit as any, 'test-org', 'test-team'),
+      getTeamDetails({
+        octokit: mockOctokit as any,
+        org: 'test-org',
+        team_slug: 'test-team',
+      }),
     ).rejects.toThrow('API Error');
 
     expect(mockOctokit.rest.teams.getByName).toHaveBeenCalledWith({
@@ -192,7 +196,11 @@ describe('getTeamDetails', () => {
     );
 
     await expect(
-      getTeamDetails(mockOctokit as any, 'test-org', 'test-team'),
+      getTeamDetails({
+        octokit: mockOctokit as any,
+        org: 'test-org',
+        team_slug: 'test-team',
+      }),
     ).rejects.toThrow('IdP Check Error');
 
     expect(mockOctokit.rest.teams.getByName).toHaveBeenCalledWith({
@@ -230,18 +238,30 @@ describe('clearTeamDataCache', () => {
 
   it('should clear the cache and force fresh API calls', async () => {
     // First call - should hit API
-    await getTeamDetails(mockOctokit as any, 'test-org', 'test-team');
+    await getTeamDetails({
+      octokit: mockOctokit as any,
+      org: 'test-org',
+      team_slug: 'test-team',
+    });
     expect(mockOctokit.rest.teams.getByName).toHaveBeenCalledTimes(1);
 
     // Second call - should use cache
-    await getTeamDetails(mockOctokit as any, 'test-org', 'test-team');
+    await getTeamDetails({
+      octokit: mockOctokit as any,
+      org: 'test-org',
+      team_slug: 'test-team',
+    });
     expect(mockOctokit.rest.teams.getByName).toHaveBeenCalledTimes(1);
 
     // Clear cache
     clearTeamDataCache();
 
     // Third call - should hit API again
-    await getTeamDetails(mockOctokit as any, 'test-org', 'test-team');
+    await getTeamDetails({
+      octokit: mockOctokit as any,
+      org: 'test-org',
+      team_slug: 'test-team',
+    });
     expect(mockOctokit.rest.teams.getByName).toHaveBeenCalledTimes(2);
   });
 });

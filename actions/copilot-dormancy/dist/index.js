@@ -36336,6 +36336,14 @@ async function isTeamIdpSynced({
     logger2.debug(`Team ${team_slug} is not IdP synced.`);
     return false;
   } catch (error) {
+    if (error.status === 403 && error.response?.data?.message?.includes(
+      "This team is not externally managed"
+    )) {
+      logger2.debug(
+        `Team ${team_slug} is not IdP synced (team is not externally managed)`
+      );
+      return false;
+    }
     logger2.error(
       `Error checking IdP sync status for team ${team_slug}:`,
       error
@@ -36346,7 +36354,11 @@ async function isTeamIdpSynced({
 
 // src/provider/copilot/getTeamDetails.ts
 var teamDataCache = /* @__PURE__ */ new Map();
-var getTeamDetails = async (octokit, org, team_slug) => {
+var getTeamDetails = async ({
+  octokit,
+  org,
+  team_slug
+}) => {
   const cacheKey = `${org}/${team_slug}`;
   if (teamDataCache.has(cacheKey)) {
     return teamDataCache.get(cacheKey);
@@ -36373,7 +36385,11 @@ var clearTeamDataCache = () => {
 
 // src/provider/copilot/removeCopilotUserFromTeam.ts
 var logger3 = console;
-var removeUserFromTeamLegacy = async (octokit, team_id, username) => {
+var removeUserFromTeamLegacy = async ({
+  octokit,
+  team_id,
+  username
+}) => {
   await octokit.request("DELETE /teams/{team_id}/members/{username}", {
     team_id,
     username,
@@ -36382,7 +36398,12 @@ var removeUserFromTeamLegacy = async (octokit, team_id, username) => {
     }
   });
 };
-var removeUserFromTeamModern = async (octokit, org, team_slug, username) => {
+var removeUserFromTeamModern = async ({
+  octokit,
+  org,
+  team_slug,
+  username
+}) => {
   await octokit.rest.teams.removeMembershipForUserInOrg({
     org,
     team_slug,
@@ -36413,7 +36434,7 @@ var removeCopilotUserFromTeam = async ({
       slug: teamSlug,
       name: teamName,
       isIdpSynced
-    } = await getTeamDetails(octokit, org, team_slug);
+    } = await getTeamDetails({ octokit, org, team_slug });
     logger3.debug(
       `User ${username} is assigned to Copilot via team ${teamName} (id: ${teamId})`
     );
@@ -36430,9 +36451,18 @@ var removeCopilotUserFromTeam = async ({
       return false;
     }
     if (useLegacyEndpoint) {
-      await removeUserFromTeamLegacy(octokit, teamId, username);
+      await removeUserFromTeamLegacy({
+        octokit,
+        team_id: teamId,
+        username
+      });
     } else {
-      await removeUserFromTeamModern(octokit, org, teamSlug, username);
+      await removeUserFromTeamModern({
+        octokit,
+        org,
+        team_slug: teamSlug,
+        username
+      });
     }
     logger3.info(
       `Successfully removed ${username} from team ${teamName} to revoke Copilot license`

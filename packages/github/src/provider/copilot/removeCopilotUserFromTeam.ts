@@ -119,7 +119,7 @@ export const removeCopilotUserFromTeam = async ({
       slug: teamSlug,
       name: teamName,
       isIdpSynced,
-    } = await getTeamDetails(octokit, org, team_slug);
+    } = await getTeamDetails({ octokit, org, team_slug });
 
     logger.debug(
       `User ${username} is assigned to Copilot via team ${teamName} (id: ${teamId})`,

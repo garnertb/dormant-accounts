@@ -12,6 +12,18 @@ interface TeamData {
 }
 
 /**
+ * Parameters for the getTeamDetails function
+ */
+export interface GetTeamDetailsParams {
+  /** The Octokit instance for making API calls */
+  readonly octokit: OctokitClient;
+  /** The organization name */
+  readonly org: string;
+  /** The team slug */
+  readonly team_slug: string;
+}
+
+/**
  * Cache for team data lookups
  */
 const teamDataCache = new Map<string, TeamData>();
@@ -19,16 +31,14 @@ const teamDataCache = new Map<string, TeamData>();
 /**
  * Gathers team data including ID, slug, name, and IdP sync status with caching
  *
- * @param octokit - The Octokit instance for making API calls
- * @param org - The organization name
- * @param team_slug - The team slug
+ * @param params - The parameters for getting team details
  * @returns Promise resolving to team data with IdP sync status
  */
-export const getTeamDetails = async (
-  octokit: OctokitClient,
-  org: string,
-  team_slug: string,
-): Promise<TeamData> => {
+export const getTeamDetails = async ({
+  octokit,
+  org,
+  team_slug,
+}: GetTeamDetailsParams): Promise<TeamData> => {
   const cacheKey = `${org}/${team_slug}`;
 
   if (teamDataCache.has(cacheKey)) {
