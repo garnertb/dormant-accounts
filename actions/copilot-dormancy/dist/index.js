@@ -36344,13 +36344,57 @@ async function isTeamIdpSynced({
   }
 }
 
+// src/provider/copilot/getTeamDetails.ts
+var teamDataCache = /* @__PURE__ */ new Map();
+var getTeamDetails = async (octokit, org, team_slug) => {
+  const cacheKey = `${org}/${team_slug}`;
+  if (teamDataCache.has(cacheKey)) {
+    return teamDataCache.get(cacheKey);
+  }
+  const {
+    data: { id, slug, name }
+  } = await octokit.rest.teams.getByName({
+    org,
+    team_slug
+  });
+  const isIdpSynced = await isTeamIdpSynced({ octokit, org, team_slug });
+  const teamData = {
+    id,
+    slug,
+    name,
+    isIdpSynced
+  };
+  teamDataCache.set(cacheKey, teamData);
+  return teamData;
+};
+var clearTeamDataCache = () => {
+  teamDataCache.clear();
+};
+
 // src/provider/copilot/removeCopilotUserFromTeam.ts
 var logger3 = console;
+var removeUserFromTeamLegacy = async (octokit, team_id, username) => {
+  await octokit.request("DELETE /teams/{team_id}/members/{username}", {
+    team_id,
+    username,
+    headers: {
+      "X-GitHub-Api-Version": "2022-11-28"
+    }
+  });
+};
+var removeUserFromTeamModern = async (octokit, org, team_slug, username) => {
+  await octokit.rest.teams.removeMembershipForUserInOrg({
+    org,
+    team_slug,
+    username
+  });
+};
 var removeCopilotUserFromTeam = async ({
   username,
   octokit,
   org,
-  dryRun = false
+  dryRun = false,
+  useLegacyEndpoint = true
 }) => {
   try {
     const {
@@ -36363,29 +36407,35 @@ var removeCopilotUserFromTeam = async ({
       logger3.debug(`User ${username} is not assigned to Copilot via a team`);
       return false;
     }
-    const { id, name, slug: team_slug } = assigning_team;
+    const { slug: team_slug } = assigning_team;
+    const {
+      id: teamId,
+      slug: teamSlug,
+      name: teamName,
+      isIdpSynced
+    } = await getTeamDetails(octokit, org, team_slug);
     logger3.debug(
-      `User ${username} is assigned to Copilot via team ${name} (id: ${id})`
+      `User ${username} is assigned to Copilot via team ${teamName} (id: ${teamId})`
     );
-    if (await isTeamIdpSynced({ octokit, org, team_slug })) {
+    if (isIdpSynced) {
       logger3.info(
-        `User ${username} must be removed from team ${name} via the IdP to revoke Copilot license`
+        `User ${username} must be removed from team ${teamName} via the IdP to revoke Copilot license`
       );
       return false;
     }
     if (dryRun) {
       logger3.info(
-        `DRY RUN: Would remove ${username} from team ${name} to revoke Copilot license`
+        `DRY RUN: Would remove ${username} from team ${teamName} to revoke Copilot license`
       );
       return false;
     }
-    await octokit.rest.teams.removeMembershipForUserInOrg({
-      org,
-      team_slug,
-      username
-    });
+    if (useLegacyEndpoint) {
+      await removeUserFromTeamLegacy(octokit, teamId, username);
+    } else {
+      await removeUserFromTeamModern(octokit, org, teamSlug, username);
+    }
     logger3.info(
-      `Successfully removed ${username} from team ${team_slug} to revoke Copilot license`
+      `Successfully removed ${username} from team ${teamName} to revoke Copilot license`
     );
     return true;
   } catch (error) {
@@ -41356,26 +41406,26 @@ var utils = __nccwpck_require__(7170);
 ;// CONCATENATED MODULE: ./src/utils/octokit.ts
 
 
+const MAX_RETRY_COUNT = 3;
 /**
  * Creates a throttled Octokit client with rate limiting and abuse detection handlers.
  *
  * @param options - Configuration options for the Octokit client
  * @returns A configured Octokit client instance with throttling enabled
  */
-function createThrottledOctokit({ token }) {
+function createThrottledOctokit({ token, }) {
     /**
      * Rate limit callback handler for both primary and secondary rate limits.
      * Retries once when rate limit is hit.
      */
     const rateLimitCallBack = (retryAfter, options, octokit) => {
         octokit.log.warn(`Request quota exhausted for request ${options.method} ${options.url}`);
-        if (options.request.retryCount === 0) {
-            // only retries once
+        if (options.request.retryCount <= MAX_RETRY_COUNT) {
             octokit.log.info(`Retrying after ${retryAfter} seconds!`);
             return true;
         }
     };
-    //@ts-ignore
+    // @ts-expect-error
     const ThrottledOctokit = utils.GitHub.plugin(throttling);
     // Initialize GitHub client with throttling
     const octokit = new ThrottledOctokit({

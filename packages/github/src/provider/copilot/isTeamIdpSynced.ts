@@ -51,6 +51,19 @@ export async function isTeamIdpSynced({
     logger.debug(`Team ${team_slug} is not IdP synced.`);
     return false;
   } catch (error: any) {
+    // Handle 403 status specifically - indicates team is not externally managed (not IdP synced)
+    if (
+      error.status === 403 &&
+      error.response?.data?.message?.includes(
+        'This team is not externally managed',
+      )
+    ) {
+      logger.debug(
+        `Team ${team_slug} is not IdP synced (team is not externally managed)`,
+      );
+      return false;
+    }
+
     // Any other error should be logged and thrown
     logger.error(
       `Error checking IdP sync status for team ${team_slug}:`,
