@@ -1,38 +1,85 @@
 import { OctokitClient } from '../types';
-import { isTeamIdpSynced } from './isTeamIdpSynced';
+import { getTeamDetails } from './getTeamDetails';
 
 const logger = console;
 
 /**
  * Parameters for removeCopilotUserFromTeam function
  */
-
 export interface RemoveCopilotUserFromTeamParams {
   /** The username of the user to remove from team */
-  username: string;
+  readonly username: string;
   /** The Octokit instance for making API calls */
-  octokit: OctokitClient;
+  readonly octokit: OctokitClient;
   /** The organization to perform the operation in */
-  org: string;
+  readonly org: string;
   /** If true, only logs the actions without executing them */
-  dryRun?: boolean;
+  readonly dryRun?: boolean;
+  /** If true, use the legacy endpoint instead of modern (defaults to true for GitHub App compatibility) */
+  readonly useLegacyEndpoint?: boolean;
 }
 
 /**
+ * Removes a user from a team using the legacy endpoint
+ *
+ * This is primarily for compatibility with GitHub Apps that do not support the modern endpoint.
+ *
+ * @param octokit - The Octokit instance for making API calls
+ * @param team_id - The team ID
+ * @param username - The username to remove
+ * @returns Promise that resolves when the user is removed
+ */
+const removeUserFromTeamLegacy = async (
+  octokit: OctokitClient,
+  team_id: number,
+  username: string,
+): Promise<void> => {
+  await octokit.request('DELETE /teams/{team_id}/members/{username}', {
+    team_id,
+    username,
+    headers: {
+      'X-GitHub-Api-Version': '2022-11-28',
+    },
+  });
+};
+
+/**
+ * Removes a user from a team using the modern endpoint
+ *
+ * @param octokit - The Octokit instance for making API calls
+ * @param org - The organization name
+ * @param team_slug - The team slug
+ * @param username - The username to remove
+ * @returns Promise that resolves when the user is removed
+ */
+const removeUserFromTeamModern = async (
+  octokit: OctokitClient,
+  org: string,
+  team_slug: string,
+  username: string,
+): Promise<void> => {
+  await octokit.rest.teams.removeMembershipForUserInOrg({
+    org,
+    team_slug,
+    username,
+  });
+};
+
+/**
  * Attempts to remove a user from a team that granted them Copilot access.
- * This function implements the logic to check if the team is IdP synced and handle the removal accordingly.
+ * Uses the modern endpoint by default, with option to use legacy endpoint for GitHub App authentication.
  *
  * @param params - The parameters for removing a user from a Copilot team
- * @returns A promise that resolves to true if the user was successfully removed, false otherwise
+ * @returns Promise that resolves to true if the user was successfully removed, false otherwise
  */
 export const removeCopilotUserFromTeam = async ({
   username,
   octokit,
   org,
   dryRun = false,
+  useLegacyEndpoint = true,
 }: RemoveCopilotUserFromTeamParams): Promise<boolean> => {
   try {
-    // Get the copilot seat details for the user
     const {
       data: { assigning_team },
     } = await octokit.rest.copilot.getCopilotSeatDetailsForUser({
@@ -40,46 +87,48 @@ export const removeCopilotUserFromTeam = async ({
       username,
     });
 
-    // Check if the license was assigned by a team
     if (!assigning_team) {
       logger.debug(`User ${username} is not assigned to Copilot via a team`);
       return false;
     }
 
-    const { id, name, slug: team_slug } = assigning_team;
+    const { slug: team_slug } = assigning_team;
+    const {
+      id: teamId,
+      slug: teamSlug,
+      name: teamName,
+      isIdpSynced,
+    } = await getTeamDetails(octokit, org, team_slug);
 
     logger.debug(
-      `User ${username} is assigned to Copilot via team ${name} (id: ${id})`,
+      `User ${username} is assigned to Copilot via team ${teamName} (id: ${teamId})`,
     );
 
-    // If the team is IdP synced, the user needs to be removed from the team in the IdP
-    if (await isTeamIdpSynced({ octokit, org, team_slug })) {
+    if (isIdpSynced) {
       logger.info(
-        `User ${username} must be removed from team ${name} via the IdP to revoke Copilot license`,
+        `User ${username} must be removed from team ${teamName} via the IdP to revoke Copilot license`,
       );
       return false;
     }
 
-    // In dry run mode, just log what would have happened
     if (dryRun) {
       logger.info(
-        `DRY RUN: Would remove ${username} from team ${name} to revoke Copilot license`,
+        `DRY RUN: Would remove ${username} from team ${teamName} to revoke Copilot license`,
       );
       return false;
     }
 
-    // Remove the user from the team
-    await octokit.rest.teams.removeMembershipForUserInOrg({
-      org,
-      team_slug,
-      username,
-    });
+    if (useLegacyEndpoint) {
+      await removeUserFromTeamLegacy(octokit, teamId, username);
+    } else {
+      await removeUserFromTeamModern(octokit, org, teamSlug, username);
+    }
 
     logger.info(
-      `Successfully removed ${username} from team ${team_slug} to revoke Copilot license`,
+      `Successfully removed ${username} from team ${teamName} to revoke Copilot license`,
     );
     return true;
-  } catch (error: any) {
+  } catch (error: unknown) {
     logger.error(`Error removing ${username} from team:`, error);
     return false;
   }

@@ -1,10 +1,10 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { removeCopilotUserFromTeam } from './removeCopilotUserFromTeam';
-import * as isTeamIdpSyncedModule from './isTeamIdpSynced';
+import * as getTeamDetailsModule from './getTeamDetails';
 
-// Mock the isTeamIdpSynced module
-vi.mock('./isTeamIdpSynced', () => ({
-  isTeamIdpSynced: vi.fn(),
+// Mock the getTeamDetails module
+vi.mock('./getTeamDetails', () => ({
+  getTeamDetails: vi.fn(),
 }));
 
 describe('removeCopilotUserFromTeam', () => {
@@ -17,6 +17,14 @@ describe('removeCopilotUserFromTeam', () => {
         removeMembershipForUserInOrg: vi.fn(),
       },
     },
+    request: vi.fn(),
+  };
+
+  const mockTeamData = {
+    id: 123,
+    slug: 'copilot-team',
+    name: 'copilot-team',
+    isIdpSynced: false,
   };
 
   const defaultParams = {
@@ -36,6 +44,9 @@ describe('removeCopilotUserFromTeam', () => {
         },
       },
     });
+    vi.mocked(getTeamDetailsModule.getTeamDetails).mockResolvedValue(
+      mockTeamData,
+    );
   });
 
   it('should return false if user is not assigned Copilot via a team', async () => {
@@ -52,7 +63,10 @@ describe('removeCopilotUserFromTeam', () => {
   });
 
   it('should return false if team is IdP synced', async () => {
-    vi.mocked(isTeamIdpSyncedModule.isTeamIdpSynced).mockResolvedValue(true);
+    vi.mocked(getTeamDetailsModule.getTeamDetails).mockResolvedValue({
+      ...mockTeamData,
+      isIdpSynced: true,
+    });
 
     const result = await removeCopilotUserFromTeam(defaultParams);
 
@@ -60,10 +74,10 @@ describe('removeCopilotUserFromTeam', () => {
     expect(
       mockOctokit.rest.teams.removeMembershipForUserInOrg,
     ).not.toHaveBeenCalled();
+    expect(mockOctokit.request).not.toHaveBeenCalled();
   });
 
   it('should not remove user from team in dry run mode', async () => {
-    vi.mocked(isTeamIdpSyncedModule.isTeamIdpSynced).mockResolvedValue(false);
     const params = { ...defaultParams, dryRun: true };
 
     const result = await removeCopilotUserFromTeam(params);
@@ -72,15 +86,46 @@ describe('removeCopilotUserFromTeam', () => {
     expect(
       mockOctokit.rest.teams.removeMembershipForUserInOrg,
     ).not.toHaveBeenCalled();
+    expect(mockOctokit.request).not.toHaveBeenCalled();
   });
 
-  it('should remove user from team successfully', async () => {
-    vi.mocked(isTeamIdpSyncedModule.isTeamIdpSynced).mockResolvedValue(false);
+  it('should remove user from team successfully using legacy endpoint by default', async () => {
+    mockOctokit.request.mockResolvedValue({} as any);
+
+    const result = await removeCopilotUserFromTeam(defaultParams);
+
+    expect(result).toBe(true);
+    expect(mockOctokit.request).toHaveBeenCalledWith(
+      'DELETE /teams/{team_id}/members/{username}',
+      {
+        team_id: 123,
+        username: 'testuser',
+        headers: {
+          'X-GitHub-Api-Version': '2022-11-28',
+        },
+      },
+    );
+    expect(
+      mockOctokit.rest.teams.removeMembershipForUserInOrg,
+    ).not.toHaveBeenCalled();
+  });
+
+  it('should handle errors and return false', async () => {
+    const error = new Error('API error');
+    mockOctokit.request.mockRejectedValue(error);
+
+    const result = await removeCopilotUserFromTeam(defaultParams);
+
+    expect(result).toBe(false);
+  });
+
+  it('should remove user from team using modern endpoint when useLegacyEndpoint is false', async () => {
     mockOctokit.rest.teams.removeMembershipForUserInOrg.mockResolvedValue(
       {} as any,
     );
 
-    const result = await removeCopilotUserFromTeam(defaultParams);
+    const params = { ...defaultParams, useLegacyEndpoint: false };
+    const result = await removeCopilotUserFromTeam(params);
 
     expect(result).toBe(true);
     expect(
@@ -90,17 +135,32 @@ describe('removeCopilotUserFromTeam', () => {
       team_slug: 'copilot-team',
       username: 'testuser',
     });
+    expect(mockOctokit.request).not.toHaveBeenCalled();
   });
 
-  it('should handle errors and return false', async () => {
-    vi.mocked(isTeamIdpSyncedModule.isTeamIdpSynced).mockResolvedValue(false);
-    const error = new Error('API error');
+  it('should handle modern endpoint errors and return false', async () => {
+    const error = new Error('Modern API error');
     mockOctokit.rest.teams.removeMembershipForUserInOrg.mockRejectedValue(
       error,
+    );
+
+    const params = { ...defaultParams, useLegacyEndpoint: false };
+    const result = await removeCopilotUserFromTeam(params);
+
+    expect(result).toBe(false);
+  });
+
+  it('should handle getTeamDetails errors and return false', async () => {
+    vi.mocked(getTeamDetailsModule.getTeamDetails).mockRejectedValue(
+      new Error('Team data error'),
     );
 
     const result = await removeCopilotUserFromTeam(defaultParams);
 
     expect(result).toBe(false);
+    expect(
+      mockOctokit.rest.teams.removeMembershipForUserInOrg,
+    ).not.toHaveBeenCalled();
+    expect(mockOctokit.request).not.toHaveBeenCalled();
   });
 });
