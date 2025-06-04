@@ -213,8 +213,8 @@ importers:
         specifier: ^9.0.0
         version: 9.1.0(eslint@8.48.0)
       eslint-config-turbo:
-        specifier: 1.10.13
-        version: 1.10.13(eslint@8.48.0)
+        specifier: 2.5.4
+        version: 2.5.4(eslint@8.48.0)(turbo@2.5.4)
       typescript:
         specifier: 5.8.3
         version: 5.8.3
@@ -3907,13 +3907,15 @@ packages:
       eslint: 8.56.0
     dev: true
 
-  /eslint-config-turbo@1.10.13(eslint@8.48.0):
-    resolution: {integrity: sha512-Ffa0SxkRCPMtfUX/HDanEqsWoLwZTQTAXO9W4IsOtycb2MzJDrVcLmoFW5sMwCrg7gjqbrC4ZJoD+1SPPzIVqg==}
+  /eslint-config-turbo@2.5.4(eslint@8.48.0)(turbo@2.5.4):
+    resolution: {integrity: sha512-OpjpDLXIaus0N/Y+pMj17K430xjpd6WTo0xPUESqYZ9BkMngv2n0ZdjktgJTbJVnDmK7gHrXgJAljtdIMcYBIg==}
     peerDependencies:
       eslint: '>6.6.0'
+      turbo: '>2.0.0'
     dependencies:
       eslint: 8.48.0
-      eslint-plugin-turbo: 1.10.13(eslint@8.48.0)
+      eslint-plugin-turbo: 2.5.4(eslint@8.48.0)(turbo@2.5.4)
+      turbo: 2.5.4
     dev: false
 
   /eslint-import-resolver-alias@1.1.2(eslint-plugin-import@2.31.0):
@@ -4355,13 +4357,15 @@ packages:
       '@microsoft/tsdoc': 0.14.2
       '@microsoft/tsdoc-config': 0.16.2
 
-  /eslint-plugin-turbo@1.10.13(eslint@8.48.0):
-    resolution: {integrity: sha512-el4AAmn0zXmvHEyp1h0IQMfse10Vy8g5Vbg4IU3+vD9CSj5sDbX07iFVt8sCKg7og9Q5FAa9mXzlCf7t4vYgzg==}
+  /eslint-plugin-turbo@2.5.4(eslint@8.48.0)(turbo@2.5.4):
+    resolution: {integrity: sha512-IZsW61DFj5mLMMaCJxhh1VE4HvNhfdnHnAaXajgne+LUzdyHk2NvYT0ECSa/1SssArcqgTvV74MrLL68hWLLFw==}
     peerDependencies:
       eslint: '>6.6.0'
+      turbo: '>2.0.0'
     dependencies:
       dotenv: 16.0.3
       eslint: 8.48.0
+      turbo: 2.5.4
     dev: false
 
   /eslint-plugin-unicorn@48.0.1(eslint@8.48.0):
@@ -7462,7 +7466,6 @@ packages:
     cpu: [x64]
     os: [darwin]
     requiresBuild: true
-    dev: true
     optional: true
 
   /turbo-darwin-arm64@2.5.4:
@@ -7470,7 +7473,6 @@ packages:
     cpu: [arm64]
     os: [darwin]
     requiresBuild: true
-    dev: true
     optional: true
 
   /turbo-linux-64@2.5.4:
@@ -7478,7 +7480,6 @@ packages:
     cpu: [x64]
     os: [linux]
     requiresBuild: true
-    dev: true
     optional: true
 
   /turbo-linux-arm64@2.5.4:
@@ -7486,7 +7487,6 @@ packages:
     cpu: [arm64]
     os: [linux]
     requiresBuild: true
-    dev: true
     optional: true
 
   /turbo-windows-64@2.5.4:
@@ -7494,7 +7494,6 @@ packages:
     cpu: [x64]
     os: [win32]
     requiresBuild: true
-    dev: true
     optional: true
 
   /turbo-windows-arm64@2.5.4:
@@ -7502,7 +7501,6 @@ packages:
     cpu: [arm64]
     os: [win32]
     requiresBuild: true
-    dev: true
     optional: true
 
   /turbo@2.5.4:
@@ -7515,7 +7513,6 @@ packages:
       turbo-linux-arm64: 2.5.4
       turbo-windows-64: 2.5.4
       turbo-windows-arm64: 2.5.4
-    dev: true
 
   /type-check@0.4.0:
     resolution: {integrity: sha512-XleUoc9uwGXqjWwXaUTZAmzMcFZ5858QA2vvx1Ur5xIcixXIP+8LnFDgRplU30us6teqdlskFfu+ae4K79Ooew==}
