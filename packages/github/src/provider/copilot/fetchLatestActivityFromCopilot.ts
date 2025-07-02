@@ -45,6 +45,14 @@ export const fetchLatestActivityFromCopilot: FetchActivityHandler<
       if (!seats?.length) continue;
 
       for (const seat of seats) {
+        if (!seat.assignee?.login) {
+          logger.warn(
+            checkType,
+            `Skipping activity record for seat with no assignee login - ${JSON.stringify(seat, undefined, 2)}`,
+          );
+          continue;
+        }
+
         const actor = (seat.assignee.login as string).toLowerCase();
 
         if (!actor) continue;
