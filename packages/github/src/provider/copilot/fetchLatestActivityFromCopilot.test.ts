@@ -1,11 +1,13 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { fetchLatestActivityFromCopilot } from './fetchLatestActivityFromCopilot';
+import { warn } from 'console';
 
 describe('fetchLatestActivityFromCopilot', () => {
   // Mock logger with minimal required properties
   const mockLogger = {
     debug: vi.fn(),
     error: vi.fn(),
+    warn: vi.fn(),
     // Additional required properties for the ConsolaInstance type
     options: {},
   } as any;
@@ -16,7 +18,7 @@ describe('fetchLatestActivityFromCopilot', () => {
    * Contains user information and activity data.
    */
   interface MockCopilotSeat {
-    readonly assignee: { readonly login: string };
+    readonly assignee: { readonly login: string } | null;
     readonly last_activity_at: string | null;
     readonly last_activity_editor: string | null;
     readonly created_at: string;
@@ -205,6 +207,30 @@ describe('fetchLatestActivityFromCopilot', () => {
       lastActivity: new Date(newDate),
       type: 'jetbrains',
     });
+  });
+
+  it('should handle entries with null logins', async () => {
+    const mockSeats = [
+      {
+        assignee: null,
+        last_activity_editor: null,
+        created_at: new Date('2022-01-01').toISOString(),
+        pending_cancellation_date: null,
+        last_activity_at: null,
+      },
+    ];
+
+    const mockOctokit = createMockOctokit(mockSeats);
+    const config = {
+      ...defaultConfig,
+      octokit: mockOctokit as any,
+    };
+
+    // Execute
+    const result = await fetchLatestActivityFromCopilot(config as any);
+
+    // Assert
+    expect(result).toHaveLength(0);
   });
 
   it('should handle errors and throw them', async () => {
