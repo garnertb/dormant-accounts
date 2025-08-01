@@ -46,7 +46,7 @@
     "publint": "0.3.12",
     "ts-jest": "29.4.0",
     "turbo": "2.5.4",
-    "typescript": "^5.8.3",
+    "typescript": "^5.9.2",
     "vitest": "3.2.4"
   },
   "packageManager": "pnpm@8.7.1",
