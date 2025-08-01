@@ -51,7 +51,7 @@
   },
   "devDependencies": {
     "@octokit/types": "14.1.0",
-    "@types/node": "24.0.10",
+    "@types/node": "24.1.0",
     "dormant-accounts": "workspace:*",
     "eslint-config-custom": "workspace:*",
     "rimraf": "6.0.1",
