@@ -17,6 +17,9 @@ inputs:
     description: 'GitHub token with appropriate permissions'
     required: false
     default: ${{ github.token }}
+  activity-log-token:
+    description: 'GitHub token with permissions to read/write activity log repository. If not provided, the main token will be used.'
+    required: false
   dry-run:
     description: 'Run in dry-run mode wont write activity log'
     required: false
