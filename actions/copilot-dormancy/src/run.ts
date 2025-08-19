@@ -143,7 +143,9 @@ async function run(): Promise<void> {
 
     // Initialize GitHub client with throttling
     const octokit = createThrottledOctokit({ token });
-    const activityLogOctokit = createThrottledOctokit({ token: activityLogToken });
+    const activityLogOctokit = createThrottledOctokit({
+      token: activityLogToken,
+    });
 
     const activityLog = await getActivityLog(
       activityLogOctokit,
@@ -410,7 +412,11 @@ async function run(): Promise<void> {
 
           if (!branchExists) {
             core.info(`Creating branch: ${branchName}`);
-            await createBranch(activityLogOctokit, activityLogContext.repo, checkType);
+            await createBranch(
+              activityLogOctokit,
+              activityLogContext.repo,
+              checkType,
+            );
           } else {
             core.debug(`Branch already exists: ${branchName}`);
           }
