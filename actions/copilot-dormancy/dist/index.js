@@ -41370,6 +41370,7 @@ async function run() {
         const activityLogRepo = core.getInput('activity-log-repo');
         const duration = core.getInput('duration');
         const token = core.getInput('token');
+        const activityLogToken = core.getInput('activity-log-token') || token;
         const dryRun = core.getInput('dry-run') === 'true';
         const checkType = 'copilot-dormancy';
         const notificationsContext = getNotificationContext();
@@ -41397,7 +41398,10 @@ async function run() {
         }
         // Initialize GitHub client with throttling
         const octokit = createThrottledOctokit({ token });
-        const activityLog = await getActivityLog(octokit, activityLogContext.repo, branchName, activityLogContext.path);
+        const activityLogOctokit = createThrottledOctokit({
+            token: activityLogToken,
+        });
+        const activityLog = await getActivityLog(activityLogOctokit, activityLogContext.repo, branchName, activityLogContext.path);
         if (activityLog) {
             core.info('Activity log exists, fetching latest activity...');
             await (0,external_fs_promises_namespaceObject.writeFile)(activityLogContext.path, activityLog.content);
@@ -41555,15 +41559,15 @@ async function run() {
                 const contentBase64 = Buffer.from(JSON.stringify(content, null, 2)).toString('base64');
                 if (!dryRun) {
                     // Check if the branch exists
-                    const branchExists = await checkBranch(octokit, activityLogContext.repo, branchName);
+                    const branchExists = await checkBranch(activityLogOctokit, activityLogContext.repo, branchName);
                     if (!branchExists) {
                         core.info(`Creating branch: ${branchName}`);
-                        await createBranch(octokit, activityLogContext.repo, checkType);
+                        await createBranch(activityLogOctokit, activityLogContext.repo, checkType);
                     }
                     else {
                         core.debug(`Branch already exists: ${branchName}`);
                     }
-                    await updateActivityLog(octokit, activityLogContext.repo, {
+                    await updateActivityLog(activityLogOctokit, activityLogContext.repo, {
                         branch: branchName,
                         path: activityLogContext.path,
                         sha: existingActivityLogSha,

@@ -28,6 +28,9 @@ This GitHub Action identifies dormant GitHub Copilot accounts in your organizati
     # Default: ${{ github.token }}
     token: ''
 
+    # GitHub token with permissions to read/write activity log repository. If not provided, the main token will be used.
+    activity-log-token: ''
+
     # Run in dry-run mode will not write the activity log
     # Default: false
     dry-run: ''

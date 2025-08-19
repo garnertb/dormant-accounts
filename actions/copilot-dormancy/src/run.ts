@@ -101,6 +101,7 @@ async function run(): Promise<void> {
     const activityLogRepo = core.getInput('activity-log-repo');
     const duration = core.getInput('duration');
     const token = core.getInput('token');
+    const activityLogToken = core.getInput('activity-log-token') || token;
     const dryRun = core.getInput('dry-run') === 'true';
     const checkType = 'copilot-dormancy';
 
@@ -142,9 +143,12 @@ async function run(): Promise<void> {
 
     // Initialize GitHub client with throttling
     const octokit = createThrottledOctokit({ token });
+    const activityLogOctokit = createThrottledOctokit({
+      token: activityLogToken,
+    });
 
     const activityLog = await getActivityLog(
-      octokit,
+      activityLogOctokit,
       activityLogContext.repo,
       branchName,
       activityLogContext.path,
@@ -401,19 +405,23 @@ async function run(): Promise<void> {
         if (!dryRun) {
           // Check if the branch exists
           const branchExists = await checkBranch(
-            octokit,
+            activityLogOctokit,
             activityLogContext.repo,
             branchName,
           );
 
           if (!branchExists) {
             core.info(`Creating branch: ${branchName}`);
-            await createBranch(octokit, activityLogContext.repo, checkType);
+            await createBranch(
+              activityLogOctokit,
+              activityLogContext.repo,
+              checkType,
+            );
           } else {
             core.debug(`Branch already exists: ${branchName}`);
           }
 
-          await updateActivityLog(octokit, activityLogContext.repo, {
+          await updateActivityLog(activityLogOctokit, activityLogContext.repo, {
             branch: branchName,
             path: activityLogContext.path,
             sha: existingActivityLogSha,
