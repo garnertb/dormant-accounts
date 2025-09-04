@@ -56,9 +56,6 @@ importers:
       '@actions/github':
         specifier: ^6.0.1
         version: 6.0.1
-      '@octokit/plugin-throttling':
-        specifier: 11.0.2
-        version: 11.0.2(@octokit/core@7.0.5)
       '@types/ms':
         specifier: 2.1.0
         version: 2.1.0
@@ -206,6 +203,9 @@ importers:
       '@actions/github':
         specifier: ^6.0.1
         version: 6.0.1
+      '@octokit/plugin-throttling':
+        specifier: 11.0.1
+        version: 11.0.1(@octokit/core@7.0.5)
       '@types/ms':
         specifier: 2.1.0
         version: 2.1.0
@@ -969,8 +969,8 @@ packages:
     peerDependencies:
       '@octokit/core': '>=6'
 
-  '@octokit/plugin-throttling@11.0.2':
-    resolution: {integrity: sha512-ntNIig4zZhQVOZF4fG9Wt8QCoz9ehb+xnlUwp74Ic2ANChCk8oKmRwV9zDDCtrvU1aERIOvtng8wsalEX7Jk5Q==}
+  '@octokit/plugin-throttling@11.0.1':
+    resolution: {integrity: sha512-S+EVhy52D/272L7up58dr3FNSMXWuNZolkL4zMJBNIfIxyZuUcczsQAU4b5w6dewJXnKYVgSHSV5wxitMSW1kw==}
     engines: {node: '>= 20'}
     peerDependencies:
       '@octokit/core': ^7.0.0
@@ -4626,10 +4626,10 @@ snapshots:
       '@octokit/core': 7.0.5
       '@octokit/types': 15.0.1
 
-  '@octokit/plugin-throttling@11.0.2(@octokit/core@7.0.5)':
+  '@octokit/plugin-throttling@11.0.1(@octokit/core@7.0.5)':
     dependencies:
       '@octokit/core': 7.0.5
-      '@octokit/types': 15.0.1
+      '@octokit/types': 14.1.0
       bottleneck: 2.19.5
 
   '@octokit/request-error@5.1.1':

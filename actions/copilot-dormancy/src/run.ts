@@ -5,6 +5,7 @@ import {
   OctokitClient,
   LastActivityRecord,
   ProcessingResult,
+  createThrottledOctokit,
 } from '@dormant-accounts/github';
 import { copilotDormancy } from '@dormant-accounts/github/copilot';
 import { createBranch } from './utils/createBranch';
@@ -18,7 +19,6 @@ import {
 } from './utils/getNotificationContext';
 import { updateActivityLog } from './utils/updateActivityLog';
 import { Activity } from 'dormant-accounts';
-import { createThrottledOctokit } from './utils/octokit';
 
 // Function to safely stringify data for output
 const safeStringify = (data: unknown): string => {

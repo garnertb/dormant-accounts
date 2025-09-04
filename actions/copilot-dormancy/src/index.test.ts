@@ -38,6 +38,17 @@ vi.mock('@dormant-accounts/github', () => {
       }),
     })),
     createDefaultNotificationBodyHandler: vi.fn(),
+    createThrottledOctokit: vi.fn().mockReturnValue({
+      log: {
+        warn: vi.fn(),
+        info: vi.fn(),
+      },
+      rest: {
+        repos: {
+          createOrUpdateFileContents: vi.fn().mockResolvedValue({}),
+        },
+      },
+    }),
   };
 });
 
