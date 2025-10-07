@@ -50,8 +50,8 @@
   },
   "devDependencies": {
     "@dormant-accounts/github": "workspace:*",
-    "@types/node": "24.0.10",
-    "@vercel/ncc": "0.38.3",
+    "@types/node": "24.7.0",
+    "@vercel/ncc": "0.38.4",
     "dormant-accounts": "workspace:*",
     "eslint-config-custom": "workspace:*",
     "rimraf": "6.0.1",
