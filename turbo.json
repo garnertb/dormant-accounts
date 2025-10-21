@@ -22,9 +22,6 @@
     "test": {
       "dependsOn": ["^build"]
     },
-    "start": {
-      "dependsOn": ["^start"]
-    },
     "publint": {
       "dependsOn": ["^build"]
     },
