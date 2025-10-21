@@ -1,6 +1,6 @@
 ---
 mode: 'agent'
-tools: ['githubRepo', 'codebase']
+tools: ['githubRepo', 'search/codebase']
 description: 'Generate a new README for a GitHub Action'
 ---
 
