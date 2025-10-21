@@ -1,5 +1,9 @@
 packages:
-  - 'packages/*'
-  - 'tooling/*'
-  - 'actions/*'
-  - 'examples/*'
+  - packages/*
+  - tooling/*
+  - actions/*
+  - examples/*
+
+onlyBuiltDependencies:
+  - esbuild
+  - unrs-resolver
