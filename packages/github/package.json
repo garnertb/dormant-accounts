@@ -46,6 +46,7 @@
   },
   "dependencies": {
     "@actions/github": "^6.0.1",
+    "@octokit/plugin-throttling": "11.0.1",
     "@types/ms": "2.1.0",
     "ms": "2.1.3"
   },

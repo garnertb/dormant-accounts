@@ -1,6 +1,6 @@
 import { throttling } from '@octokit/plugin-throttling';
-import { GitHub, getOctokitOptions } from '@actions/github/lib/utils';
-import { OctokitClient } from '@dormant-accounts/github';
+import * as github from '@actions/github/lib/utils.js';
+import type { OctokitClient } from './types';
 
 const MAX_RETRY_COUNT = 3;
 
@@ -15,6 +15,12 @@ export interface ThrottledOctokitOptions {
 /**
  * Creates a throttled Octokit client with rate limiting and abuse detection handlers.
  *
+ * This function provides a centralized way to create Octokit clients with:
+ * - Automatic rate limit handling with configurable retry logic
+ * - Secondary rate limit detection and handling
+ * - Abuse detection logging
+ * - Consistent throttling behavior across the application
+ *
  * @param options - Configuration options for the Octokit client
  * @returns A configured Octokit client instance with throttling enabled
  */
@@ -23,7 +29,7 @@ export function createThrottledOctokit({
 }: ThrottledOctokitOptions): OctokitClient {
   /**
    * Rate limit callback handler for both primary and secondary rate limits.
-   * Retries once when rate limit is hit.
+   * Retries up to MAX_RETRY_COUNT times when rate limit is hit.
    */
   const rateLimitCallBack = (
     retryAfter: number,
@@ -40,12 +46,12 @@ export function createThrottledOctokit({
     }
   };
 
-  // @ts-expect-error
-  const ThrottledOctokit = GitHub.plugin(throttling);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const ThrottledOctokit = github.GitHub.plugin(throttling as any);
 
   // Initialize GitHub client with throttling
   const octokit = new ThrottledOctokit({
-    ...getOctokitOptions(token),
+    ...github.getOctokitOptions(token),
     throttle: {
       onRateLimit: rateLimitCallBack,
       onSecondaryRateLimit: rateLimitCallBack,
@@ -60,7 +66,7 @@ export function createThrottledOctokit({
         );
       },
     },
-  });
+  }) as OctokitClient;
 
   return octokit;
 }
