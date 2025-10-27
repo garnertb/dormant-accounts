@@ -1,6 +1,6 @@
 import { throttling } from '@octokit/plugin-throttling';
 import * as github from '@actions/github/lib/utils.js';
-import type { OctokitClient } from './provider/types';
+import type { OctokitClient } from './types';
 
 const MAX_RETRY_COUNT = 3;
 
