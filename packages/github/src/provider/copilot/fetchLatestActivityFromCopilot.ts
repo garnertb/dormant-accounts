@@ -131,7 +131,11 @@ export const fetchLatestActivityFromCopilot: FetchActivityHandler<
           seat as { last_authenticated_at?: string | null }
         ).last_authenticated_at;
 
-        if (!seat.last_activity_at && lastAuthenticatedAt !== null) {
+        if (
+          !seat.last_activity_at &&
+          lastAuthenticatedAt !== null &&
+          authenticatedAtBehavior !== 'ignore'
+        ) {
           const behaviorMessage =
             authenticatedAtBehavior === 'most-recent'
               ? ', using most recent of activity/authenticated times'

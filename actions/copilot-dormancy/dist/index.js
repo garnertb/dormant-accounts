@@ -36499,20 +36499,32 @@ var determineLastActivity = (lastActivityAt, lastAuthenticatedAt, createdAt, beh
   const createdDate = createdAt ? new Date(createdAt) : null;
   switch (behavior) {
     case "most-recent": {
-      const candidates = [activityDate, authenticatedDate].filter(
-        (d) => d !== null
-      );
-      if (candidates.length > 0) {
-        return new Date(Math.max(...candidates.map((d) => d.getTime())));
+      if (activityDate && authenticatedDate) {
+        if (authenticatedDate > activityDate) {
+          return { date: authenticatedDate, usedAuthenticated: true };
+        }
+        return { date: activityDate, usedAuthenticated: false };
       }
-      return createdDate;
+      if (authenticatedDate) {
+        return { date: authenticatedDate, usedAuthenticated: true };
+      }
+      if (activityDate) {
+        return { date: activityDate, usedAuthenticated: false };
+      }
+      return { date: createdDate, usedAuthenticated: false };
     }
     case "fallback": {
-      return activityDate ?? authenticatedDate ?? createdDate;
+      if (activityDate) {
+        return { date: activityDate, usedAuthenticated: false };
+      }
+      if (authenticatedDate) {
+        return { date: authenticatedDate, usedAuthenticated: true };
+      }
+      return { date: createdDate, usedAuthenticated: false };
     }
     case "ignore":
     default: {
-      return activityDate ?? createdDate;
+      return { date: activityDate ?? createdDate, usedAuthenticated: false };
     }
   }
 };
@@ -36560,21 +36572,21 @@ var fetchLatestActivityFromCopilot = async ({
           continue;
         }
         const lastAuthenticatedAt = seat.last_authenticated_at;
-        if (!seat.last_activity_at && lastAuthenticatedAt !== null) {
+        if (!seat.last_activity_at && lastAuthenticatedAt !== null && authenticatedAtBehavior !== "ignore") {
           const behaviorMessage = authenticatedAtBehavior === "most-recent" ? ", using most recent of activity/authenticated times" : authenticatedAtBehavior === "fallback" ? ", using authenticated_at as fallback" : "";
           logger4.debug(
             checkType,
             `No activity found for ${actor}${behaviorMessage}`
           );
         }
-        const lastActivity = determineLastActivity(
+        const { date: lastActivity, usedAuthenticated } = determineLastActivity(
           seat.last_activity_at,
           lastAuthenticatedAt,
           seat.created_at,
           authenticatedAtBehavior
         );
         const record = {
-          type: seat.last_activity_editor,
+          type: usedAuthenticated ? "last_authentication" : seat.last_activity_editor,
           login: actor,
           lastActivity
         };
