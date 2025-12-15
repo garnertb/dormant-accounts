@@ -1,4 +1,4 @@
-import { defineConfig } from 'tsup';
+import { defineConfig } from 'tsdown';
 
 const defaultConfig = {
   format: ['esm', 'cjs'],
@@ -19,4 +19,5 @@ export default defineConfig({
     utils: 'src/utils.ts',
   },
   ...defaultConfig,
+  target: false,
 });
