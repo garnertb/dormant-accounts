@@ -53,6 +53,11 @@ inputs:
     description: 'Allow removing users from team that assigned Copilot'
     required: false
     default: 'false'
+  use-authenticated-at-as-fallback:
+    description: 'Use last_authenticated_at as fallback for activity when last_activity_at is undefined'
+    required: false
+    type: boolean
+    default: 'false'
   notifications-body:
     description: 'Custom message template for user notifications'
     required: false

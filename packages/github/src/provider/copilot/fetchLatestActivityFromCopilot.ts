@@ -18,7 +18,13 @@ import ms from 'ms';
  */
 export const fetchLatestActivityFromCopilot: FetchActivityHandler<
   GitHubHandlerConfig
-> = async ({ octokit, org, checkType, logger }) => {
+> = async ({
+  octokit,
+  org,
+  checkType,
+  logger,
+  useAuthenticatedAtAsFallback,
+}) => {
   logger.debug(checkType, `Fetching audit log for ${org}`);
 
   const payload = {
@@ -65,11 +71,27 @@ export const fetchLatestActivityFromCopilot: FetchActivityHandler<
           continue;
         }
 
+        if (
+          !seat.last_activity_at &&
+          (seat as { last_authenticated_at?: string | null })
+            .last_authenticated_at !== null
+        ) {
+          logger.debug(
+            checkType,
+            `No activity found for ${actor}${useAuthenticatedAtAsFallback ? ', using authenticated_at as last activity' : ''}`,
+          );
+        }
+
+        const lastAuthenticatedAt = (
+          seat as { last_authenticated_at?: string | null }
+        ).last_authenticated_at;
         const lastActivity = seat.last_activity_at
           ? new Date(seat.last_activity_at)
-          : seat.created_at
-            ? new Date(seat.created_at)
-            : null;
+          : useAuthenticatedAtAsFallback && lastAuthenticatedAt
+            ? new Date(lastAuthenticatedAt)
+            : seat.created_at
+              ? new Date(seat.created_at)
+              : null;
         const record = {
           type: seat.last_activity_editor,
           login: actor,

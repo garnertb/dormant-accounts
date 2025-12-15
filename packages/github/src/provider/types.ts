@@ -8,6 +8,11 @@ export interface GitHubHandlerConfig {
   notificationRepo?: string;
   inactiveUserLabel?: string;
   notificationBody?: string;
+  /**
+   * When `true`, uses `last_authenticated_at` as a fallback for activity when
+   * `last_activity_at` is undefined. Defaults to `false`.
+   */
+  useAuthenticatedAtAsFallback?: boolean;
 }
 
 type DefaultedProps = 'type' | 'activityResultType' | 'fetchLatestActivity';

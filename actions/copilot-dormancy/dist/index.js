@@ -36493,7 +36493,7 @@ var removeCopilotUserFromTeam = async ({
 
 // src/provider/copilot/fetchLatestActivityFromCopilot.ts
 
-var fetchLatestActivityFromCopilot = async ({ octokit, org, checkType, logger: logger4 }) => {
+var fetchLatestActivityFromCopilot = async ({ octokit, org, checkType, logger: logger4, useAuthenticatedAtAsFallback }) => {
   logger4.debug(checkType, `Fetching audit log for ${org}`);
   const payload = {
     org,
@@ -49649,6 +49649,7 @@ async function run() {
         const token = lib_core.getInput('token');
         const activityLogToken = lib_core.getInput('activity-log-token') || token;
         const dryRun = lib_core.getInput('dry-run') === 'true';
+        const useAuthenticatedAtAsFallback = lib_core.getInput('use-authenticated-at-as-fallback') === 'true';
         const checkType = 'copilot-dormancy';
         const notificationsContext = getNotificationContext();
         const sendNotifications = notificationsContext !== false;
@@ -49696,6 +49697,7 @@ async function run() {
             conf: {
                 octokit,
                 org,
+                useAuthenticatedAtAsFallback,
             },
         });
         // Fetch latest activity if needed
