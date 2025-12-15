@@ -27,16 +27,18 @@ vi.mock('@dormant-accounts/github/copilot', () => ({
 }));
 vi.mock('@dormant-accounts/github', () => {
   return {
-    GithubIssueNotifier: vi.fn().mockImplementation(() => ({
-      processDormantUsers: vi.fn().mockResolvedValue({
-        notified: [],
-        reactivated: [],
-        removed: [],
-        excluded: [],
-        inGracePeriod: [],
-        errors: [],
-      }),
-    })),
+    GithubIssueNotifier: vi.fn().mockImplementation(function () {
+      return {
+        processDormantUsers: vi.fn().mockResolvedValue({
+          notified: [],
+          reactivated: [],
+          removed: [],
+          excluded: [],
+          inGracePeriod: [],
+          errors: [],
+        }),
+      };
+    }),
     createDefaultNotificationBodyHandler: vi.fn(),
   };
 });

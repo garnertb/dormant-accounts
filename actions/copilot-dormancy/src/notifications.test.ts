@@ -38,16 +38,18 @@ vi.mock('@dormant-accounts/github', async () => {
   const actual = await vi.importActual('@dormant-accounts/github');
   return {
     ...actual,
-    GithubIssueNotifier: vi.fn().mockImplementation(() => ({
-      processDormantUsers: vi.fn().mockResolvedValue({
-        notified: [{ user: 'user1', notification: { id: 1 } }],
-        removed: [{ user: 'user2', notification: { id: 2 } }],
-        reactivated: [{ user: 'user3', notification: { id: 3 } }],
-        excluded: [],
-        inGracePeriod: [],
-        errors: [],
-      }),
-    })),
+    GithubIssueNotifier: vi.fn().mockImplementation(function () {
+      return {
+        processDormantUsers: vi.fn().mockResolvedValue({
+          notified: [{ user: 'user1', notification: { id: 1 } }],
+          removed: [{ user: 'user2', notification: { id: 2 } }],
+          reactivated: [{ user: 'user3', notification: { id: 3 } }],
+          excluded: [],
+          inGracePeriod: [],
+          errors: [],
+        }),
+      };
+    }),
   };
 });
 
