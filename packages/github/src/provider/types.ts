@@ -2,6 +2,16 @@ import { type getOctokit } from '@actions/github';
 import { type DormancyCheckConfig } from 'dormant-accounts';
 
 export type OctokitClient = ReturnType<typeof getOctokit>;
+
+/**
+ * Controls how `last_authenticated_at` is used when determining Copilot activity.
+ *
+ * - `'ignore'` (default): Only use `last_activity_at`, falling back to `created_at`
+ * - `'fallback'`: Use `last_authenticated_at` when `last_activity_at` is undefined
+ * - `'most-recent'`: Use the most recent of `last_activity_at` and `last_authenticated_at`
+ */
+export type AuthenticatedAtBehavior = 'ignore' | 'fallback' | 'most-recent';
+
 export interface GitHubHandlerConfig {
   octokit: OctokitClient;
   org: string;
@@ -9,10 +19,10 @@ export interface GitHubHandlerConfig {
   inactiveUserLabel?: string;
   notificationBody?: string;
   /**
-   * When `true`, uses `last_authenticated_at` as a fallback for activity when
-   * `last_activity_at` is undefined. Defaults to `false`.
+   * Controls how `last_authenticated_at` is used when determining activity.
+   * @default 'ignore'
    */
-  useAuthenticatedAtAsFallback?: boolean;
+  authenticatedAtBehavior?: AuthenticatedAtBehavior;
 }
 
 type DefaultedProps = 'type' | 'activityResultType' | 'fetchLatestActivity';

@@ -139,6 +139,7 @@ describe('Copilot Dormancy Action', () => {
         'notifications-duration': '30d',
         'notifications-body': 'Test notification body',
         'notifications-dry-run': 'false',
+        'authenticated-at-behavior': 'ignore',
       };
       return inputs[name] || '';
     });
@@ -157,7 +158,7 @@ describe('Copilot Dormancy Action', () => {
       conf: {
         octokit: expect.anything(),
         org: 'test-org',
-        useAuthenticatedAtAsFallback: false,
+        authenticatedAtBehavior: 'ignore',
       },
     });
 

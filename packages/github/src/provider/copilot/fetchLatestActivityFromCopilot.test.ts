@@ -287,7 +287,7 @@ describe('fetchLatestActivityFromCopilot', () => {
     expect(result[0]?.login).toBe('user1');
   });
 
-  describe('useAuthenticatedAtAsFallback option', () => {
+  describe('authenticatedAtBehavior option', () => {
     it('should ignore last_authenticated_at by default when last_activity_at is null', async () => {
       // Setup
       const authenticatedAt = new Date('2023-06-01').toISOString();
@@ -307,7 +307,7 @@ describe('fetchLatestActivityFromCopilot', () => {
       const config = {
         ...defaultConfig,
         octokit: mockOctokit as any,
-        // useAuthenticatedAtAsFallback not set (defaults to false)
+        // authenticatedAtBehavior not set (defaults to 'ignore')
       };
 
       // Execute
@@ -322,7 +322,7 @@ describe('fetchLatestActivityFromCopilot', () => {
       });
     });
 
-    it('should use last_authenticated_at as fallback when flag is enabled and last_activity_at is null', async () => {
+    it('should use last_authenticated_at as fallback when behavior is fallback and last_activity_at is null', async () => {
       // Setup
       const authenticatedAt = new Date('2023-06-01').toISOString();
       const createdAt = new Date('2023-01-01').toISOString();
@@ -341,7 +341,7 @@ describe('fetchLatestActivityFromCopilot', () => {
       const config = {
         ...defaultConfig,
         octokit: mockOctokit as any,
-        useAuthenticatedAtAsFallback: true,
+        authenticatedAtBehavior: 'fallback',
       };
 
       // Execute
@@ -352,11 +352,11 @@ describe('fetchLatestActivityFromCopilot', () => {
       expect(result[0]).toEqual({
         login: 'user1',
         lastActivity: new Date(authenticatedAt),
-        type: null,
+        type: 'last_authentication',
       });
     });
 
-    it('should prefer last_activity_at over last_authenticated_at even when flag is enabled', async () => {
+    it('should prefer last_activity_at over last_authenticated_at in fallback mode', async () => {
       // Setup
       const activityAt = new Date('2023-07-01').toISOString();
       const authenticatedAt = new Date('2023-06-01').toISOString();
@@ -376,7 +376,7 @@ describe('fetchLatestActivityFromCopilot', () => {
       const config = {
         ...defaultConfig,
         octokit: mockOctokit as any,
-        useAuthenticatedAtAsFallback: true,
+        authenticatedAtBehavior: 'fallback',
       };
 
       // Execute
@@ -391,7 +391,7 @@ describe('fetchLatestActivityFromCopilot', () => {
       });
     });
 
-    it('should fall back to created_at when flag is enabled but last_authenticated_at is also null', async () => {
+    it('should fall back to created_at in fallback mode when last_authenticated_at is also null', async () => {
       // Setup
       const createdAt = new Date('2023-01-01').toISOString();
       const mockSeats = [
@@ -409,7 +409,144 @@ describe('fetchLatestActivityFromCopilot', () => {
       const config = {
         ...defaultConfig,
         octokit: mockOctokit as any,
-        useAuthenticatedAtAsFallback: true,
+        authenticatedAtBehavior: 'fallback',
+      };
+
+      // Execute
+      const result = await fetchLatestActivityFromCopilot(config as any);
+
+      // Assert - should fall back to created_at
+      expect(result).toHaveLength(1);
+      expect(result[0]).toEqual({
+        login: 'user1',
+        lastActivity: new Date(createdAt),
+        type: null,
+      });
+    });
+
+    it('should use most recent of last_activity_at and last_authenticated_at in most-recent mode (authenticated newer)', async () => {
+      // Setup
+      const activityAt = new Date('2023-06-01').toISOString();
+      const authenticatedAt = new Date('2023-07-01').toISOString(); // More recent
+      const createdAt = new Date('2023-01-01').toISOString();
+      const mockSeats = [
+        {
+          assignee: { login: 'user1' },
+          last_activity_at: activityAt,
+          last_authenticated_at: authenticatedAt,
+          last_activity_editor: 'vscode',
+          created_at: createdAt,
+          pending_cancellation_date: null,
+        },
+      ];
+
+      const mockOctokit = createMockOctokit(mockSeats);
+      const config = {
+        ...defaultConfig,
+        octokit: mockOctokit as any,
+        authenticatedAtBehavior: 'most-recent',
+      };
+
+      // Execute
+      const result = await fetchLatestActivityFromCopilot(config as any);
+
+      // Assert - should use last_authenticated_at (more recent)
+      expect(result).toHaveLength(1);
+      expect(result[0]).toEqual({
+        login: 'user1',
+        lastActivity: new Date(authenticatedAt),
+        type: 'last_authentication',
+      });
+    });
+
+    it('should use most recent of last_activity_at and last_authenticated_at in most-recent mode (activity newer)', async () => {
+      // Setup
+      const activityAt = new Date('2023-07-01').toISOString(); // More recent
+      const authenticatedAt = new Date('2023-06-01').toISOString();
+      const createdAt = new Date('2023-01-01').toISOString();
+      const mockSeats = [
+        {
+          assignee: { login: 'user1' },
+          last_activity_at: activityAt,
+          last_authenticated_at: authenticatedAt,
+          last_activity_editor: 'vscode',
+          created_at: createdAt,
+          pending_cancellation_date: null,
+        },
+      ];
+
+      const mockOctokit = createMockOctokit(mockSeats);
+      const config = {
+        ...defaultConfig,
+        octokit: mockOctokit as any,
+        authenticatedAtBehavior: 'most-recent',
+      };
+
+      // Execute
+      const result = await fetchLatestActivityFromCopilot(config as any);
+
+      // Assert - should use last_activity_at (more recent)
+      expect(result).toHaveLength(1);
+      expect(result[0]).toEqual({
+        login: 'user1',
+        lastActivity: new Date(activityAt),
+        type: 'vscode',
+      });
+    });
+
+    it('should use last_authenticated_at in most-recent mode when last_activity_at is null', async () => {
+      // Setup
+      const authenticatedAt = new Date('2023-06-01').toISOString();
+      const createdAt = new Date('2023-01-01').toISOString();
+      const mockSeats = [
+        {
+          assignee: { login: 'user1' },
+          last_activity_at: null,
+          last_authenticated_at: authenticatedAt,
+          last_activity_editor: null,
+          created_at: createdAt,
+          pending_cancellation_date: null,
+        },
+      ];
+
+      const mockOctokit = createMockOctokit(mockSeats);
+      const config = {
+        ...defaultConfig,
+        octokit: mockOctokit as any,
+        authenticatedAtBehavior: 'most-recent',
+      };
+
+      // Execute
+      const result = await fetchLatestActivityFromCopilot(config as any);
+
+      // Assert - should use last_authenticated_at (only available date besides created_at)
+      expect(result).toHaveLength(1);
+      expect(result[0]).toEqual({
+        login: 'user1',
+        lastActivity: new Date(authenticatedAt),
+        type: 'last_authentication',
+      });
+    });
+
+    it('should fall back to created_at in most-recent mode when both activity dates are null', async () => {
+      // Setup
+      const createdAt = new Date('2023-01-01').toISOString();
+      const mockSeats = [
+        {
+          assignee: { login: 'user1' },
+          last_activity_at: null,
+          last_authenticated_at: null,
+          last_activity_editor: null,
+          created_at: createdAt,
+          pending_cancellation_date: null,
+        },
+      ];
+
+      const mockOctokit = createMockOctokit(mockSeats);
+      const config = {
+        ...defaultConfig,
+        octokit: mockOctokit as any,
+        authenticatedAtBehavior: 'most-recent',
       };
 
       // Execute

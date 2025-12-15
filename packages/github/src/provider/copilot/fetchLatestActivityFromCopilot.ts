@@ -16,6 +16,62 @@ import ms from 'ms';
  *
  * @returns A promise that resolves to an array of LastActivityRecord objects.
  */
+/**
+ * Determines the last activity date based on the configured behavior.
+ *
+ * @param lastActivityAt - The last_activity_at timestamp from the API
+ * @param lastAuthenticatedAt - The last_authenticated_at timestamp from the API
+ * @param createdAt - The created_at timestamp from the API
+ * @param behavior - How to handle last_authenticated_at ('ignore', 'fallback', or 'most-recent')
+ * @returns Object with the determined date and whether last_authenticated_at was used
+ */
+const determineLastActivity = (
+  lastActivityAt: string | null | undefined,
+  lastAuthenticatedAt: string | null | undefined,
+  createdAt: string | null | undefined,
+  behavior: 'ignore' | 'fallback' | 'most-recent' = 'ignore',
+): { date: Date | null; usedAuthenticated: boolean } => {
+  const activityDate = lastActivityAt ? new Date(lastActivityAt) : null;
+  const authenticatedDate = lastAuthenticatedAt
+    ? new Date(lastAuthenticatedAt)
+    : null;
+  const createdDate = createdAt ? new Date(createdAt) : null;
+
+  switch (behavior) {
+    case 'most-recent': {
+      // Take the most recent of last_activity_at and last_authenticated_at
+      if (activityDate && authenticatedDate) {
+        if (authenticatedDate > activityDate) {
+          return { date: authenticatedDate, usedAuthenticated: true };
+        }
+        return { date: activityDate, usedAuthenticated: false };
+      }
+      if (authenticatedDate) {
+        return { date: authenticatedDate, usedAuthenticated: true };
+      }
+      if (activityDate) {
+        return { date: activityDate, usedAuthenticated: false };
+      }
+      return { date: createdDate, usedAuthenticated: false };
+    }
+    case 'fallback': {
+      // Use last_activity_at first, then last_authenticated_at, then created_at
+      if (activityDate) {
+        return { date: activityDate, usedAuthenticated: false };
+      }
+      if (authenticatedDate) {
+        return { date: authenticatedDate, usedAuthenticated: true };
+      }
+      return { date: createdDate, usedAuthenticated: false };
+    }
+    case 'ignore':
+    default: {
+      // Only use last_activity_at, falling back to created_at
+      return { date: activityDate ?? createdDate, usedAuthenticated: false };
+    }
+  }
+};
+
 export const fetchLatestActivityFromCopilot: FetchActivityHandler<
   GitHubHandlerConfig
 > = async ({
@@ -23,7 +79,7 @@ export const fetchLatestActivityFromCopilot: FetchActivityHandler<
   org,
   checkType,
   logger,
-  useAuthenticatedAtAsFallback,
+  authenticatedAtBehavior = 'ignore',
 }) => {
   logger.debug(checkType, `Fetching audit log for ${org}`);
 
@@ -71,29 +127,33 @@ export const fetchLatestActivityFromCopilot: FetchActivityHandler<
           continue;
         }
 
-        if (
-          !seat.last_activity_at &&
-          (seat as { last_authenticated_at?: string | null })
-            .last_authenticated_at !== null
-        ) {
-          logger.debug(
-            checkType,
-            `No activity found for ${actor}${useAuthenticatedAtAsFallback ? ', using authenticated_at as last activity' : ''}`,
-          );
-        }
-
         const lastAuthenticatedAt = (
           seat as { last_authenticated_at?: string | null }
         ).last_authenticated_at;
-        const lastActivity = seat.last_activity_at
-          ? new Date(seat.last_activity_at)
-          : useAuthenticatedAtAsFallback && lastAuthenticatedAt
-            ? new Date(lastAuthenticatedAt)
-            : seat.created_at
-              ? new Date(seat.created_at)
-              : null;
+
+        if (!seat.last_activity_at && lastAuthenticatedAt !== null) {
+          const behaviorMessage =
+            authenticatedAtBehavior === 'most-recent'
+              ? ', using most recent of activity/authenticated times'
+              : authenticatedAtBehavior === 'fallback'
+                ? ', using authenticated_at as fallback'
+                : '';
+          logger.debug(
+            checkType,
+            `No activity found for ${actor}${behaviorMessage}`,
+          );
+        }
+
+        const { date: lastActivity, usedAuthenticated } = determineLastActivity(
+          seat.last_activity_at,
+          lastAuthenticatedAt,
+          seat.created_at,
+          authenticatedAtBehavior,
+        );
         const record = {
-          type: seat.last_activity_editor,
+          type: usedAuthenticated
+            ? 'last_authentication'
+            : seat.last_activity_editor,
           login: actor,
           lastActivity: lastActivity,
         };
