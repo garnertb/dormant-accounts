@@ -4,7 +4,10 @@ module.exports = defineConfig({
   test: {
     silent: 'passed-only',
     environment: 'node',
-    workspace: [
+    coverage: {
+      provider: 'v8',
+    },
+    projects: [
       'packages/*',
       {
         extends: true,
