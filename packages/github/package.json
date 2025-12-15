@@ -36,8 +36,8 @@
     "CHANGELOG.md"
   ],
   "scripts": {
-    "build": "rimraf dist && tsup",
-    "dev": "tsup --watch --clean=false",
+    "build": "rimraf dist && tsdown",
+    "dev": "tsdown --watch --clean=false",
     "eslint": "eslint-runner",
     "eslint:fix": "eslint-runner --fix",
     "test": "vitest --run",
@@ -56,7 +56,7 @@
     "eslint-config-custom": "workspace:*",
     "rimraf": "6.1.0",
     "tsconfig": "workspace:*",
-    "tsup": "8.5.0",
+    "tsdown": "^0.18.0",
     "type-fest": "5.2.0",
     "typescript": "5.9.3",
     "vitest": "4.0.7"

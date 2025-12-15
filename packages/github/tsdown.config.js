@@ -1,4 +1,4 @@
-import { defineConfig } from 'tsup';
+import { defineConfig } from 'tsdown';
 
 // eslint-disable-next-line import/no-default-export -- [@vercel/style-guide@5 migration]
 export default defineConfig({
@@ -14,4 +14,5 @@ export default defineConfig({
     index: 'src/index.ts',
     copilot: 'src/provider/copilot/index.ts',
   },
+  target: false,
 });
