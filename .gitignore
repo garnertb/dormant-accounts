@@ -14,3 +14,6 @@ npm-debug.log
 examples
 
 !actions/*/dist
+
+# tests
+coverage/

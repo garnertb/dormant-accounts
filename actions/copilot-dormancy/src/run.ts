@@ -103,6 +103,9 @@ async function run(): Promise<void> {
     const token = core.getInput('token');
     const activityLogToken = core.getInput('activity-log-token') || token;
     const dryRun = core.getInput('dry-run') === 'true';
+    const authenticatedAtBehavior = core.getInput(
+      'authenticated-at-behavior',
+    ) as 'ignore' | 'fallback' | 'most-recent';
     const checkType = 'copilot-dormancy';
 
     const notificationsContext = getNotificationContext();
@@ -172,6 +175,7 @@ async function run(): Promise<void> {
       conf: {
         octokit,
         org,
+        authenticatedAtBehavior,
       },
     });
 

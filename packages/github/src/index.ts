@@ -7,5 +7,5 @@ export {
   type ProcessingResult,
 } from './provider';
 
-export type { OctokitClient } from './provider/types';
+export type { OctokitClient, AuthenticatedAtBehavior } from './provider/types';
 export type { LastActivityRecord } from 'dormant-accounts';

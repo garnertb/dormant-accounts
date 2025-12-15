@@ -94,6 +94,9 @@ describe('Copilot Dormancy Action', () => {
 
     // Setup mock for isDebug
     vi.mocked(core.isDebug).mockReturnValue(false);
+
+    // Setup mock for getBooleanInput
+    vi.mocked(core.getBooleanInput).mockReturnValue(false);
   });
 
   afterEach(() => {
@@ -136,6 +139,7 @@ describe('Copilot Dormancy Action', () => {
         'notifications-duration': '30d',
         'notifications-body': 'Test notification body',
         'notifications-dry-run': 'false',
+        'authenticated-at-behavior': 'ignore',
       };
       return inputs[name] || '';
     });
@@ -154,6 +158,7 @@ describe('Copilot Dormancy Action', () => {
       conf: {
         octokit: expect.anything(),
         org: 'test-org',
+        authenticatedAtBehavior: 'ignore',
       },
     });
 

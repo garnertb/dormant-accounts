@@ -63,6 +63,13 @@ This GitHub Action identifies dormant GitHub Copilot accounts in your organizati
     # Default: false
     remove-user-from-assigning-team: ''
 
+    # Controls how last_authenticated_at is used when determining activity:
+    # - 'ignore' (default): Only use last_activity_at, falling back to created_at
+    # - 'fallback': Use last_authenticated_at when last_activity_at is undefined
+    # - 'most-recent': Use the most recent of last_activity_at and last_authenticated_at
+    # Default: ignore
+    authenticated-at-behavior: ''
+
     # Custom message template for user notifications
     notifications-body: ''
 ```

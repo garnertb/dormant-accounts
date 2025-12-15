@@ -36493,7 +36493,48 @@ var removeCopilotUserFromTeam = async ({
 
 // src/provider/copilot/fetchLatestActivityFromCopilot.ts
 
-var fetchLatestActivityFromCopilot = async ({ octokit, org, checkType, logger: logger4 }) => {
+var determineLastActivity = (lastActivityAt, lastAuthenticatedAt, createdAt, behavior = "ignore") => {
+  const activityDate = lastActivityAt ? new Date(lastActivityAt) : null;
+  const authenticatedDate = lastAuthenticatedAt ? new Date(lastAuthenticatedAt) : null;
+  const createdDate = createdAt ? new Date(createdAt) : null;
+  switch (behavior) {
+    case "most-recent": {
+      if (activityDate && authenticatedDate) {
+        if (authenticatedDate > activityDate) {
+          return { date: authenticatedDate, usedAuthenticated: true };
+        }
+        return { date: activityDate, usedAuthenticated: false };
+      }
+      if (authenticatedDate) {
+        return { date: authenticatedDate, usedAuthenticated: true };
+      }
+      if (activityDate) {
+        return { date: activityDate, usedAuthenticated: false };
+      }
+      return { date: createdDate, usedAuthenticated: false };
+    }
+    case "fallback": {
+      if (activityDate) {
+        return { date: activityDate, usedAuthenticated: false };
+      }
+      if (authenticatedDate) {
+        return { date: authenticatedDate, usedAuthenticated: true };
+      }
+      return { date: createdDate, usedAuthenticated: false };
+    }
+    case "ignore":
+    default: {
+      return { date: activityDate ?? createdDate, usedAuthenticated: false };
+    }
+  }
+};
+var fetchLatestActivityFromCopilot = async ({
+  octokit,
+  org,
+  checkType,
+  logger: logger4,
+  authenticatedAtBehavior = "ignore"
+}) => {
   logger4.debug(checkType, `Fetching audit log for ${org}`);
   const payload = {
     org,
@@ -36530,9 +36571,22 @@ var fetchLatestActivityFromCopilot = async ({ octokit, org, checkType, logger: l
           );
           continue;
         }
-        const lastActivity = seat.last_activity_at ? new Date(seat.last_activity_at) : seat.created_at ? new Date(seat.created_at) : null;
+        const lastAuthenticatedAt = seat.last_authenticated_at;
+        if (!seat.last_activity_at && lastAuthenticatedAt !== null && authenticatedAtBehavior !== "ignore") {
+          const behaviorMessage = authenticatedAtBehavior === "most-recent" ? ", using most recent of activity/authenticated times" : authenticatedAtBehavior === "fallback" ? ", using authenticated_at as fallback" : "";
+          logger4.debug(
+            checkType,
+            `No activity found for ${actor}${behaviorMessage}`
+          );
+        }
+        const { date: lastActivity, usedAuthenticated } = determineLastActivity(
+          seat.last_activity_at,
+          lastAuthenticatedAt,
+          seat.created_at,
+          authenticatedAtBehavior
+        );
         const record = {
-          type: seat.last_activity_editor,
+          type: usedAuthenticated ? "last_authentication" : seat.last_activity_editor,
           login: actor,
           lastActivity
         };
@@ -49649,6 +49703,7 @@ async function run() {
         const token = lib_core.getInput('token');
         const activityLogToken = lib_core.getInput('activity-log-token') || token;
         const dryRun = lib_core.getInput('dry-run') === 'true';
+        const authenticatedAtBehavior = lib_core.getInput('authenticated-at-behavior');
         const checkType = 'copilot-dormancy';
         const notificationsContext = getNotificationContext();
         const sendNotifications = notificationsContext !== false;
@@ -49696,6 +49751,7 @@ async function run() {
             conf: {
                 octokit,
                 org,
+                authenticatedAtBehavior,
             },
         });
         // Fetch latest activity if needed

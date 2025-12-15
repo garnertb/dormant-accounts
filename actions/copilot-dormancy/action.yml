@@ -53,6 +53,10 @@ inputs:
     description: 'Allow removing users from team that assigned Copilot'
     required: false
     default: 'false'
+  authenticated-at-behavior:
+    description: "Controls how last_authenticated_at is used: 'ignore' (default), 'fallback', or 'most-recent'"
+    required: false
+    default: 'ignore'
   notifications-body:
     description: 'Custom message template for user notifications'
     required: false
