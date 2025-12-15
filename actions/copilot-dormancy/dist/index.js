@@ -31472,14 +31472,6 @@ function wrappy (fn, cb) {
 
 /***/ }),
 
-/***/ 4732:
-/***/ ((module) => {
-
-module.exports = eval("require")("consola");
-
-
-/***/ }),
-
 /***/ 2613:
 /***/ ((module) => {
 
@@ -33519,161 +33511,7 @@ var __webpack_exports__ = {};
 
 // EXTERNAL MODULE: ../../node_modules/.pnpm/@actions+core@1.11.1/node_modules/@actions/core/lib/core.js
 var lib_core = __nccwpck_require__(4442);
-// EXTERNAL MODULE: ../../node_modules/.pnpm/ms@2.1.3/node_modules/ms/index.js
-var node_modules_ms = __nccwpck_require__(6987);
-// EXTERNAL MODULE: ../../node_modules/.pnpm/@vercel+ncc@0.38.4/node_modules/@vercel/ncc/dist/ncc/@@notfound.js?consola
-var _notfoundconsola = __nccwpck_require__(4732);
-;// CONCATENATED MODULE: ../../packages/github/dist/index.mjs
-
-
-
-
-//#region src/provider/audit-log.ts
-const fetchAuditLogActivity = async ({ lastFetchTime, octokit, org, logger: logger$1 }) => {
-	const lastFetchTimeAsDate = new Date(lastFetchTime);
-	const payload = {
-		org,
-		include: "all",
-		phrase: `created:>=${lastFetchTimeAsDate.toISOString()}`,
-		per_page: 100,
-		order: "desc"
-	};
-	logger$1.debug(`Fetching audit log for ${org} since ${lastFetchTimeAsDate}`);
-	try {
-		const processed = {};
-		try {
-			for await (const { data: entries } of octokit.paginate.iterator("GET /orgs/{org}/audit-log", payload)) for (const entry of entries) {
-				if (!entry.actor) continue;
-				const actor = entry.actor.toLowerCase();
-				const lastActivity = entry["@timestamp"] ? new Date(entry["@timestamp"]) : null;
-				const record = {
-					type: entry.action,
-					login: actor,
-					lastActivity
-				};
-				if (!processed[actor]?.lastActivity || lastActivity && lastActivity > processed[actor].lastActivity) {
-					processed[actor] = record;
-					const log = lastActivity ? `${ms(Date.now() - lastActivity.getTime())} ago` : "unknown";
-					logger$1.debug(`Activity record found for ${actor} - ${log}${record.type ? ` - ${record.type}` : ""}`);
-				}
-			}
-		} catch (err) {
-			if (err.status === 404) {
-				logger$1.error(`Audit log not found for organization ${org}. The organization may not have audit log access.`);
-				return [];
-			}
-			throw err;
-		}
-		return Object.values(processed);
-	} catch (error) {
-		logger$1.error("Failed to fetch audit log", { error });
-		throw error;
-	}
-};
-/**
-* Default whitelist handler for GitHub users.
-* This handler checks if the user's login contains '[bot]', which is a common convention for GitHub bots.
-*
-* @param login - The login of the user to check.
-* @param logger - The logger instance for logging debug information.
-*
-* @returns A boolean indicating whether the user is whitelisted (true) or not (false).
-*/
-const defaultWhitelistHandler = async ({ login, logger: logger$1 }) => {
-	const resolution = login.includes("[bot]");
-	logger$1.debug(`Whitelist check for ${login}: ${resolution}`);
-	return resolution;
-};
-/**
-* Creates a GitHub dormancy check, which analyzes the audit log to determine user inactivity.
-*
-* @param config - The configuration object for the dormancy check.
-* @param config - The extended configuration specific to GitHub handler.
-*
-* @returns A dormancy check function configured for GitHub user inactivity.
-*/
-const githubDormancy = (config) => {
-	const { type = "github-dormancy", isWhitelisted = defaultWhitelistHandler, fetchLatestActivity = fetchAuditLogActivity, ...rest } = config;
-	return dormancyCheck({
-		type,
-		...rest,
-		fetchLatestActivity,
-		isWhitelisted
-	});
-};
-
-//#endregion
-//#region ../dormant-accounts/dist/utils-gIlE6gZ5.mjs
-const logger = (0,_notfoundconsola.createConsola)({});
-/**
-* Converts a duration string to milliseconds.
-*
-* @param duration - A string representing a time duration (e.g., '1d', '2h', '30m')
-* @returns The duration converted to milliseconds, or undefined if no duration is provided
-* @throws {Error} If the duration string format is invalid
-*
-* @example
-* ```typescript
-* durationToMillis('1d') // returns 86400000
-* durationToMillis('2h') // returns 7200000
-* durationToMillis('') // returns undefined
-* ```
-*/
-const durationToMillis = (duration) => {
-	try {
-		return duration ? node_modules_ms(duration) : void 0;
-	} catch (error) {
-		logger.error("Error calculating durationMillis", error);
-		throw error;
-	}
-};
-/**
-* Calculates the difference in milliseconds between two dates.
-*
-* @param start - The start date
-* @param end - The end date (defaults to the current date and time)
-* @returns The difference in milliseconds between the two dates
-*/
-const msBetweenDates = (start, end) => {
-	const endDate = end ? end.getTime() : Date.now();
-	if (typeof start === "number") return endDate - start;
-	return endDate - start.getTime();
-};
-const compareDatesAgainstDuration = (duration, start, end) => {
-	const durationMillis = durationToMillis(duration);
-	if (!durationMillis) throw new Error("Invalid duration string");
-	const actualDuration = msBetweenDates(start, end);
-	const actualDurationString = node_modules_ms(actualDuration, { long: true });
-	return {
-		overDuration: actualDuration > durationMillis,
-		actualDuration,
-		actualDurationString
-	};
-};
-/**
-* Enriches a LastActivityRecord with duration and human-friendly duration.
-* * @param record - The LastActivityRecord to enrich
-* @param endDate - Optional end date for calculating duration
-* @returns The enriched LastActivityRecord with duration and human-friendly duration
-* @throws {Error} If the record does not have a lastActivity date
-**/
-const enrichLastActivityRecord = (record, endDate) => {
-	if (!record.lastActivity) return record;
-	const duration = msBetweenDates(record.lastActivity, endDate ? new Date(endDate) : /* @__PURE__ */ new Date());
-	const lastActivityLocalized = record.lastActivity.toLocaleDateString("en-US", {
-		year: "numeric",
-		month: "long",
-		day: "numeric"
-	});
-	return {
-		...record,
-		duration,
-		humanFriendlyDuration: node_modules_ms(duration, { long: true }),
-		lastActivityLocalized
-	};
-};
-
-//#endregion
+;// CONCATENATED MODULE: ../../packages/github/dist/provider/getNotifications.mjs
 //#region src/provider/getNotifications.ts
 /**
 * Fetch all issues from a GitHub repository with pagination using Octokit's built-in paginate method
@@ -33696,6 +33534,11 @@ async function getNotifications({ octokit, owner, repo, params = {} }) {
 }
 
 //#endregion
+
+//# sourceMappingURL=getNotifications.mjs.map
+;// CONCATENATED MODULE: ../../packages/github/dist/provider/getExistingNotification.mjs
+
+
 //#region src/provider/getExistingNotification.ts
 /**
 * Retrieves an existing notification issue for a user using GitHub's GraphQL API
@@ -33773,6 +33616,9 @@ async function fallbackToRestApi(options) {
 }
 
 //#endregion
+
+//# sourceMappingURL=getExistingNotification.mjs.map
+;// CONCATENATED MODULE: ../../packages/github/dist/provider/templateHandler.mjs
 //#region src/provider/templateHandler.ts
 /**
 * Creates a handler for generating notification bodies.
@@ -33804,285 +33650,8 @@ function createDefaultNotificationBodyHandler(notificationTemplate) {
 }
 
 //#endregion
-//#region src/provider/notifier.ts
-/**
-* Status labels for notification issues
-*/
-let NotificationStatus = /* @__PURE__ */ function(NotificationStatus$1) {
-	NotificationStatus$1["ACTIVE"] = "became-active";
-	NotificationStatus$1["EXCLUDED"] = "admin-exclusion";
-	NotificationStatus$1["PENDING"] = "pending-removal";
-	NotificationStatus$1["REMOVED"] = "user-removed";
-	return NotificationStatus$1;
-}({});
-/**
-* Implementation of DormantAccountNotifier using GitHub Issues
-*/
-var GithubIssueNotifier = class {
-	/**
-	* Initialize the notifier with configuration
-	*/
-	constructor(config) {
-		this.config = config;
-		this.octokit = config.githubClient;
-	}
-	/**
-	* Process a list of dormant users
-	*/
-	async processDormantUsers(users) {
-		const result = {
-			notified: [],
-			removed: [],
-			reactivated: [],
-			excluded: [],
-			inGracePeriod: [],
-			errors: []
-		};
-		const reactivatedUsers = await this.findReactivatedUsers(users);
-		for (const user of users) try {
-			if (reactivatedUsers.includes(user.login)) continue;
-			const notification = await this.getExistingNotification(user.login);
-			if (notification) {
-				if (this.hasLabel(notification, NotificationStatus.EXCLUDED)) {
-					result.excluded.push({
-						user: user.login,
-						notification
-					});
-					continue;
-				}
-				if (this.hasGracePeriodExpired(notification)) {
-					if (!this.config.dryRun) await this.removeAccount(user, notification);
-					result.removed.push({
-						user: user.login,
-						notification
-					});
-				} else result.inGracePeriod.push({
-					user: user.login,
-					notification
-				});
-			} else if (!this.config.dryRun) {
-				const newNotification = await this.notifyUser(user);
-				result.notified.push({
-					user: user.login,
-					notification: newNotification
-				});
-			} else {
-				console.log(`[DRY RUN] Would notify user: ${user.login}`);
-				result.notified.push({
-					user: user.login,
-					notification: {
-						id: 0,
-						number: 0,
-						title: user.login,
-						created_at: (/* @__PURE__ */ new Date()).toISOString(),
-						labels: [],
-						state: "open"
-					}
-				});
-			}
-		} catch (error) {
-			result.errors.push({
-				user: user.login,
-				error
-			});
-		}
-		for (const username of reactivatedUsers) try {
-			const notification = await this.getExistingNotification(username);
-			if (notification) {
-				const user = users.find((u) => u.login === username) || { login: username };
-				if (!this.config.dryRun) await this.closeNotificationForActiveUser(user, notification);
-				result.reactivated.push({
-					user: username,
-					notification
-				});
-			}
-		} catch (error) {
-			result.errors.push({
-				user: username,
-				error
-			});
-		}
-		return result;
-	}
-	/**
-	* Find users who have open notifications but are no longer dormant
-	*/
-	async findReactivatedUsers(currentDormantUsers) {
-		const dormantLogins = new Set(currentDormantUsers.map((user) => user.login));
-		return (await getNotifications({
-			octokit: this.octokit,
-			owner: this.config.repository.owner,
-			repo: this.config.repository.repo,
-			params: {
-				state: "open",
-				labels: this.config.repository.baseLabels.join(",")
-			}
-		})).filter((issue) => !dormantLogins.has(issue.title)).map((issue) => issue.title);
-	}
-	/**
-	* Create a notification for a user
-	*/
-	async notifyUser(user) {
-		console.log(`Creating notification for ${user.login}`);
-		const notificationContext = {
-			lastActivityRecord: enrichLastActivityRecord(user),
-			gracePeriod: this.config.gracePeriod,
-			dormantAfter: this.config.dormantAfter
-		};
-		const notificationBody = typeof this.config.notificationBody === "function" ? this.config.notificationBody(notificationContext) : createDefaultNotificationBodyHandler(this.config.notificationBody)(notificationContext);
-		const { data } = await this.octokit.rest.issues.create({
-			owner: this.config.repository.owner,
-			repo: this.config.repository.repo,
-			title: user.login,
-			body: `@${user.login}\n\n${notificationBody}`,
-			labels: [...this.config.repository.baseLabels, NotificationStatus.PENDING],
-			assignees: this.config.assignUserToIssue ? [user.login] : void 0
-		});
-		console.log(`Notification created for ${user.login}`);
-		return data;
-	}
-	/**
-	* Check if notification grace period has expired
-	*/
-	hasGracePeriodExpired(notification) {
-		return compareDatesAgainstDuration(this.config.gracePeriod, new Date(notification.created_at)).overDuration;
-	}
-	/**
-	* Remove a user after grace period expiration
-	*/
-	async removeAccount(user, notification) {
-		console.log(`Removing account ${user.login}`);
-		if (this.config.removeAccount) try {
-			const removed = await this.config.removeAccount({ lastActivityRecord: user });
-			console.log(`Account removal handler executed for ${user.login}: ${Boolean(removed) ? "success" : "failure"}`);
-			if (!removed) return;
-		} catch (error) {
-			console.error(`Error executing account removal handler for ${user.login}:`, error);
-			throw error;
-		}
-		else console.log(`No account removal handler provided for ${user.login}`);
-		await this.addCommentToIssue(notification.number, `Account ${user.login} removed due to inactivity after ${this.config.gracePeriod} grace period.`);
-		await this.addLabelToIssue(notification.number, NotificationStatus.REMOVED);
-		await this.octokit.rest.issues.update({
-			owner: this.config.repository.owner,
-			repo: this.config.repository.repo,
-			issue_number: notification.number,
-			state: "closed"
-		});
-		await this.removeLabelFromIssue(notification.number, NotificationStatus.PENDING);
-		console.log(`Notification closed for removed user ${user.login}`);
-	}
-	/**
-	* Close notification for a user who became active
-	*/
-	async closeNotificationForActiveUser(user, notification) {
-		console.log(`Closing notification for active user ${user.login}`);
-		await Promise.all([
-			this.addCommentToIssue(notification.number, `User ${user.login} is now active. No removal needed.`),
-			this.addLabelToIssue(notification.number, NotificationStatus.ACTIVE),
-			this.removeLabelFromIssue(notification.number, NotificationStatus.PENDING)
-		]);
-		await this.octokit.rest.issues.update({
-			owner: this.config.repository.owner,
-			repo: this.config.repository.repo,
-			issue_number: notification.number,
-			state: "closed",
-			state_reason: "not_planned"
-		});
-		console.log(`Notification closed for active user ${user.login}`);
-	}
-	/**
-	* Mark user for admin exclusion
-	*/
-	async markAdminExclusion(user, notification, reason) {
-		console.log(`Marking admin exclusion for ${user.login}: ${reason}`);
-		await this.addCommentToIssue(notification.number, `Admin exclusion applied for ${user.login}: ${reason}`);
-		await this.addLabelToIssue(notification.number, NotificationStatus.EXCLUDED);
-		console.log(`Admin exclusion marked for ${user.login}`);
-	}
-	/**
-	* Get notifications by status
-	*/
-	async getNotificationsByStatus(status) {
-		return (await getNotifications({
-			octokit: this.octokit,
-			owner: this.config.repository.owner,
-			repo: this.config.repository.repo,
-			params: {
-				state: "open",
-				labels: `${status}`
-			}
-		})).map((issue) => ({
-			user: issue.title,
-			notification: issue
-		}));
-	}
-	/**
-	* Get existing notification for a user
-	*/
-	async getExistingNotification(username) {
-		return getExistingNotification({
-			octokit: this.octokit,
-			owner: this.config.repository.owner,
-			repo: this.config.repository.repo,
-			username,
-			baseLabels: this.config.repository.baseLabels,
-			assignUserToIssue: this.config.assignUserToIssue
-		});
-	}
-	/**
-	* Add a comment to an issue
-	*/
-	async addCommentToIssue(issueNumber, comment) {
-		await this.octokit.rest.issues.createComment({
-			owner: this.config.repository.owner,
-			repo: this.config.repository.repo,
-			issue_number: issueNumber,
-			body: comment
-		});
-	}
-	/**
-	* Add a label to an issue
-	*/
-	async addLabelToIssue(issueNumber, label) {
-		await this.octokit.rest.issues.addLabels({
-			owner: this.config.repository.owner,
-			repo: this.config.repository.repo,
-			issue_number: issueNumber,
-			labels: [label]
-		});
-	}
-	/**
-	* Remove a label from an issue
-	*/
-	async removeLabelFromIssue(issueNumber, label) {
-		try {
-			await this.octokit.rest.issues.removeLabel({
-				owner: this.config.repository.owner,
-				repo: this.config.repository.repo,
-				issue_number: issueNumber,
-				name: label
-			});
-			console.log(`Removed label ${label} from issue #${issueNumber}`);
-		} catch (error) {
-			if (error?.status === 404) {
-				console.log(`Label ${label} not found on issue #${issueNumber}, skipping removal`);
-				return;
-			}
-			throw error;
-		}
-	}
-	/**
-	* Check if issue has a specific label
-	*/
-	hasLabel(issue, label) {
-		return issue.labels.some((l) => typeof l === "string" ? l === label : l.name === label);
-	}
-};
 
-//#endregion
-
-//# sourceMappingURL=index.mjs.map
+//# sourceMappingURL=templateHandler.mjs.map
 ;// CONCATENATED MODULE: ../../node_modules/.pnpm/consola@3.4.2/node_modules/consola/dist/core.mjs
 const LogLevels = {
   silent: Number.NEGATIVE_INFINITY,
@@ -35623,12 +35192,14 @@ const consola = dist_createConsola();
 
 
 
+// EXTERNAL MODULE: ../../node_modules/.pnpm/ms@2.1.3/node_modules/ms/index.js
+var ms = __nccwpck_require__(6987);
 ;// CONCATENATED MODULE: ../../packages/dormant-accounts/dist/utils-gIlE6gZ5.mjs
 
 
 
 //#region src/utils.ts
-const utils_gIlE6gZ5_logger = dist_createConsola({});
+const logger = dist_createConsola({});
 /**
 * Converts a duration string to milliseconds.
 *
@@ -35643,11 +35214,11 @@ const utils_gIlE6gZ5_logger = dist_createConsola({});
 * durationToMillis('') // returns undefined
 * ```
 */
-const utils_gIlE6gZ5_durationToMillis = (duration) => {
+const durationToMillis = (duration) => {
 	try {
-		return duration ? node_modules_ms(duration) : void 0;
+		return duration ? ms(duration) : void 0;
 	} catch (error) {
-		utils_gIlE6gZ5_logger.error("Error calculating durationMillis", error);
+		logger.error("Error calculating durationMillis", error);
 		throw error;
 	}
 };
@@ -35658,16 +35229,16 @@ const utils_gIlE6gZ5_durationToMillis = (duration) => {
 * @param end - The end date (defaults to the current date and time)
 * @returns The difference in milliseconds between the two dates
 */
-const utils_gIlE6gZ5_msBetweenDates = (start, end) => {
+const msBetweenDates = (start, end) => {
 	const endDate = end ? end.getTime() : Date.now();
 	if (typeof start === "number") return endDate - start;
 	return endDate - start.getTime();
 };
-const utils_gIlE6gZ5_compareDatesAgainstDuration = (duration, start, end) => {
-	const durationMillis = utils_gIlE6gZ5_durationToMillis(duration);
+const compareDatesAgainstDuration = (duration, start, end) => {
+	const durationMillis = durationToMillis(duration);
 	if (!durationMillis) throw new Error("Invalid duration string");
-	const actualDuration = utils_gIlE6gZ5_msBetweenDates(start, end);
-	const actualDurationString = node_modules_ms(actualDuration, { long: true });
+	const actualDuration = msBetweenDates(start, end);
+	const actualDurationString = ms(actualDuration, { long: true });
 	return {
 		overDuration: actualDuration > durationMillis,
 		actualDuration,
@@ -35681,9 +35252,9 @@ const utils_gIlE6gZ5_compareDatesAgainstDuration = (duration, start, end) => {
 * @returns The enriched LastActivityRecord with duration and human-friendly duration
 * @throws {Error} If the record does not have a lastActivity date
 **/
-const utils_gIlE6gZ5_enrichLastActivityRecord = (record, endDate) => {
+const enrichLastActivityRecord = (record, endDate) => {
 	if (!record.lastActivity) return record;
-	const duration = utils_gIlE6gZ5_msBetweenDates(record.lastActivity, endDate ? new Date(endDate) : /* @__PURE__ */ new Date());
+	const duration = msBetweenDates(record.lastActivity, endDate ? new Date(endDate) : /* @__PURE__ */ new Date());
 	const lastActivityLocalized = record.lastActivity.toLocaleDateString("en-US", {
 		year: "numeric",
 		month: "long",
@@ -35700,6 +35271,414 @@ const utils_gIlE6gZ5_enrichLastActivityRecord = (record, endDate) => {
 //#endregion
 
 //# sourceMappingURL=utils-gIlE6gZ5.mjs.map
+;// CONCATENATED MODULE: ../../packages/github/dist/provider/notifier.mjs
+
+
+
+
+
+//#region src/provider/notifier.ts
+/**
+* Status labels for notification issues
+*/
+let NotificationStatus = /* @__PURE__ */ function(NotificationStatus$1) {
+	NotificationStatus$1["ACTIVE"] = "became-active";
+	NotificationStatus$1["EXCLUDED"] = "admin-exclusion";
+	NotificationStatus$1["PENDING"] = "pending-removal";
+	NotificationStatus$1["REMOVED"] = "user-removed";
+	return NotificationStatus$1;
+}({});
+/**
+* Implementation of DormantAccountNotifier using GitHub Issues
+*/
+var GithubIssueNotifier = class {
+	/**
+	* Initialize the notifier with configuration
+	*/
+	constructor(config) {
+		this.config = config;
+		this.octokit = config.githubClient;
+	}
+	/**
+	* Process a list of dormant users
+	*/
+	async processDormantUsers(users) {
+		const result = {
+			notified: [],
+			removed: [],
+			reactivated: [],
+			excluded: [],
+			inGracePeriod: [],
+			errors: []
+		};
+		const reactivatedUsers = await this.findReactivatedUsers(users);
+		for (const user of users) try {
+			if (reactivatedUsers.includes(user.login)) continue;
+			const notification = await this.getExistingNotification(user.login);
+			if (notification) {
+				if (this.hasLabel(notification, NotificationStatus.EXCLUDED)) {
+					result.excluded.push({
+						user: user.login,
+						notification
+					});
+					continue;
+				}
+				if (this.hasGracePeriodExpired(notification)) {
+					if (!this.config.dryRun) await this.removeAccount(user, notification);
+					result.removed.push({
+						user: user.login,
+						notification
+					});
+				} else result.inGracePeriod.push({
+					user: user.login,
+					notification
+				});
+			} else if (!this.config.dryRun) {
+				const newNotification = await this.notifyUser(user);
+				result.notified.push({
+					user: user.login,
+					notification: newNotification
+				});
+			} else {
+				console.log(`[DRY RUN] Would notify user: ${user.login}`);
+				result.notified.push({
+					user: user.login,
+					notification: {
+						id: 0,
+						number: 0,
+						title: user.login,
+						created_at: (/* @__PURE__ */ new Date()).toISOString(),
+						labels: [],
+						state: "open"
+					}
+				});
+			}
+		} catch (error) {
+			result.errors.push({
+				user: user.login,
+				error
+			});
+		}
+		for (const username of reactivatedUsers) try {
+			const notification = await this.getExistingNotification(username);
+			if (notification) {
+				const user = users.find((u) => u.login === username) || { login: username };
+				if (!this.config.dryRun) await this.closeNotificationForActiveUser(user, notification);
+				result.reactivated.push({
+					user: username,
+					notification
+				});
+			}
+		} catch (error) {
+			result.errors.push({
+				user: username,
+				error
+			});
+		}
+		return result;
+	}
+	/**
+	* Find users who have open notifications but are no longer dormant
+	*/
+	async findReactivatedUsers(currentDormantUsers) {
+		const dormantLogins = new Set(currentDormantUsers.map((user) => user.login));
+		return (await getNotifications({
+			octokit: this.octokit,
+			owner: this.config.repository.owner,
+			repo: this.config.repository.repo,
+			params: {
+				state: "open",
+				labels: this.config.repository.baseLabels.join(",")
+			}
+		})).filter((issue) => !dormantLogins.has(issue.title)).map((issue) => issue.title);
+	}
+	/**
+	* Create a notification for a user
+	*/
+	async notifyUser(user) {
+		console.log(`Creating notification for ${user.login}`);
+		const notificationContext = {
+			lastActivityRecord: enrichLastActivityRecord(user),
+			gracePeriod: this.config.gracePeriod,
+			dormantAfter: this.config.dormantAfter
+		};
+		const notificationBody = typeof this.config.notificationBody === "function" ? this.config.notificationBody(notificationContext) : createDefaultNotificationBodyHandler(this.config.notificationBody)(notificationContext);
+		const { data } = await this.octokit.rest.issues.create({
+			owner: this.config.repository.owner,
+			repo: this.config.repository.repo,
+			title: user.login,
+			body: `@${user.login}\n\n${notificationBody}`,
+			labels: [...this.config.repository.baseLabels, NotificationStatus.PENDING],
+			assignees: this.config.assignUserToIssue ? [user.login] : void 0
+		});
+		console.log(`Notification created for ${user.login}`);
+		return data;
+	}
+	/**
+	* Check if notification grace period has expired
+	*/
+	hasGracePeriodExpired(notification) {
+		return compareDatesAgainstDuration(this.config.gracePeriod, new Date(notification.created_at)).overDuration;
+	}
+	/**
+	* Remove a user after grace period expiration
+	*/
+	async removeAccount(user, notification) {
+		console.log(`Removing account ${user.login}`);
+		if (this.config.removeAccount) try {
+			const removed = await this.config.removeAccount({ lastActivityRecord: user });
+			console.log(`Account removal handler executed for ${user.login}: ${Boolean(removed) ? "success" : "failure"}`);
+			if (!removed) return;
+		} catch (error) {
+			console.error(`Error executing account removal handler for ${user.login}:`, error);
+			throw error;
+		}
+		else console.log(`No account removal handler provided for ${user.login}`);
+		await this.addCommentToIssue(notification.number, `Account ${user.login} removed due to inactivity after ${this.config.gracePeriod} grace period.`);
+		await this.addLabelToIssue(notification.number, NotificationStatus.REMOVED);
+		await this.octokit.rest.issues.update({
+			owner: this.config.repository.owner,
+			repo: this.config.repository.repo,
+			issue_number: notification.number,
+			state: "closed"
+		});
+		await this.removeLabelFromIssue(notification.number, NotificationStatus.PENDING);
+		console.log(`Notification closed for removed user ${user.login}`);
+	}
+	/**
+	* Close notification for a user who became active
+	*/
+	async closeNotificationForActiveUser(user, notification) {
+		console.log(`Closing notification for active user ${user.login}`);
+		await Promise.all([
+			this.addCommentToIssue(notification.number, `User ${user.login} is now active. No removal needed.`),
+			this.addLabelToIssue(notification.number, NotificationStatus.ACTIVE),
+			this.removeLabelFromIssue(notification.number, NotificationStatus.PENDING)
+		]);
+		await this.octokit.rest.issues.update({
+			owner: this.config.repository.owner,
+			repo: this.config.repository.repo,
+			issue_number: notification.number,
+			state: "closed",
+			state_reason: "not_planned"
+		});
+		console.log(`Notification closed for active user ${user.login}`);
+	}
+	/**
+	* Mark user for admin exclusion
+	*/
+	async markAdminExclusion(user, notification, reason) {
+		console.log(`Marking admin exclusion for ${user.login}: ${reason}`);
+		await this.addCommentToIssue(notification.number, `Admin exclusion applied for ${user.login}: ${reason}`);
+		await this.addLabelToIssue(notification.number, NotificationStatus.EXCLUDED);
+		console.log(`Admin exclusion marked for ${user.login}`);
+	}
+	/**
+	* Get notifications by status
+	*/
+	async getNotificationsByStatus(status) {
+		return (await getNotifications({
+			octokit: this.octokit,
+			owner: this.config.repository.owner,
+			repo: this.config.repository.repo,
+			params: {
+				state: "open",
+				labels: `${status}`
+			}
+		})).map((issue) => ({
+			user: issue.title,
+			notification: issue
+		}));
+	}
+	/**
+	* Get existing notification for a user
+	*/
+	async getExistingNotification(username) {
+		return getExistingNotification({
+			octokit: this.octokit,
+			owner: this.config.repository.owner,
+			repo: this.config.repository.repo,
+			username,
+			baseLabels: this.config.repository.baseLabels,
+			assignUserToIssue: this.config.assignUserToIssue
+		});
+	}
+	/**
+	* Add a comment to an issue
+	*/
+	async addCommentToIssue(issueNumber, comment) {
+		await this.octokit.rest.issues.createComment({
+			owner: this.config.repository.owner,
+			repo: this.config.repository.repo,
+			issue_number: issueNumber,
+			body: comment
+		});
+	}
+	/**
+	* Add a label to an issue
+	*/
+	async addLabelToIssue(issueNumber, label) {
+		await this.octokit.rest.issues.addLabels({
+			owner: this.config.repository.owner,
+			repo: this.config.repository.repo,
+			issue_number: issueNumber,
+			labels: [label]
+		});
+	}
+	/**
+	* Remove a label from an issue
+	*/
+	async removeLabelFromIssue(issueNumber, label) {
+		try {
+			await this.octokit.rest.issues.removeLabel({
+				owner: this.config.repository.owner,
+				repo: this.config.repository.repo,
+				issue_number: issueNumber,
+				name: label
+			});
+			console.log(`Removed label ${label} from issue #${issueNumber}`);
+		} catch (error) {
+			if (error?.status === 404) {
+				console.log(`Label ${label} not found on issue #${issueNumber}, skipping removal`);
+				return;
+			}
+			throw error;
+		}
+	}
+	/**
+	* Check if issue has a specific label
+	*/
+	hasLabel(issue, label) {
+		return issue.labels.some((l) => typeof l === "string" ? l === label : l.name === label);
+	}
+};
+
+//#endregion
+
+//# sourceMappingURL=notifier.mjs.map
+;// CONCATENATED MODULE: ../../packages/github/dist/provider/copilot/fetchLatestActivityFromCopilot.mjs
+
+
+//#region src/provider/copilot/fetchLatestActivityFromCopilot.ts
+/**
+* Fetches the latest activity from GitHub Copilot for a given organization and returns the
+* users last activity or the date they were added to Copilot if no activity is found.
+*
+* @param octokit - The Octokit instance for making API calls.
+* @param org - The organization to fetch activity for.
+* @param checkType - The type of check being performed.
+* @param logger - The logger instance for logging messages.
+*
+* @returns A promise that resolves to an array of LastActivityRecord objects.
+*/
+/**
+* Determines the last activity date based on the configured behavior.
+*
+* @param lastActivityAt - The last_activity_at timestamp from the API
+* @param lastAuthenticatedAt - The last_authenticated_at timestamp from the API
+* @param createdAt - The created_at timestamp from the API
+* @param behavior - How to handle last_authenticated_at ('ignore', 'fallback', or 'most-recent')
+* @returns Object with the determined date and whether last_authenticated_at was used
+*/
+const determineLastActivity = (lastActivityAt, lastAuthenticatedAt, createdAt, behavior = "ignore") => {
+	const activityDate = lastActivityAt ? new Date(lastActivityAt) : null;
+	const authenticatedDate = lastAuthenticatedAt ? new Date(lastAuthenticatedAt) : null;
+	const createdDate = createdAt ? new Date(createdAt) : null;
+	switch (behavior) {
+		case "most-recent":
+			if (activityDate && authenticatedDate) {
+				if (authenticatedDate > activityDate) return {
+					date: authenticatedDate,
+					usedAuthenticated: true
+				};
+				return {
+					date: activityDate,
+					usedAuthenticated: false
+				};
+			}
+			if (authenticatedDate) return {
+				date: authenticatedDate,
+				usedAuthenticated: true
+			};
+			if (activityDate) return {
+				date: activityDate,
+				usedAuthenticated: false
+			};
+			return {
+				date: createdDate,
+				usedAuthenticated: false
+			};
+		case "fallback":
+			if (activityDate) return {
+				date: activityDate,
+				usedAuthenticated: false
+			};
+			if (authenticatedDate) return {
+				date: authenticatedDate,
+				usedAuthenticated: true
+			};
+			return {
+				date: createdDate,
+				usedAuthenticated: false
+			};
+		case "ignore":
+		default: return {
+			date: activityDate ?? createdDate,
+			usedAuthenticated: false
+		};
+	}
+};
+const fetchLatestActivityFromCopilot = async ({ octokit, org, checkType, logger, authenticatedAtBehavior = "ignore" }) => {
+	logger.debug(checkType, `Fetching audit log for ${org}`);
+	const payload = {
+		org,
+		per_page: 100
+	};
+	try {
+		const processed = {};
+		const iterator = octokit.paginate.iterator(octokit.rest.copilot.listCopilotSeats, payload);
+		for await (const { data: { seats, total_seats } } of iterator) {
+			logger.debug(checkType, `Found ${total_seats} total copilot seats in ${org} org`);
+			if (!seats?.length) continue;
+			for (const seat of seats) {
+				if (!seat.assignee?.login) {
+					logger.warn(checkType, `Skipping activity record for seat with no assignee login - ${JSON.stringify(seat, void 0, 2)}`);
+					continue;
+				}
+				const actor = seat.assignee.login.toLowerCase();
+				if (!actor) continue;
+				if (seat.pending_cancellation_date) {
+					logger.debug(checkType, `Skipping activity record for ${actor} due to pending cancellation`);
+					continue;
+				}
+				const lastAuthenticatedAt = seat.last_authenticated_at;
+				if (!seat.last_activity_at && lastAuthenticatedAt !== null && authenticatedAtBehavior !== "ignore") {
+					const behaviorMessage = authenticatedAtBehavior === "most-recent" ? ", using most recent of activity/authenticated times" : authenticatedAtBehavior === "fallback" ? ", using authenticated_at as fallback" : "";
+					logger.debug(checkType, `No activity found for ${actor}${behaviorMessage}`);
+				}
+				const { date: lastActivity, usedAuthenticated } = determineLastActivity(seat.last_activity_at, lastAuthenticatedAt, seat.created_at, authenticatedAtBehavior);
+				const record = {
+					type: usedAuthenticated ? "last_authentication" : seat.last_activity_editor,
+					login: actor,
+					lastActivity
+				};
+				if (!processed[actor]?.lastActivity || lastActivity && lastActivity > processed[actor].lastActivity) {
+					processed[actor] = record;
+					const log = lastActivity ? `${ms(Date.now() - lastActivity.getTime())} ago` : "never";
+					logger.debug(`Activity record found for ${actor} - ${log}${record.type ? ` - ${record.type}` : ""}`);
+				}
+			}
+		}
+		return Object.values(processed);
+	} catch (error) {
+		logger.error(checkType, "Failed to fetch audit log", { error });
+		throw error;
+	}
+};
+
+//#endregion
+
+//# sourceMappingURL=fetchLatestActivityFromCopilot.mjs.map
 ;// CONCATENATED MODULE: ../../node_modules/.pnpm/lowdb@7.0.1/node_modules/lowdb/lib/core/Low.js
 function checkArgs(adapter, defaultData) {
     if (adapter === undefined)
@@ -36017,7 +35996,7 @@ var Database = class {
 		await this.db.read();
 		const dbCheckType = this.db.data._state["check-type"];
 		if (dbCheckType && dbCheckType !== this.checkType) {
-			utils_gIlE6gZ5_logger.error("Check type mismatch", {
+			logger.error("Check type mismatch", {
 				expected: this.checkType,
 				actual: dbCheckType
 			});
@@ -36044,7 +36023,7 @@ var Database = class {
 	async updateUserActivity({ lastActivityRecord }) {
 		const { login, ...record } = lastActivityRecord;
 		this.db.data[login] = record;
-		utils_gIlE6gZ5_logger.debug(`User activity updated for login: ${login}`);
+		logger.debug(`User activity updated for login: ${login}`);
 		await this.writeWithSort();
 	}
 	/**
@@ -36056,11 +36035,11 @@ var Database = class {
 		await this.validateCheckType();
 		const login = typeof user === "string" ? user : user.login;
 		if (!this.db.data[login] || login === "_state") {
-			utils_gIlE6gZ5_logger.debug(`User ${login} not found in database, nothing to remove`);
+			logger.debug(`User ${login} not found in database, nothing to remove`);
 			return false;
 		}
 		delete this.db.data[login];
-		utils_gIlE6gZ5_logger.debug(`User ${login} removed from database`);
+		logger.debug(`User ${login} removed from database`);
 		await this.writeWithSort();
 		return true;
 	}
@@ -36068,7 +36047,7 @@ var Database = class {
 		await this.validateCheckType();
 		return Object.entries(this.db.data).filter(([key, value]) => key !== "_state").map(([login, record]) => {
 			if (!isUserRecord(record)) {
-				utils_gIlE6gZ5_logger.error(`Unexpected non-user record found in database: ${JSON.stringify(record)}`);
+				logger.error(`Unexpected non-user record found in database: ${JSON.stringify(record)}`);
 				throw new Error("Unexpected non-user record found");
 			}
 			const { lastActivity, ...remaining } = record;
@@ -36112,25 +36091,25 @@ var DormantAccountCheck = class {
 				return true;
 			}
 			if (!duration) throw new Error("No duration provided for dormancy check");
-			const { overDuration: isDormant, actualDurationString } = utils_gIlE6gZ5_compareDatesAgainstDuration(duration, lastActivity, checkTime);
+			const { overDuration: isDormant, actualDurationString } = compareDatesAgainstDuration(duration, lastActivity, checkTime);
 			logger$1.trace(`User ${login} last activity was ${actualDurationString} which is ${isDormant ? "greater" : "less"} than maximum duration ${duration}`);
 			return isDormant;
 		};
 		this.config = config;
-		utils_gIlE6gZ5_logger.debug("DormantAccountCheck initialized with config:", this.config);
+		logger.debug("DormantAccountCheck initialized with config:", this.config);
 		this.type = config.type;
 		this.activityResultType = config.activityResultType || "partial";
 		this.db = new Database(this.type, this.config.dbPath);
 		this.dryRun = this.config.dryRun === true;
 		this.duration = this.config.duration || "30d";
-		this.durationMillis = utils_gIlE6gZ5_durationToMillis(this.duration);
+		this.durationMillis = durationToMillis(this.duration);
 		this.isDormant = this.config.isDormant ? this.config.isDormant : this.defaultDormancyHandler;
 	}
 	/**
 	* Consola logger instance for logging messages
 	*/
 	get logger() {
-		return utils_gIlE6gZ5_logger.withTag(this.type);
+		return logger.withTag(this.type);
 	}
 	/**
 	* Builds a context object combining activity record with extended configuration
@@ -36199,7 +36178,7 @@ var DormantAccountCheck = class {
 			await this.db.updateLastRun(fetchStartTime);
 			this.logger.success(`Completed fetching and logging latest activity`);
 		} catch (error) {
-			utils_gIlE6gZ5_logger.error("Failed fetching and logging latest activity", error);
+			logger.error("Failed fetching and logging latest activity", error);
 			throw error;
 		}
 	}
@@ -36309,65 +36288,68 @@ var DormantAccountCheck = class {
 * @param config - Configuration for dormancy checking
 * @returns A configured DormancyChecker instance
 */
-function dist_dormancyCheck(config) {
+function dormancyCheck(config) {
 	return new DormantAccountCheck(config);
 }
 
 //#endregion
 
 //# sourceMappingURL=index.mjs.map
-;// CONCATENATED MODULE: ../../packages/github/dist/copilot.mjs
+;// CONCATENATED MODULE: ../../packages/github/dist/provider/copilot/dormancy.mjs
 
 
 
-//#region src/provider/copilot/revokeLicense.ts
-const logger$2 = console;
+//#region src/provider/copilot/dormancy.ts
 /**
-* Removes a list of users from GitHub Copilot in a given organization.
+* Configures a dormancy check for GitHub user inactivity based on Copilot usage.
 *
-* @param logins - The list of users to remove
-* @param octokit - The Octokit instance for making API calls
-* @param org - The organization to remove users from
-* @param dryRun - If true, only logs the actions without executing them
-* @returns A promise that resolves to true if the user(s) were removed, false otherwise
+* @param config - The configuration object for the dormancy check
+* @returns A dormancy check function configured for GitHub user inactivity
 */
-const revokeCopilotLicense = async ({ logins, octokit, org, dryRun = false }) => {
-	const selected_usernames = Array.isArray(logins) ? logins : [logins];
-	if (dryRun) {
-		logger$2.info(`DRY RUN: Removing ${selected_usernames} from ${org}`);
-		return false;
-	}
-	const { data: { seats_cancelled } } = await octokit.rest.copilot.cancelCopilotSeatAssignmentForUsers({
-		org,
-		selected_usernames
-	});
-	logger$2.info(`Removed ${seats_cancelled} license from ${org}`);
-	return seats_cancelled === selected_usernames.length;
-};
-
-//#endregion
-//#region src/provider/copilot/removeAccount.ts
-/**
-* Remove user handler meant to be configured as part of a dormancy check.
-*
-* @param login - The user login to remove
-* @param octokit - The Octokit instance for making API calls
-* @param org - The organization to remove users from
-* @param dryRun - If true, only logs the actions without executing them
-* @returns A promise that resolves to true if the user was removed, false otherwise
-*/
-const removeAccount = async ({ login, octokit, org, dryRun }) => {
-	return revokeCopilotLicense({
-		logins: login,
-		octokit,
-		org,
-		dryRun: dryRun === true
+const copilotDormancy = (config) => {
+	const { type = "github-copilot-dormancy", fetchLatestActivity = fetchLatestActivityFromCopilot, ...rest } = config;
+	return dormancyCheck({
+		type,
+		activityResultType: "complete",
+		...rest,
+		fetchLatestActivity
 	});
 };
 
 //#endregion
+
+//# sourceMappingURL=dormancy.mjs.map
+;// CONCATENATED MODULE: ./src/utils/createBranch.ts
+
+/**
+ * Creates a new branch in the specified repository.
+ * @param octokit - The Octokit client instance.
+ * @param context - The context containing the owner and repo information.
+ * @param branchName - The name of the new branch to create.
+ */
+async function createBranch(octokit, context, branchName) {
+    lib_core.debug(`attempting to create activity log branch: ${branchName}...`);
+    // Determine the default branch for the repo
+    const repoData = await octokit.rest.repos.get({
+        ...context,
+    });
+    // Fetch the base branch to use its SHA as the parent
+    const baseBranch = await octokit.rest.repos.getBranch({
+        ...context,
+        branch: repoData.data.default_branch,
+    });
+    // Create the lock branch
+    await octokit.rest.git.createRef({
+        ...context,
+        ref: `refs/heads/${branchName}`,
+        sha: baseBranch.data.commit.sha,
+    });
+    lib_core.info(`📖 created activity log branch: ${branchName}`);
+}
+
+;// CONCATENATED MODULE: ../../packages/github/dist/provider/copilot/isTeamIdpSynced.mjs
 //#region src/provider/copilot/isTeamIdpSynced.ts
-const logger$1 = console;
+const isTeamIdpSynced_logger = console;
 /**
 * Checks if a team is synchronized with an Identity Provider (IdP).
 *
@@ -36382,22 +36364,27 @@ async function isTeamIdpSynced({ octokit, org, team_slug }) {
 			team_slug
 		});
 		if (groups.length > 0) {
-			logger$1.debug(`Team ${team_slug} is IdP synced with ${groups.length} group mappings`);
+			isTeamIdpSynced_logger.debug(`Team ${team_slug} is IdP synced with ${groups.length} group mappings`);
 			return true;
 		}
-		logger$1.debug(`Team ${team_slug} is not IdP synced.`);
+		isTeamIdpSynced_logger.debug(`Team ${team_slug} is not IdP synced.`);
 		return false;
 	} catch (error) {
 		if (error.status === 403 && error.response?.data?.message?.includes("This team is not externally managed")) {
-			logger$1.debug(`Team ${team_slug} is not IdP synced (team is not externally managed)`);
+			isTeamIdpSynced_logger.debug(`Team ${team_slug} is not IdP synced (team is not externally managed)`);
 			return false;
 		}
-		logger$1.error(`Error checking IdP sync status for team ${team_slug}:`, error);
+		isTeamIdpSynced_logger.error(`Error checking IdP sync status for team ${team_slug}:`, error);
 		throw error;
 	}
 }
 
 //#endregion
+
+//# sourceMappingURL=isTeamIdpSynced.mjs.map
+;// CONCATENATED MODULE: ../../packages/github/dist/provider/copilot/getTeamDetails.mjs
+
+
 //#region src/provider/copilot/getTeamDetails.ts
 /**
 * Cache for team data lookups
@@ -36437,8 +36424,13 @@ const clearTeamDataCache = () => {
 };
 
 //#endregion
+
+//# sourceMappingURL=getTeamDetails.mjs.map
+;// CONCATENATED MODULE: ../../packages/github/dist/provider/copilot/removeCopilotUserFromTeam.mjs
+
+
 //#region src/provider/copilot/removeCopilotUserFromTeam.ts
-const copilot_logger = console;
+const removeCopilotUserFromTeam_logger = console;
 /**
 * Removes a user from a team using the legacy endpoint
 *
@@ -36481,7 +36473,7 @@ const removeCopilotUserFromTeam = async ({ username, octokit, org, dryRun = fals
 			username
 		});
 		if (!assigning_team) {
-			copilot_logger.debug(`User ${username} is not assigned to Copilot via a team`);
+			removeCopilotUserFromTeam_logger.debug(`User ${username} is not assigned to Copilot via a team`);
 			return false;
 		}
 		const { slug: team_slug } = assigning_team;
@@ -36490,13 +36482,13 @@ const removeCopilotUserFromTeam = async ({ username, octokit, org, dryRun = fals
 			org,
 			team_slug
 		});
-		copilot_logger.debug(`User ${username} is assigned to Copilot via team ${teamName} (id: ${teamId})`);
+		removeCopilotUserFromTeam_logger.debug(`User ${username} is assigned to Copilot via team ${teamName} (id: ${teamId})`);
 		if (isIdpSynced) {
-			copilot_logger.info(`User ${username} must be removed from team ${teamName} via the IdP to revoke Copilot license`);
+			removeCopilotUserFromTeam_logger.info(`User ${username} must be removed from team ${teamName} via the IdP to revoke Copilot license`);
 			return false;
 		}
 		if (dryRun) {
-			copilot_logger.info(`DRY RUN: Would remove ${username} from team ${teamName} to revoke Copilot license`);
+			removeCopilotUserFromTeam_logger.info(`DRY RUN: Would remove ${username} from team ${teamName} to revoke Copilot license`);
 			return false;
 		}
 		try {
@@ -36508,7 +36500,7 @@ const removeCopilotUserFromTeam = async ({ username, octokit, org, dryRun = fals
 			});
 		} catch (modernError) {
 			if (fallbackToLegacy) {
-				copilot_logger.debug(`Modern endpoint failed for ${username}, falling back to legacy endpoint:`, modernError);
+				removeCopilotUserFromTeam_logger.debug(`Modern endpoint failed for ${username}, falling back to legacy endpoint:`, modernError);
 				await removeUserFromTeamLegacy({
 					octokit,
 					team_id: teamId,
@@ -36516,181 +36508,46 @@ const removeCopilotUserFromTeam = async ({ username, octokit, org, dryRun = fals
 				});
 			} else throw modernError;
 		}
-		copilot_logger.info(`Successfully removed ${username} from team ${teamName} to revoke Copilot license`);
+		removeCopilotUserFromTeam_logger.info(`Successfully removed ${username} from team ${teamName} to revoke Copilot license`);
 		return true;
 	} catch (error) {
-		copilot_logger.error(`Error removing ${username} from team:`, error);
+		removeCopilotUserFromTeam_logger.error(`Error removing ${username} from team:`, error);
 		return false;
 	}
 };
 
 //#endregion
-//#region src/provider/copilot/fetchLatestActivityFromCopilot.ts
+
+//# sourceMappingURL=removeCopilotUserFromTeam.mjs.map
+;// CONCATENATED MODULE: ../../packages/github/dist/provider/copilot/revokeLicense.mjs
+//#region src/provider/copilot/revokeLicense.ts
+const revokeLicense_logger = console;
 /**
-* Fetches the latest activity from GitHub Copilot for a given organization and returns the
-* users last activity or the date they were added to Copilot if no activity is found.
+* Removes a list of users from GitHub Copilot in a given organization.
 *
-* @param octokit - The Octokit instance for making API calls.
-* @param org - The organization to fetch activity for.
-* @param checkType - The type of check being performed.
-* @param logger - The logger instance for logging messages.
-*
-* @returns A promise that resolves to an array of LastActivityRecord objects.
+* @param logins - The list of users to remove
+* @param octokit - The Octokit instance for making API calls
+* @param org - The organization to remove users from
+* @param dryRun - If true, only logs the actions without executing them
+* @returns A promise that resolves to true if the user(s) were removed, false otherwise
 */
-/**
-* Determines the last activity date based on the configured behavior.
-*
-* @param lastActivityAt - The last_activity_at timestamp from the API
-* @param lastAuthenticatedAt - The last_authenticated_at timestamp from the API
-* @param createdAt - The created_at timestamp from the API
-* @param behavior - How to handle last_authenticated_at ('ignore', 'fallback', or 'most-recent')
-* @returns Object with the determined date and whether last_authenticated_at was used
-*/
-const determineLastActivity = (lastActivityAt, lastAuthenticatedAt, createdAt, behavior = "ignore") => {
-	const activityDate = lastActivityAt ? new Date(lastActivityAt) : null;
-	const authenticatedDate = lastAuthenticatedAt ? new Date(lastAuthenticatedAt) : null;
-	const createdDate = createdAt ? new Date(createdAt) : null;
-	switch (behavior) {
-		case "most-recent":
-			if (activityDate && authenticatedDate) {
-				if (authenticatedDate > activityDate) return {
-					date: authenticatedDate,
-					usedAuthenticated: true
-				};
-				return {
-					date: activityDate,
-					usedAuthenticated: false
-				};
-			}
-			if (authenticatedDate) return {
-				date: authenticatedDate,
-				usedAuthenticated: true
-			};
-			if (activityDate) return {
-				date: activityDate,
-				usedAuthenticated: false
-			};
-			return {
-				date: createdDate,
-				usedAuthenticated: false
-			};
-		case "fallback":
-			if (activityDate) return {
-				date: activityDate,
-				usedAuthenticated: false
-			};
-			if (authenticatedDate) return {
-				date: authenticatedDate,
-				usedAuthenticated: true
-			};
-			return {
-				date: createdDate,
-				usedAuthenticated: false
-			};
-		case "ignore":
-		default: return {
-			date: activityDate ?? createdDate,
-			usedAuthenticated: false
-		};
+const revokeCopilotLicense = async ({ logins, octokit, org, dryRun = false }) => {
+	const selected_usernames = Array.isArray(logins) ? logins : [logins];
+	if (dryRun) {
+		revokeLicense_logger.info(`DRY RUN: Removing ${selected_usernames} from ${org}`);
+		return false;
 	}
-};
-const fetchLatestActivityFromCopilot = async ({ octokit, org, checkType, logger: logger$3, authenticatedAtBehavior = "ignore" }) => {
-	logger$3.debug(checkType, `Fetching audit log for ${org}`);
-	const payload = {
+	const { data: { seats_cancelled } } = await octokit.rest.copilot.cancelCopilotSeatAssignmentForUsers({
 		org,
-		per_page: 100
-	};
-	try {
-		const processed = {};
-		const iterator = octokit.paginate.iterator(octokit.rest.copilot.listCopilotSeats, payload);
-		for await (const { data: { seats, total_seats } } of iterator) {
-			logger$3.debug(checkType, `Found ${total_seats} total copilot seats in ${org} org`);
-			if (!seats?.length) continue;
-			for (const seat of seats) {
-				if (!seat.assignee?.login) {
-					logger$3.warn(checkType, `Skipping activity record for seat with no assignee login - ${JSON.stringify(seat, void 0, 2)}`);
-					continue;
-				}
-				const actor = seat.assignee.login.toLowerCase();
-				if (!actor) continue;
-				if (seat.pending_cancellation_date) {
-					logger$3.debug(checkType, `Skipping activity record for ${actor} due to pending cancellation`);
-					continue;
-				}
-				const lastAuthenticatedAt = seat.last_authenticated_at;
-				if (!seat.last_activity_at && lastAuthenticatedAt !== null && authenticatedAtBehavior !== "ignore") {
-					const behaviorMessage = authenticatedAtBehavior === "most-recent" ? ", using most recent of activity/authenticated times" : authenticatedAtBehavior === "fallback" ? ", using authenticated_at as fallback" : "";
-					logger$3.debug(checkType, `No activity found for ${actor}${behaviorMessage}`);
-				}
-				const { date: lastActivity, usedAuthenticated } = determineLastActivity(seat.last_activity_at, lastAuthenticatedAt, seat.created_at, authenticatedAtBehavior);
-				const record = {
-					type: usedAuthenticated ? "last_authentication" : seat.last_activity_editor,
-					login: actor,
-					lastActivity
-				};
-				if (!processed[actor]?.lastActivity || lastActivity && lastActivity > processed[actor].lastActivity) {
-					processed[actor] = record;
-					const log = lastActivity ? `${node_modules_ms(Date.now() - lastActivity.getTime())} ago` : "never";
-					logger$3.debug(`Activity record found for ${actor} - ${log}${record.type ? ` - ${record.type}` : ""}`);
-				}
-			}
-		}
-		return Object.values(processed);
-	} catch (error) {
-		logger$3.error(checkType, "Failed to fetch audit log", { error });
-		throw error;
-	}
-};
-
-//#endregion
-//#region src/provider/copilot/dormancy.ts
-/**
-* Configures a dormancy check for GitHub user inactivity based on Copilot usage.
-*
-* @param config - The configuration object for the dormancy check
-* @returns A dormancy check function configured for GitHub user inactivity
-*/
-const copilotDormancy = (config) => {
-	const { type = "github-copilot-dormancy", fetchLatestActivity = fetchLatestActivityFromCopilot, ...rest } = config;
-	return dist_dormancyCheck({
-		type,
-		activityResultType: "complete",
-		...rest,
-		fetchLatestActivity
+		selected_usernames
 	});
+	revokeLicense_logger.info(`Removed ${seats_cancelled} license from ${org}`);
+	return seats_cancelled === selected_usernames.length;
 };
 
 //#endregion
 
-//# sourceMappingURL=copilot.mjs.map
-;// CONCATENATED MODULE: ./src/utils/createBranch.ts
-
-/**
- * Creates a new branch in the specified repository.
- * @param octokit - The Octokit client instance.
- * @param context - The context containing the owner and repo information.
- * @param branchName - The name of the new branch to create.
- */
-async function createBranch(octokit, context, branchName) {
-    lib_core.debug(`attempting to create activity log branch: ${branchName}...`);
-    // Determine the default branch for the repo
-    const repoData = await octokit.rest.repos.get({
-        ...context,
-    });
-    // Fetch the base branch to use its SHA as the parent
-    const baseBranch = await octokit.rest.repos.getBranch({
-        ...context,
-        branch: repoData.data.default_branch,
-    });
-    // Create the lock branch
-    await octokit.rest.git.createRef({
-        ...context,
-        ref: `refs/heads/${branchName}`,
-        sha: baseBranch.data.commit.sha,
-    });
-    lib_core.info(`📖 created activity log branch: ${branchName}`);
-}
-
+//# sourceMappingURL=revokeLicense.mjs.map
 ;// CONCATENATED MODULE: ./src/utils/removeCopilotLicense.ts
 
 
