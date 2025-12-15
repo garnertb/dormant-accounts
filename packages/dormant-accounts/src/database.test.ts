@@ -6,33 +6,49 @@ import { logger } from './utils';
 
 logger.mockTypes(() => vi.fn());
 
-vi.mock('lowdb');
-vi.mock('lowdb/node');
+vi.mock('lowdb', () => {
+  const MockLow = vi.fn();
+  return { Low: MockLow };
+});
+
+vi.mock('lowdb/node', () => {
+  const MockJSONFile = vi.fn();
+  return { JSONFile: MockJSONFile };
+});
+
 vi.mock('fs');
 
 describe('Database', () => {
   const TEST_CHECK_TYPE = 'test-check';
   let db: Database;
-  let mockAdapter: any;
+  let mockAdapter: {
+    read: ReturnType<typeof vi.fn>;
+    write: ReturnType<typeof vi.fn>;
+  };
 
   beforeEach(() => {
     mockAdapter = {
       read: vi.fn(),
       write: vi.fn(),
     };
-    vi.mocked(JSONFile).mockImplementation(() => mockAdapter);
-    //@ts-expect-error
-    vi.mocked(Low).mockImplementation(() => ({
-      data: {
-        _state: {
-          lastRun: new Date(0).toISOString(),
-          'check-type': TEST_CHECK_TYPE,
-          lastUpdated: new Date(0).toISOString(),
+
+    vi.mocked(JSONFile).mockImplementation(function () {
+      return mockAdapter;
+    } as any);
+
+    vi.mocked(Low).mockImplementation(function () {
+      return {
+        data: {
+          _state: {
+            lastRun: new Date(0).toISOString(),
+            'check-type': TEST_CHECK_TYPE,
+            lastUpdated: new Date(0).toISOString(),
+          },
         },
-      },
-      read: mockAdapter.read,
-      write: mockAdapter.write,
-    }));
+        read: mockAdapter.read,
+        write: mockAdapter.write,
+      };
+    } as any);
   });
 
   afterEach(() => {
@@ -71,7 +87,9 @@ describe('Database', () => {
         write: mockAdapter.write,
       };
 
-      vi.mocked(Low).mockImplementationOnce(() => mockDb as any);
+      vi.mocked(Low).mockImplementationOnce(function () {
+        return mockDb;
+      } as any);
       db = new Database(TEST_CHECK_TYPE);
 
       await expect(db.getLastRun()).rejects.toThrow(/Check type mismatch/);
@@ -118,7 +136,9 @@ describe('Database', () => {
         write: mockAdapter.write,
       };
 
-      vi.mocked(Low).mockImplementationOnce(() => mockDb as any);
+      vi.mocked(Low).mockImplementationOnce(function () {
+        return mockDb;
+      } as any);
       db = new Database(TEST_CHECK_TYPE);
 
       const records = await db.getActivityRecords();
@@ -145,7 +165,9 @@ describe('Database', () => {
         write: mockAdapter.write,
       };
 
-      vi.mocked(Low).mockImplementationOnce(() => mockDb as any);
+      vi.mocked(Low).mockImplementationOnce(function () {
+        return mockDb;
+      } as any);
       db = new Database(TEST_CHECK_TYPE);
 
       const data = await db.getRawData();
@@ -173,7 +195,9 @@ describe('Database', () => {
         write: mockAdapter.write,
       };
 
-      vi.mocked(Low).mockImplementationOnce(() => mockDb as any);
+      vi.mocked(Low).mockImplementationOnce(function () {
+        return mockDb;
+      } as any);
       db = new Database(TEST_CHECK_TYPE);
 
       const result = await db.removeUserActivityRecord({
@@ -207,7 +231,9 @@ describe('Database', () => {
         write: mockAdapter.write,
       };
 
-      vi.mocked(Low).mockImplementationOnce(() => mockDb as any);
+      vi.mocked(Low).mockImplementationOnce(function () {
+        return mockDb;
+      } as any);
       db = new Database(TEST_CHECK_TYPE);
 
       const result = await db.removeUserActivityRecord(testUser);
@@ -232,7 +258,9 @@ describe('Database', () => {
         write: mockAdapter.write,
       };
 
-      vi.mocked(Low).mockImplementationOnce(() => mockDb as any);
+      vi.mocked(Low).mockImplementationOnce(function () {
+        return mockDb;
+      } as any);
       db = new Database(TEST_CHECK_TYPE);
 
       const result = await db.removeUserActivityRecord('non-existent-user');
@@ -256,7 +284,9 @@ describe('Database', () => {
         write: mockAdapter.write,
       };
 
-      vi.mocked(Low).mockImplementationOnce(() => mockDb as any);
+      vi.mocked(Low).mockImplementationOnce(function () {
+        return mockDb;
+      } as any);
       db = new Database(TEST_CHECK_TYPE);
 
       const result = await db.removeUserActivityRecord('_state');
