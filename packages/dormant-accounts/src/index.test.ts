@@ -13,7 +13,11 @@ vi.mock('./database', () => {
     updateUserActivity: vi.fn(),
     getActivityRecords: vi.fn(),
   };
-  return { Database: vi.fn(() => mockDb) };
+  return {
+    Database: vi.fn(function () {
+      return mockDb;
+    }),
+  };
 });
 
 describe('Dormant Account Check', () => {
@@ -40,7 +44,9 @@ describe('Dormant Account Check', () => {
     mockDb.updateLastRun.mockResolvedValue();
     mockDb.updateUserActivity.mockResolvedValue();
 
-    vi.mocked(Database).mockImplementation(() => mockDb);
+    vi.mocked(Database).mockImplementation(function () {
+      return mockDb;
+    } as any);
   });
 
   afterEach(() => {

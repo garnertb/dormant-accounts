@@ -8,21 +8,12 @@ import { logger } from './utils';
  * Ensures required fields are present and of correct type
  */
 export const LastActivityRecordSchema = z.object({
-  login: z
-    .string({
-      required_error: 'Username is required',
-      invalid_type_error: 'Username must be a string',
-    })
-    .min(1, 'Username cannot be empty'),
+  login: z.string().min(1, 'Username cannot be empty'),
 
   lastActivity: z.date().nullable().describe('Last updated date'),
-  type: z
-    .string({
-      required_error: 'Activity type is required',
-    })
-    .min(1, 'Activity type cannot be empty'),
+  type: z.string().min(1, 'Activity type cannot be empty'),
 
-  metadata: z.record(z.unknown()).optional(),
+  metadata: z.record(z.string(), z.unknown()).optional(),
 });
 
 export type DurationString = StringValue | string;

@@ -6,14 +6,16 @@ import { LastActivityRecord } from './types';
 // Mock Database
 vi.mock('./database', () => {
   return {
-    Database: vi.fn().mockImplementation(() => ({
-      updateUserActivity: vi.fn().mockResolvedValue(undefined),
-      getLastRun: vi.fn().mockResolvedValue(new Date('2023-01-01')),
-      updateLastRun: vi.fn().mockResolvedValue(undefined),
-      getActivityRecords: vi.fn(),
-      removeUserActivityRecord: vi.fn(),
-      getRawData: vi.fn().mockResolvedValue({}),
-    })),
+    Database: vi.fn().mockImplementation(function () {
+      return {
+        updateUserActivity: vi.fn().mockResolvedValue(undefined),
+        getLastRun: vi.fn().mockResolvedValue(new Date('2023-01-01')),
+        updateLastRun: vi.fn().mockResolvedValue(undefined),
+        getActivityRecords: vi.fn(),
+        removeUserActivityRecord: vi.fn(),
+        getRawData: vi.fn().mockResolvedValue({}),
+      };
+    }),
   };
 });
 
@@ -52,14 +54,16 @@ describe('DormantAccountCheck with activityResultType', () => {
     mockRemoveUser.mockResolvedValue(true);
 
     // @ts-ignore - we're mocking the implementation
-    Database.mockImplementation(() => ({
-      updateUserActivity: vi.fn().mockResolvedValue(undefined),
-      getLastRun: vi.fn().mockResolvedValue(new Date('2023-01-01')),
-      updateLastRun: vi.fn().mockResolvedValue(undefined),
-      getActivityRecords: mockGetActivityRecords,
-      removeUserActivityRecord: mockRemoveUser,
-      getRawData: vi.fn().mockResolvedValue({}),
-    }));
+    Database.mockImplementation(function () {
+      return {
+        updateUserActivity: vi.fn().mockResolvedValue(undefined),
+        getLastRun: vi.fn().mockResolvedValue(new Date('2023-01-01')),
+        updateLastRun: vi.fn().mockResolvedValue(undefined),
+        getActivityRecords: mockGetActivityRecords,
+        removeUserActivityRecord: mockRemoveUser,
+        getRawData: vi.fn().mockResolvedValue({}),
+      };
+    });
 
     databaseMock = (Database as any).mock.results[0]?.value;
   });
