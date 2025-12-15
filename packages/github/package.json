@@ -9,16 +9,17 @@
   "type": "module",
   "exports": {
     ".": {
-      "import": "./dist/index.js",
-      "require": "./dist/index.cjs"
+      "import": "./dist/index.mjs",
+      "require": "./dist/index.cjs",
+      "types": "./dist/index.d.mts"
     },
     "./copilot": {
-      "import": "./dist/copilot.js",
+      "import": "./dist/copilot.mjs",
       "require": "./dist/copilot.cjs",
-      "types:": "./dist/copilot.*.ts"
+      "types": "./dist/copilot.d.mts"
     }
   },
-  "main": "./dist/index.js",
+  "main": "./dist/index.mjs",
   "typesVersions": {
     "*": {
       "*": [
@@ -47,12 +48,12 @@
   "dependencies": {
     "@actions/github": "^6.0.1",
     "@types/ms": "2.1.0",
+    "dormant-accounts": "workspace:*",
     "ms": "2.1.3"
   },
   "devDependencies": {
     "@octokit/types": "16.0.0",
     "@types/node": "24.9.2",
-    "dormant-accounts": "workspace:*",
     "eslint-config-custom": "workspace:*",
     "rimraf": "6.1.0",
     "tsconfig": "workspace:*",

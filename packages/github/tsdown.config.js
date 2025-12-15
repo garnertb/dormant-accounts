@@ -9,7 +9,7 @@ export default defineConfig({
   clean: false,
   skipNodeModulesBundle: true,
   dts: true,
-  external: ['node_modules'],
+  external: ['node_modules', 'dormant-accounts'],
   entry: {
     index: 'src/index.ts',
     copilot: 'src/provider/copilot/index.ts',
