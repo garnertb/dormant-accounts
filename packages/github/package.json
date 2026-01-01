@@ -54,12 +54,12 @@
     "@types/node": "24.9.2",
     "dormant-accounts": "workspace:*",
     "eslint-config-custom": "workspace:*",
-    "rimraf": "6.1.0",
+    "rimraf": "6.1.2",
     "tsconfig": "workspace:*",
-    "tsup": "8.5.0",
-    "type-fest": "5.2.0",
+    "tsup": "8.5.1",
+    "type-fest": "5.3.1",
     "typescript": "5.9.3",
-    "vitest": "4.0.7"
+    "vitest": "4.0.16"
   },
   "publishConfig": {
     "access": "public"

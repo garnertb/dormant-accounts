@@ -64,14 +64,14 @@
     "@types/consola": "^2.2.8",
     "@types/ms": "2.1.0",
     "@types/node": "24.9.2",
-    "@vitest/coverage-v8": "^4.0.7",
+    "@vitest/coverage-v8": "^4.0.16",
     "eslint-config-custom": "workspace:*",
     "tsconfig": "workspace:*",
-    "tsup": "8.5.0",
-    "type-fest": "5.2.0",
+    "tsup": "8.5.1",
+    "type-fest": "5.3.1",
     "typescript": "5.9.3",
-    "vite": "7.1.12",
-    "vitest": "4.0.7"
+    "vite": "7.3.0",
+    "vitest": "4.0.16"
   },
   "publishConfig": {
     "access": "public"
