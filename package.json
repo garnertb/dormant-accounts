@@ -34,20 +34,20 @@
   },
   "prettier": "@vercel/style-guide/prettier",
   "devDependencies": {
-    "@changesets/cli": "2.29.7",
+    "@changesets/cli": "2.29.8",
     "@types/node": "24.9.2",
     "@vercel/style-guide": "5.2.0",
-    "@vitest/coverage-v8": "^4.0.7",
+    "@vitest/coverage-v8": "^4.0.16",
     "eslint": "8.56.0",
     "eslint-config-custom": "workspace:*",
     "husky": "9.1.7",
-    "lint-staged": "16.2.6",
-    "prettier": "3.6.2",
-    "prettier-plugin-packagejson": "2.5.19",
-    "publint": "0.3.15",
-    "turbo": "2.6.3",
+    "lint-staged": "16.2.7",
+    "prettier": "3.7.4",
+    "prettier-plugin-packagejson": "2.5.20",
+    "publint": "0.3.16",
+    "turbo": "2.7.2",
     "typescript": "^5.9.3",
-    "vitest": "4.0.7"
+    "vitest": "4.0.16"
   },
   "packageManager": "pnpm@10.19.0+sha512.c9fc7236e92adf5c8af42fd5bf1612df99c2ceb62f27047032f4720b33f8eacdde311865e91c411f2774f618d82f320808ecb51718bfa82c060c4ba7c76a32b8",
   "engines": {
