@@ -38,7 +38,7 @@
     "@types/node": "24.9.2",
     "@vercel/style-guide": "5.2.0",
     "@vitest/coverage-v8": "^4.0.7",
-    "eslint": "8.56.0",
+    "eslint": "9.26.0",
     "eslint-config-custom": "workspace:*",
     "husky": "9.1.7",
     "lint-staged": "16.2.6",
