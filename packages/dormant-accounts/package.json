@@ -63,7 +63,7 @@
     "@arethetypeswrong/cli": "0.18.2",
     "@types/consola": "^2.2.8",
     "@types/ms": "2.1.0",
-    "@types/node": "24.9.2",
+    "@types/node": "25.0.3",
     "@vitest/coverage-v8": "^4.0.7",
     "eslint-config-custom": "workspace:*",
     "tsconfig": "workspace:*",
