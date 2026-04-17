@@ -143,6 +143,7 @@ describe('Notification Processing', () => {
   it('should create notifier with correct configuration', async () => {
     await processNotifications(
       mockOctokit,
+      mockOctokit,
       notificationContext,
       mockDormantAccounts,
       createMockCheckObject(),
@@ -166,6 +167,7 @@ describe('Notification Processing', () => {
 
   it('should return results from processDormantUsers', async () => {
     const result = await processNotifications(
+      mockOctokit,
       mockOctokit,
       notificationContext,
       mockDormantAccounts,
