@@ -69,8 +69,8 @@ importers:
         specifier: 2.1.3
         version: 2.1.3
       zod:
-        specifier: ^4.1.12
-        version: 4.1.12
+        specifier: ^4.3.6
+        version: 4.3.6
     devDependencies:
       '@dormant-accounts/github':
         specifier: workspace:*
@@ -118,8 +118,8 @@ importers:
         specifier: 2.1.3
         version: 2.1.3
       zod:
-        specifier: ^4.1.12
-        version: 4.1.12
+        specifier: ^4.3.6
+        version: 4.3.6
     devDependencies:
       '@arethetypeswrong/cli':
         specifier: 0.18.2
@@ -213,8 +213,8 @@ importers:
         specifier: ^9.1.2
         version: 9.1.2(eslint@8.48.0)
       eslint-config-turbo:
-        specifier: 2.6.0
-        version: 2.6.0(eslint@8.48.0)(turbo@2.6.3)
+        specifier: 2.8.20
+        version: 2.8.20(eslint@8.48.0)(turbo@2.6.3)
       typescript:
         specifier: 5.9.3
         version: 5.9.3
@@ -1924,8 +1924,8 @@ packages:
     peerDependencies:
       eslint: '>=7.0.0'
 
-  eslint-config-turbo@2.6.0:
-    resolution: {integrity: sha512-WdNSKL1vTl5IGyovn8w3xkaEKsK2n+l9Ybk+4oISptcom/vz9sO/9QcjEKuZSXG0zxrj9Oyx/UZA04hRxmOe+Q==}
+  eslint-config-turbo@2.8.20:
+    resolution: {integrity: sha512-zT17KSqM4gTrChIocN+WfSdjg21QZTCDrcssylFab/wxu6S1EHDbt0JOna9b8rH5OKafZxDuFxKMV8BkulWShg==}
     peerDependencies:
       eslint: '>6.6.0'
       turbo: '>2.0.0'
@@ -2038,8 +2038,8 @@ packages:
   eslint-plugin-tsdoc@0.2.17:
     resolution: {integrity: sha512-xRmVi7Zx44lOBuYqG8vzTXuL6IdGOeF9nHX17bjJ8+VE6fsxpdGem0/SBTmAwgYMKYB1WBkqRJVQ+n8GK041pA==}
 
-  eslint-plugin-turbo@2.6.0:
-    resolution: {integrity: sha512-04TohZhq6YQVXBZVRvrn8ZTj1sUQYZmjUWsfwgFAlaM5Kbk5Fdh5mLBKfhGGzekB55E+Ut9qNzAGh+JW4rjiuA==}
+  eslint-plugin-turbo@2.8.20:
+    resolution: {integrity: sha512-sMDremg73XbX+Imh7iDRS3TAro5jIf7CdzSqrT50wCGhClbiUvmWcLomnX+ldUbfTy+OvtqOeePvTivJMR87eQ==}
     peerDependencies:
       eslint: '>6.6.0'
       turbo: '>2.0.0'
@@ -3737,8 +3737,8 @@ packages:
     resolution: {integrity: sha512-rVksvsnNCdJ/ohGc6xgPwyN8eheCxsiLM8mxuE/t/mOVqJewPuO1miLpTHQiRgTKCLexL4MeAFVagts7HmNZ2Q==}
     engines: {node: '>=10'}
 
-  zod@4.1.12:
-    resolution: {integrity: sha512-JInaHOamG8pt5+Ey8kGmdcAcg3OL9reK8ltczgHTAwNhMys/6ThXHityHxVV2p3fkw/c+MAvBHFVYHFZDmjMCQ==}
+  zod@4.3.6:
+    resolution: {integrity: sha512-rftlrkhHZOcjDwkGlnUtZZkvaPHCsDATp4pGpuOOMDaTdDDXF91wuVDJoWoPsKX/3YPQ5fHuF3STjcYyKr+Qhg==}
 
 snapshots:
 
@@ -5610,10 +5610,10 @@ snapshots:
     dependencies:
       eslint: 8.56.0
 
-  eslint-config-turbo@2.6.0(eslint@8.48.0)(turbo@2.6.3):
+  eslint-config-turbo@2.8.20(eslint@8.48.0)(turbo@2.6.3):
     dependencies:
       eslint: 8.48.0
-      eslint-plugin-turbo: 2.6.0(eslint@8.48.0)(turbo@2.6.3)
+      eslint-plugin-turbo: 2.8.20(eslint@8.48.0)(turbo@2.6.3)
       turbo: 2.6.3
 
   eslint-import-resolver-alias@1.1.2(eslint-plugin-import@2.32.0):
@@ -5893,7 +5893,7 @@ snapshots:
       '@microsoft/tsdoc': 0.14.2
       '@microsoft/tsdoc-config': 0.16.2
 
-  eslint-plugin-turbo@2.6.0(eslint@8.48.0)(turbo@2.6.3):
+  eslint-plugin-turbo@2.8.20(eslint@8.48.0)(turbo@2.6.3):
     dependencies:
       dotenv: 16.0.3
       eslint: 8.48.0
@@ -7768,4 +7768,4 @@ snapshots:
 
   yocto-queue@0.1.0: {}
 
-  zod@4.1.12: {}
+  zod@4.3.6: {}
