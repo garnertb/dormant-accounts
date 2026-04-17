@@ -56,22 +56,22 @@
   "dependencies": {
     "consola": "^3.4.2",
     "lowdb": "^7.0.1",
-    "ms": "2.1.3",
-    "zod": "^4.1.12"
+    "ms": "catalog:default",
+    "zod": "catalog:default"
   },
   "devDependencies": {
     "@arethetypeswrong/cli": "0.18.2",
     "@types/consola": "^2.2.8",
-    "@types/ms": "2.1.0",
-    "@types/node": "25.0.3",
-    "@vitest/coverage-v8": "^4.0.7",
+    "@types/ms": "catalog:default",
+    "@types/node": "catalog:default",
+    "@vitest/coverage-v8": "catalog:default",
     "eslint-config-custom": "workspace:*",
     "tsconfig": "workspace:*",
-    "tsup": "8.5.0",
-    "type-fest": "5.2.0",
-    "typescript": "5.9.3",
+    "tsup": "catalog:default",
+    "type-fest": "catalog:default",
+    "typescript": "catalog:default",
     "vite": "7.3.2",
-    "vitest": "4.0.7"
+    "vitest": "catalog:default"
   },
   "publishConfig": {
     "access": "public"

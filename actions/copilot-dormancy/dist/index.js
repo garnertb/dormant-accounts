@@ -36622,43 +36622,6 @@ var copilotDormancy = (config) => {
 };
 
 //# sourceMappingURL=copilot.js.map
-;// CONCATENATED MODULE: external "fs/promises"
-const external_fs_promises_namespaceObject = __WEBPACK_EXTERNAL_createRequire(import.meta.url)("fs/promises");
-;// CONCATENATED MODULE: ./src/utils/checkBranch.ts
-
-/**
- * Checks if a branch exists in the specified repository.
- * @param octokit - The Octokit client instance.
- * @param context - The context containing the owner and repo information.
- * @param branchName - The name of the branch to check.
- * @returns A promise that resolves to true if the branch exists, false otherwise.
- */
-async function checkBranch(octokit, context, branchName) {
-    lib_core.debug(`checking if branch ${branchName} exists...`);
-    // Check if the activity log branch already exists
-    try {
-        await octokit.rest.repos.getBranch({
-            ...context,
-            branch: branchName,
-        });
-        // If the branch exists, return true
-        lib_core.debug(`branch '${branchName}' exists`);
-        return true;
-    }
-    catch (error) {
-        lib_core.debug(`checkBranch() error.status: ${error.status}`);
-        // Check if the error was due to the activity log branch not existing
-        if (error.status === 404) {
-            lib_core.debug(`activity log branch ${branchName} does not exist`);
-            return false;
-        }
-        else {
-            lib_core.error('an unexpected status code was returned while checking for the activity log branch');
-            throw new Error(error);
-        }
-    }
-}
-
 ;// CONCATENATED MODULE: ./src/utils/createBranch.ts
 
 /**
@@ -36686,6 +36649,65 @@ async function createBranch(octokit, context, branchName) {
     });
     lib_core.info(`📖 created activity log branch: ${branchName}`);
 }
+
+;// CONCATENATED MODULE: ./src/utils/removeCopilotLicense.ts
+
+
+/**
+ * Removes a user's Copilot license by revoking directly or removing them from a Copilot team
+ * based on their provisioning method.
+ *
+ * @param activity - Activity tracker to record removals
+ * @param allowTeamRemoval - Flag indicating if users can be removed from teams that provision Copilot
+ * @param lastActivityRecord - User activity record containing login info
+ * @param octokit - The Octokit instance for API calls
+ * @param owner - The organization owner
+ * @param removeDormantAccounts - Flag indicating if accounts should actually be removed
+ * @returns Promise<boolean> - True if account was removed, false otherwise
+ */
+const removeCopilotLicense = async ({ lastActivityRecord, octokit, owner, removeDormantAccounts, allowTeamRemoval, activity, }) => {
+    const { data: { pending_cancellation_date, assigning_team }, } = await octokit.rest.copilot.getCopilotSeatDetailsForUser({
+        username: lastActivityRecord.login,
+        org: owner,
+    });
+    if (pending_cancellation_date) {
+        lib_core.info(`User ${lastActivityRecord.login} already has a pending cancellation date: ${pending_cancellation_date}`);
+        return true;
+    }
+    if (!removeDormantAccounts) {
+        lib_core.info(`remove-dormant-accounts setting is disabled, checking if user ${lastActivityRecord.login} has been removed from Copilot externally`);
+        return false;
+    }
+    let accountRemoved = false;
+    // When `assigning_team` is not null, the user is provisioned access for GitHub Copilot via a team
+    // and we need to remove them from that team if allowTeamRemoval is true
+    if (assigning_team) {
+        if (!allowTeamRemoval) {
+            lib_core.info(`User ${lastActivityRecord.login} is part of team "${assigning_team.name}" that provisions Copilot access, but team removal is disabled for safety`);
+            return false;
+        }
+        lib_core.info(`User ${lastActivityRecord.login} is part of a team, attempting to remove from team ${assigning_team.name}`);
+        accountRemoved = await removeCopilotUserFromTeam({
+            username: lastActivityRecord.login,
+            octokit,
+            org: owner,
+            dryRun: !removeDormantAccounts,
+        });
+    }
+    else {
+        accountRemoved = await revokeCopilotLicense({
+            logins: lastActivityRecord.login,
+            octokit,
+            org: owner,
+            dryRun: !removeDormantAccounts,
+        });
+    }
+    if (accountRemoved) {
+        lib_core.info(`Successfully removed Copilot license for ${lastActivityRecord.login}`);
+        await activity.remove(lastActivityRecord.login);
+    }
+    return accountRemoved;
+};
 
 ;// CONCATENATED MODULE: ./src/utils/getActivityLog.ts
 
@@ -36722,6 +36744,43 @@ async function getActivityLog(octokit, context, branchName, path) {
         }
         // If some other error occurred, throw it
         throw new Error(error);
+    }
+}
+
+;// CONCATENATED MODULE: external "fs/promises"
+const external_fs_promises_namespaceObject = __WEBPACK_EXTERNAL_createRequire(import.meta.url)("fs/promises");
+;// CONCATENATED MODULE: ./src/utils/checkBranch.ts
+
+/**
+ * Checks if a branch exists in the specified repository.
+ * @param octokit - The Octokit client instance.
+ * @param context - The context containing the owner and repo information.
+ * @param branchName - The name of the branch to check.
+ * @returns A promise that resolves to true if the branch exists, false otherwise.
+ */
+async function checkBranch(octokit, context, branchName) {
+    lib_core.debug(`checking if branch ${branchName} exists...`);
+    // Check if the activity log branch already exists
+    try {
+        await octokit.rest.repos.getBranch({
+            ...context,
+            branch: branchName,
+        });
+        // If the branch exists, return true
+        lib_core.debug(`branch '${branchName}' exists`);
+        return true;
+    }
+    catch (error) {
+        lib_core.debug(`checkBranch() error.status: ${error.status}`);
+        // Check if the error was due to the activity log branch not existing
+        if (error.status === 404) {
+            lib_core.debug(`activity log branch ${branchName} does not exist`);
+            return false;
+        }
+        else {
+            lib_core.error('an unexpected status code was returned while checking for the activity log branch');
+            throw new Error(error);
+        }
     }
 }
 
@@ -49264,6 +49323,40 @@ function getNotificationContext() {
     return parsedNotification.data;
 }
 
+;// CONCATENATED MODULE: ./src/utils/updateActivityLog.ts
+
+/**
+ * Updates or creates a file in the specified repository.
+ * @param octokit - The Octokit client instance.
+ * @param context - The context containing the owner and repo information.
+ * @param options - The options for creating or updating the file.
+ * @returns The result of the file update operation.
+ */
+async function updateActivityLog(octokit, context, options) {
+    try {
+        lib_core.debug(`Updating activity log file at ${options.path}...`);
+        const result = await octokit.rest.repos.createOrUpdateFileContents({
+            ...context,
+            branch: options.branch,
+            path: options.path,
+            sha: options.sha,
+            message: options.message,
+            content: options.content,
+            committer: {
+                name: 'GitHub Action',
+                email: 'action@github.com',
+            },
+        });
+        lib_core.info(`✅ Activity log updated at ${options.path}`);
+        return result.data;
+    }
+    catch (error) {
+        const errorMessage = error instanceof Error ? error.message : String(error);
+        lib_core.error(`Failed to update activity log: ${errorMessage}`);
+        throw error;
+    }
+}
+
 // EXTERNAL MODULE: ../../node_modules/.pnpm/bottleneck@2.19.5/node_modules/bottleneck/light.js
 var light = __nccwpck_require__(8144);
 ;// CONCATENATED MODULE: ../../node_modules/.pnpm/@octokit+plugin-throttling@11.0.3_@octokit+core@7.0.5/node_modules/@octokit/plugin-throttling/dist-bundle/index.js
@@ -49533,99 +49626,6 @@ function createThrottledOctokit({ token, }) {
         },
     });
     return octokit;
-}
-
-;// CONCATENATED MODULE: ./src/utils/removeCopilotLicense.ts
-
-
-/**
- * Removes a user's Copilot license by revoking directly or removing them from a Copilot team
- * based on their provisioning method.
- *
- * @param activity - Activity tracker to record removals
- * @param allowTeamRemoval - Flag indicating if users can be removed from teams that provision Copilot
- * @param lastActivityRecord - User activity record containing login info
- * @param octokit - The Octokit instance for API calls
- * @param owner - The organization owner
- * @param removeDormantAccounts - Flag indicating if accounts should actually be removed
- * @returns Promise<boolean> - True if account was removed, false otherwise
- */
-const removeCopilotLicense = async ({ lastActivityRecord, octokit, owner, removeDormantAccounts, allowTeamRemoval, activity, }) => {
-    const { data: { pending_cancellation_date, assigning_team }, } = await octokit.rest.copilot.getCopilotSeatDetailsForUser({
-        username: lastActivityRecord.login,
-        org: owner,
-    });
-    if (pending_cancellation_date) {
-        lib_core.info(`User ${lastActivityRecord.login} already has a pending cancellation date: ${pending_cancellation_date}`);
-        return true;
-    }
-    if (!removeDormantAccounts) {
-        lib_core.info(`remove-dormant-accounts setting is disabled, checking if user ${lastActivityRecord.login} has been removed from Copilot externally`);
-        return false;
-    }
-    let accountRemoved = false;
-    // When `assigning_team` is not null, the user is provisioned access for GitHub Copilot via a team
-    // and we need to remove them from that team if allowTeamRemoval is true
-    if (assigning_team) {
-        if (!allowTeamRemoval) {
-            lib_core.info(`User ${lastActivityRecord.login} is part of team "${assigning_team.name}" that provisions Copilot access, but team removal is disabled for safety`);
-            return false;
-        }
-        lib_core.info(`User ${lastActivityRecord.login} is part of a team, attempting to remove from team ${assigning_team.name}`);
-        accountRemoved = await removeCopilotUserFromTeam({
-            username: lastActivityRecord.login,
-            octokit,
-            org: owner,
-            dryRun: !removeDormantAccounts,
-        });
-    }
-    else {
-        accountRemoved = await revokeCopilotLicense({
-            logins: lastActivityRecord.login,
-            octokit,
-            org: owner,
-            dryRun: !removeDormantAccounts,
-        });
-    }
-    if (accountRemoved) {
-        lib_core.info(`Successfully removed Copilot license for ${lastActivityRecord.login}`);
-        await activity.remove(lastActivityRecord.login);
-    }
-    return accountRemoved;
-};
-
-;// CONCATENATED MODULE: ./src/utils/updateActivityLog.ts
-
-/**
- * Updates or creates a file in the specified repository.
- * @param octokit - The Octokit client instance.
- * @param context - The context containing the owner and repo information.
- * @param options - The options for creating or updating the file.
- * @returns The result of the file update operation.
- */
-async function updateActivityLog(octokit, context, options) {
-    try {
-        lib_core.debug(`Updating activity log file at ${options.path}...`);
-        const result = await octokit.rest.repos.createOrUpdateFileContents({
-            ...context,
-            branch: options.branch,
-            path: options.path,
-            sha: options.sha,
-            message: options.message,
-            content: options.content,
-            committer: {
-                name: 'GitHub Action',
-                email: 'action@github.com',
-            },
-        });
-        lib_core.info(`✅ Activity log updated at ${options.path}`);
-        return result.data;
-    }
-    catch (error) {
-        const errorMessage = error instanceof Error ? error.message : String(error);
-        lib_core.error(`Failed to update activity log: ${errorMessage}`);
-        throw error;
-    }
 }
 
 ;// CONCATENATED MODULE: ./src/run.ts

@@ -42,24 +42,24 @@
   },
   "dependencies": {
     "@actions/core": "1.11.1",
-    "@actions/github": "^6.0.1",
+    "@actions/github": "catalog:default",
     "@octokit/plugin-throttling": "11.0.3",
-    "@types/ms": "2.1.0",
-    "ms": "2.1.3",
-    "zod": "^4.1.12"
+    "@types/ms": "catalog:default",
+    "ms": "catalog:default",
+    "zod": "catalog:default"
   },
   "devDependencies": {
     "@dormant-accounts/github": "workspace:*",
-    "@types/node": "25.0.3",
+    "@types/node": "catalog:default",
     "@vercel/ncc": "0.38.4",
     "dormant-accounts": "workspace:*",
     "eslint-config-custom": "workspace:*",
-    "rimraf": "6.1.0",
+    "rimraf": "catalog:default",
     "tsconfig": "workspace:*",
-    "tsup": "8.5.0",
-    "type-fest": "5.2.0",
-    "typescript": "5.9.3",
-    "vitest": "4.0.7"
+    "tsup": "catalog:default",
+    "type-fest": "catalog:default",
+    "typescript": "catalog:default",
+    "vitest": "catalog:default"
   },
   "publishConfig": {
     "access": "public"
