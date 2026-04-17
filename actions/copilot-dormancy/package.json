@@ -41,7 +41,7 @@
     "type-check": "tsc --noEmit"
   },
   "dependencies": {
-    "@actions/core": "1.11.1",
+    "@actions/core": "3.0.0",
     "@actions/github": "catalog:default",
     "@octokit/plugin-throttling": "11.0.3",
     "@types/ms": "catalog:default",
