@@ -50,6 +50,7 @@ const formatDate = (isoString: string): string => {
 
 export async function processNotifications(
   octokit: OctokitClient,
+  notificationsOctokit: OctokitClient,
   context: NotificationContext,
   dormantAccounts: LastActivityRecord[],
   check: {
@@ -69,7 +70,7 @@ export async function processNotifications(
   } = context;
 
   const notifier = new GithubIssueNotifier({
-    githubClient: octokit,
+    githubClient: notificationsOctokit,
     gracePeriod,
     repository: {
       ...repo,
@@ -270,6 +271,7 @@ async function run(): Promise<void> {
       );
 
       notificationsResults = await processNotifications(
+        octokit,
         notificationsOctokit,
         notificationsContext,
         dormantAccounts,

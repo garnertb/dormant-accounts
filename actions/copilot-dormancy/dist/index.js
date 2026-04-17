@@ -49668,10 +49668,10 @@ const formatDate = (isoString) => {
         return isoString;
     }
 };
-async function processNotifications(octokit, context, dormantAccounts, check, dormantAfter) {
+async function processNotifications(octokit, notificationsOctokit, context, dormantAccounts, check, dormantAfter) {
     const { duration: gracePeriod, body, assignUserToIssue, removeDormantAccounts, allowTeamRemoval, repo, baseLabels, dryRun, } = context;
     const notifier = new GithubIssueNotifier({
-        githubClient: octokit,
+        githubClient: notificationsOctokit,
         gracePeriod,
         repository: {
             ...repo,
@@ -49816,7 +49816,7 @@ async function run() {
         }
         if (sendNotifications) {
             lib_core.debug('Notification context: ' + safeStringify(notificationsContext));
-            notificationsResults = await processNotifications(notificationsOctokit, notificationsContext, dormantAccounts, check, duration);
+            notificationsResults = await processNotifications(octokit, notificationsOctokit, notificationsContext, dormantAccounts, check, duration);
             lib_core.setOutput('notification-results', safeStringify(notificationsResults));
             lib_core.info(`Created notifications for ${notificationsResults.notified.length} dormant accounts`);
             lib_core.info(`Closed notifications for ${notificationsResults.reactivated.length} no longer dormant accounts`);
