@@ -102,6 +102,7 @@ async function run(): Promise<void> {
     const duration = core.getInput('duration');
     const token = core.getInput('token');
     const activityLogToken = core.getInput('activity-log-token') || token;
+    const notificationsToken = core.getInput('notifications-token') || token;
     const dryRun = core.getInput('dry-run') === 'true';
     const authenticatedAtBehavior = core.getInput(
       'authenticated-at-behavior',
@@ -148,6 +149,9 @@ async function run(): Promise<void> {
     const octokit = createThrottledOctokit({ token });
     const activityLogOctokit = createThrottledOctokit({
       token: activityLogToken,
+    });
+    const notificationsOctokit = createThrottledOctokit({
+      token: notificationsToken,
     });
 
     const activityLog = await getActivityLog(
@@ -266,7 +270,7 @@ async function run(): Promise<void> {
       );
 
       notificationsResults = await processNotifications(
-        octokit,
+        notificationsOctokit,
         notificationsContext,
         dormantAccounts,
         check,
