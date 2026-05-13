@@ -57,6 +57,7 @@ export async function processNotifications(
     activity: Activity;
   },
   dormantAfter: string,
+  org: string,
 ) {
   const {
     duration: gracePeriod,
@@ -84,7 +85,7 @@ export async function processNotifications(
       return removeCopilotLicense({
         lastActivityRecord,
         octokit,
-        owner: context.repo.owner,
+        owner: org,
         removeDormantAccounts,
         allowTeamRemoval,
         activity: check.activity,
@@ -277,6 +278,7 @@ async function run(): Promise<void> {
         dormantAccounts,
         check,
         duration,
+        org,
       );
 
       core.setOutput(

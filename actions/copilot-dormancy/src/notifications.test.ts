@@ -148,6 +148,7 @@ describe('Notification Processing', () => {
       mockDormantAccounts,
       createMockCheckObject(),
       '30d',
+      'test-org',
     );
 
     expect(GithubIssueNotifier).toHaveBeenCalledWith({
@@ -173,6 +174,7 @@ describe('Notification Processing', () => {
       mockDormantAccounts,
       createMockCheckObject(),
       '30d',
+      'test-org',
     );
 
     expect(result).toEqual({
