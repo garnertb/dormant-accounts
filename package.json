@@ -44,8 +44,8 @@
     "lint-staged": "16.4.0",
     "prettier": "catalog:default",
     "prettier-plugin-packagejson": "2.5.19",
-    "publint": "0.3.18",
-    "turbo": "2.9.14",
+    "publint": "0.3.21",
+    "turbo": "2.9.16",
     "typescript": "catalog:default",
     "vitest": "catalog:default"
   },
