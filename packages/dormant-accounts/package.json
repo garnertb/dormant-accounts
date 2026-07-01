@@ -60,7 +60,7 @@
     "zod": "catalog:default"
   },
   "devDependencies": {
-    "@arethetypeswrong/cli": "0.18.2",
+    "@arethetypeswrong/cli": "0.18.4",
     "@types/consola": "^2.2.8",
     "@types/ms": "catalog:default",
     "@types/node": "catalog:default",
