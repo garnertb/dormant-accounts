@@ -41,7 +41,7 @@
     "eslint": "catalog:default",
     "eslint-config-custom": "workspace:*",
     "husky": "9.1.7",
-    "lint-staged": "16.4.0",
+    "lint-staged": "17.0.7",
     "prettier": "catalog:default",
     "prettier-plugin-packagejson": "2.5.19",
     "publint": "0.3.21",
