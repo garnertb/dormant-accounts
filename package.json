@@ -34,7 +34,7 @@
   },
   "prettier": "@vercel/style-guide/prettier",
   "devDependencies": {
-    "@changesets/cli": "2.31.0",
+    "@changesets/cli": "2.31.1",
     "@types/node": "catalog:default",
     "@vercel/style-guide": "catalog:default",
     "@vitest/coverage-v8": "catalog:default",
@@ -44,8 +44,8 @@
     "lint-staged": "16.4.0",
     "prettier": "catalog:default",
     "prettier-plugin-packagejson": "2.5.19",
-    "publint": "0.3.21",
-    "turbo": "2.10.2",
+    "publint": "0.3.22",
+    "turbo": "2.10.7",
     "typescript": "catalog:default",
     "vitest": "catalog:default"
   },
