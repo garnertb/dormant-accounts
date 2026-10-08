@@ -2,8 +2,12 @@ import type {
   FetchActivityHandler,
   LastActivityRecord,
 } from 'dormant-accounts';
-import { GitHubHandlerConfig } from '../types';
+import { GitHubHandlerConfig, type OctokitClient } from '../types';
 import ms from 'ms';
+
+type CopilotSeatsPage = Awaited<
+  ReturnType<OctokitClient['rest']['copilot']['listCopilotSeats']>
+>['data'];
 
 /**
  * Fetches the latest activity from GitHub Copilot for a given organization and returns the
@@ -96,9 +100,10 @@ export const fetchLatestActivityFromCopilot: FetchActivityHandler<
       payload,
     );
 
-    for await (const {
-      data: { seats, total_seats },
-    } of iterator) {
+    for await (const { data } of iterator) {
+      // The seats endpoint reports `total_seats` rather than `total_count`, so
+      // paginate does not unwrap `seats` at runtime despite its typings.
+      const { seats, total_seats } = data as unknown as CopilotSeatsPage;
       logger.debug(
         checkType,
         `Found ${total_seats} total copilot seats in ${org} org`,
