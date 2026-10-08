@@ -19,6 +19,16 @@ export const LastActivityRecordSchema = z.object({
 export type DurationString = StringValue | string;
 
 /**
+ * Strategy used to merge fetched activity records into stored records.
+ *
+ * - `'replace'`: each fetched record overwrites the stored record for the same login
+ * - `'latest'`: logins are lowercased and deduplicated, the newer of the stored and
+ *   fetched dates wins, and a `null` date never replaces a stored date. Records,
+ *   pruning and run state are persisted in a single write.
+ */
+export type ActivityMergeStrategy = 'replace' | 'latest';
+
+/**
  * Represents a user's last recorded activity
  */
 export type LastActivityRecord = {
@@ -186,6 +196,26 @@ export type DormancyCheckConfig<CheckType> = {
    * @default 'partial'
    */
   activityResultType?: 'partial' | 'complete';
+
+  /**
+   * Strategy used to merge fetched activity into stored activity.
+   * `'latest'` cannot be combined with a custom `logActivityForUser`.
+   *
+   * @default 'replace'
+   */
+  activityMergeStrategy?: ActivityMergeStrategy;
+
+  /**
+   * Gives accounts that join after the first run the full dormancy threshold.
+   *
+   * The first run stores accounts without activity as `null` (dormant) and records
+   * `_state.rosterInitializedAt`. Later runs store an account that has no stored record
+   * and no activity as `{ lastActivity: <fetch start>, type: 'first-seen' }`.
+   * Requires `activityResultType: 'complete'` and `activityMergeStrategy: 'latest'`.
+   *
+   * @default false
+   */
+  firstSeenBaseline?: boolean;
 
   /**
    * Determines if a user should be considered dormant based on their activity

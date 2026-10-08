@@ -8,12 +8,23 @@ import {
   DormantAccountCheckSummary,
   DormantAccountStatusMap,
   Activity,
+  ActivityMergeStrategy,
 } from './types';
 import type { SetRequired } from 'type-fest';
 import { Database } from './database';
 import { durationToMillis, compareDatesAgainstDuration } from './utils';
+import { mergeActivityRecords } from './merge';
 
 export type * from './types';
+export {
+  FIRST_SEEN_ACTIVITY_TYPE,
+  dedupeActivityRecords,
+  mergeActivityRecords,
+  pickLatestRecord,
+  type FirstSeenOptions,
+  type MergeActivityOptions,
+  type MergeActivityResult,
+} from './merge';
 
 /**
  * Handles checking and managing user dormancy status based on configured rules
@@ -27,6 +38,8 @@ export class DormantAccountCheck<TConfig> {
   private dryRun: boolean;
   private durationMillis?: number;
   private readonly activityResultType: 'partial' | 'complete';
+  private readonly activityMergeStrategy: ActivityMergeStrategy;
+  private readonly firstSeenBaseline: boolean;
   readonly type: string;
 
   constructor(
@@ -36,6 +49,25 @@ export class DormantAccountCheck<TConfig> {
     logger.debug('DormantAccountCheck initialized with config:', this.config);
     this.type = config.type;
     this.activityResultType = config.activityResultType || 'partial';
+    this.activityMergeStrategy = config.activityMergeStrategy ?? 'replace';
+    this.firstSeenBaseline = config.firstSeenBaseline === true;
+
+    if (this.activityMergeStrategy === 'latest' && config.logActivityForUser) {
+      throw new Error(
+        "activityMergeStrategy 'latest' cannot be combined with a custom logActivityForUser",
+      );
+    }
+
+    if (
+      this.firstSeenBaseline &&
+      (this.activityResultType !== 'complete' ||
+        this.activityMergeStrategy !== 'latest')
+    ) {
+      throw new Error(
+        "firstSeenBaseline requires activityResultType 'complete' and activityMergeStrategy 'latest'",
+      );
+    }
+
     this.db = new Database(this.type, this.config.dbPath);
     this.dryRun = this.config.dryRun === true;
     this.duration = (this.config.duration as DurationString) || '30d';
@@ -145,62 +177,136 @@ export class DormantAccountCheck<TConfig> {
 
       this.logger.success(`Fetched ${entries.length} activity records`);
 
-      this.logger.start(`Logging latest activity`);
-
-      await Promise.all(
-        entries.map((entry) =>
-          this.logActivityForUser({ lastActivityRecord: entry }),
-        ),
-      );
-
-      this.logger.success(`Finished logging latest activity`);
-
-      // If activityResultType is 'complete', the activity represents a complete
-      // snapshot of all users in the system, so we need to remove any users
-      // that are no longer present in the snapshot
-      if (this.activityResultType === 'complete') {
-        this.logger.start('Processing complete activity results');
-
-        const allUsers = await this.listAccounts();
-        const fetchedUserLoginsSet = new Set(
-          entries.map((entry) => entry.login),
-        );
-        const usersToRemove = allUsers.filter(
-          (user) => !fetchedUserLoginsSet.has(user.login),
-        );
-
-        if (usersToRemove.length > 0) {
-          this.logger.info(
-            `Found ${usersToRemove.length} accounts no longer in the system`,
-          );
-
-          for (const user of usersToRemove) {
-            this.logger.info(
-              `Removing user ${user.login} as they are no longer in the system`,
-            );
-            if (!this.dryRun) {
-              await this.activity.remove(user);
-            } else {
-              this.logger.info(`[DRY RUN] Would remove user ${user.login}`);
-            }
-          }
-
-          this.logger.success(
-            `Removed ${usersToRemove.length} accounts no longer in the system`,
-          );
-        } else {
-          this.logger.info(
-            'No accounts to remove based on complete activity results',
-          );
-        }
+      if (this.activityMergeStrategy === 'latest') {
+        await this.mergeLatestActivity(entries, fetchStartTime);
+      } else {
+        await this.replaceActivity(entries);
+        await this.db.updateLastRun(fetchStartTime);
       }
 
-      await this.db.updateLastRun(fetchStartTime);
       this.logger.success(`Completed fetching and logging latest activity`);
     } catch (error) {
       logger.error('Failed fetching and logging latest activity', error);
       throw error;
     }
+  }
+
+  /**
+   * Merges fetched activity with the `latest` strategy and persists records,
+   * complete-mode pruning and run state in a single database write
+   * @param entries - Activity records returned by the fetcher
+   * @param fetchStartTime - Time the fetch started, stored as the last run
+   */
+  private async mergeLatestActivity(
+    entries: LastActivityRecord[],
+    fetchStartTime: Date,
+  ): Promise<void> {
+    this.logger.start(`Merging latest activity`);
+
+    const stored = await this.listAccounts();
+    const rosterInitializedAt = this.firstSeenBaseline
+      ? await this.db.getRosterInitializedAt()
+      : null;
+
+    const { records, pruned, firstSeen } = mergeActivityRecords({
+      stored,
+      incoming: entries,
+      prune: this.activityResultType === 'complete',
+      firstSeen: this.firstSeenBaseline
+        ? {
+            rosterInitialized: rosterInitializedAt !== null,
+            timestamp: fetchStartTime,
+          }
+        : undefined,
+    });
+
+    if (pruned.length > 0) {
+      this.logger.info(
+        `Pruning ${pruned.length} accounts no longer in the system${this.dryRun ? ' (working copy only in dry run)' : ''}`,
+      );
+    }
+
+    if (firstSeen.length > 0) {
+      this.logger.info(
+        `Stamped ${firstSeen.length} newly seen accounts with first-seen activity`,
+      );
+    }
+
+    if (this.firstSeenBaseline && !rosterInitializedAt) {
+      this.logger.info('Establishing first-seen roster baseline');
+    }
+
+    await this.db.replaceActivityRecords({
+      records,
+      lastRun: fetchStartTime,
+      rosterInitializedAt:
+        this.firstSeenBaseline && !rosterInitializedAt
+          ? fetchStartTime
+          : undefined,
+    });
+
+    this.logger.success(`Merged ${records.length} activity records`);
+  }
+
+  /**
+   * Logs fetched activity with the `replace` strategy and, for complete results,
+   * removes accounts missing from the snapshot. In dry run the removal still applies
+   * to the local working copy so dry-run counts match a real run.
+   * @param entries - Activity records returned by the fetcher
+   */
+  private async replaceActivity(entries: LastActivityRecord[]): Promise<void> {
+    this.logger.start(`Logging latest activity`);
+
+    await Promise.all(
+      entries.map((entry) =>
+        this.logActivityForUser({ lastActivityRecord: entry }),
+      ),
+    );
+
+    this.logger.success(`Finished logging latest activity`);
+
+    // If activityResultType is 'complete', the activity represents a complete
+    // snapshot of all users in the system, so we need to remove any users
+    // that are no longer present in the snapshot
+    if (this.activityResultType !== 'complete') {
+      return;
+    }
+
+    this.logger.start('Processing complete activity results');
+
+    const allUsers = await this.listAccounts();
+    const fetchedUserLoginsSet = new Set(entries.map((entry) => entry.login));
+    const usersToRemove = allUsers.filter(
+      (user) => !fetchedUserLoginsSet.has(user.login),
+    );
+
+    if (usersToRemove.length === 0) {
+      this.logger.info(
+        'No accounts to remove based on complete activity results',
+      );
+      return;
+    }
+
+    this.logger.info(
+      `Found ${usersToRemove.length} accounts no longer in the system`,
+    );
+
+    if (this.dryRun) {
+      this.logger.info(
+        '[DRY RUN] Removing accounts from the local working copy only',
+      );
+    }
+
+    for (const user of usersToRemove) {
+      this.logger.info(
+        `Removing user ${user.login} as they are no longer in the system`,
+      );
+      await this.activity.remove(user);
+    }
+
+    this.logger.success(
+      `Removed ${usersToRemove.length} accounts no longer in the system`,
+    );
   }
 
   /**

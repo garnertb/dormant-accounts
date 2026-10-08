@@ -125,7 +125,7 @@ describe('DormantAccountCheck with activityResultType', () => {
       expect((call2Args as LastActivityRecord).login).toBe('user3');
     });
 
-    it('should not remove users in dry run mode', async () => {
+    it('prunes the local working copy in dry run mode', async () => {
       // Create checker with 'complete' mode and dry run
       checker = new DormantAccountCheck({
         type: 'test',
@@ -137,8 +137,8 @@ describe('DormantAccountCheck with activityResultType', () => {
       // Act
       await checker.fetchActivity();
 
-      // Assert
-      expect(mockRemoveUser).not.toHaveBeenCalled();
+      // Assert - dry run prunes the working copy so counts match a real run
+      expect(mockRemoveUser).toHaveBeenCalledTimes(2);
     });
   });
 });

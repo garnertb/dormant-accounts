@@ -113,17 +113,20 @@ Creates a new dormancy checker with the provided configuration.
 
 #### Configuration Options
 
-| Option                | Type       | Required | Description                                                                            |
-| --------------------- | ---------- | -------- | -------------------------------------------------------------------------------------- |
-| `type`                | `string`   | Yes      | Identifier for the type of dormancy check                                              |
-| `duration`            | `string`   | No       | Duration string (e.g., '90d', '3m', '1y') to consider accounts dormant. Default: '30d' |
-| `dryRun`              | `boolean`  | No       | When true, doesn't perform any destructive actions                                     |
-| `dbPath`              | `string`   | No       | Custom path for the database file                                                      |
-| `fetchLatestActivity` | `Function` | Yes      | Function to fetch latest user activity records                                         |
-| `isDormant`           | `Function` | No       | Custom function to determine if an account is dormant                                  |
-| `isWhitelisted`       | `Function` | No       | Function to determine if an account should be exempt from dormancy checks              |
-| `logActivityForUser`  | `Function` | No       | Custom function to record user activity                                                |
-| `conf`                | `T`        | No       | Extended configuration specific to your implementation                                 |
+| Option                  | Type       | Required | Description                                                                                                                                                                                                                             |
+| ----------------------- | ---------- | -------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `type`                  | `string`   | Yes      | Identifier for the type of dormancy check                                                                                                                                                                                               |
+| `duration`              | `string`   | No       | Duration string (e.g., '90d', '3m', '1y') to consider accounts dormant. Default: '30d'                                                                                                                                                  |
+| `dryRun`                | `boolean`  | No       | When true, doesn't perform any destructive actions. Complete-mode pruning still applies to the local database so dry-run counts match a real run                                                                                        |
+| `dbPath`                | `string`   | No       | Custom path for the database file                                                                                                                                                                                                       |
+| `fetchLatestActivity`   | `Function` | Yes      | Function to fetch latest user activity records                                                                                                                                                                                          |
+| `activityResultType`    | `string`   | No       | `partial` (default) merges results into stored records. `complete` treats results as a full snapshot and removes stored accounts missing from it                                                                                        |
+| `activityMergeStrategy` | `string`   | No       | `replace` (default) overwrites stored records. `latest` keeps the newest date per lowercase login, never replaces a date with `null`, and writes the database once. Not compatible with a custom `logActivityForUser`                   |
+| `firstSeenBaseline`     | `boolean`  | No       | Requires `complete` results and the `latest` strategy. The initial run stores accounts without activity as `null` (dormant). Later runs stamp newly seen accounts with type `first-seen` at the run time, so they get the full duration |
+| `isDormant`             | `Function` | No       | Custom function to determine if an account is dormant                                                                                                                                                                                   |
+| `isWhitelisted`         | `Function` | No       | Function to determine if an account should be exempt from dormancy checks                                                                                                                                                               |
+| `logActivityForUser`    | `Function` | No       | Custom function to record user activity                                                                                                                                                                                                 |
+| `conf`                  | `T`        | No       | Extended configuration specific to your implementation                                                                                                                                                                                  |
 
 ### Methods
 

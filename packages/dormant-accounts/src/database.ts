@@ -8,6 +8,8 @@ type StateData = {
   lastRun: string;
   'check-type': string;
   lastUpdated: string;
+  /** When the first-seen roster baseline was established */
+  rosterInitializedAt?: string;
 };
 
 export interface DatabaseSchema {
@@ -78,6 +80,55 @@ export class Database {
   async updateLastRun(timestamp: Date = new Date()): Promise<void> {
     await this.validateCheckType();
     this.db.data._state.lastRun = timestamp.toISOString();
+    await this.writeWithSort();
+  }
+
+  /**
+   * Returns when the first-seen roster baseline was established
+   * @returns The baseline timestamp, or null when no baseline exists yet
+   */
+  async getRosterInitializedAt(): Promise<Date | null> {
+    await this.validateCheckType();
+    const { rosterInitializedAt } = this.db.data._state;
+    return rosterInitializedAt ? new Date(rosterInitializedAt) : null;
+  }
+
+  /**
+   * Replaces every user record and updates the run state in a single write
+   * @param options - Records and state to persist
+   * @param options.records - Complete set of user records to store
+   * @param options.lastRun - Timestamp to store as the last run
+   * @param options.rosterInitializedAt - Optional roster baseline timestamp to record
+   * @returns Promise that resolves once the database is written
+   */
+  async replaceActivityRecords({
+    records,
+    lastRun,
+    rosterInitializedAt,
+  }: {
+    records: readonly LastActivityRecord[];
+    lastRun: Date;
+    rosterInitializedAt?: Date;
+  }): Promise<void> {
+    await this.validateCheckType();
+
+    const data: DatabaseSchema = {
+      _state: {
+        ...this.db.data._state,
+        'check-type': this.checkType,
+        lastRun: lastRun.toISOString(),
+        ...(rosterInitializedAt && {
+          rosterInitializedAt: rosterInitializedAt.toISOString(),
+        }),
+      },
+    };
+
+    for (const { login, ...record } of records) {
+      data[login] = record as UserRecord;
+    }
+
+    this.db.data = data;
+    logger.debug(`Replaced activity records for ${records.length} users`);
     await this.writeWithSort();
   }
 
