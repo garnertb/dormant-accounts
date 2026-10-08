@@ -150,7 +150,7 @@ export const fetchCopilotSeatActivity = async ({
   authenticatedAtBehavior = 'ignore',
   includePendingCancellation = false,
 }: FetchCopilotSeatActivityOptions): Promise<LastActivityRecord[]> => {
-  logger.debug(checkType, `Fetching audit log for ${org}`);
+  logger.debug(checkType, `Fetching Copilot seats for ${org}`);
 
   const payload = {
     org,
@@ -238,7 +238,7 @@ export const fetchCopilotSeatActivity = async ({
     }
     return Object.values(processed);
   } catch (error) {
-    logger.error(checkType, 'Failed to fetch audit log', { error });
+    logger.error(checkType, 'Failed to fetch Copilot seats', { error });
     throw error;
   }
 };
