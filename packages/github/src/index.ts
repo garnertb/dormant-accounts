@@ -1,5 +1,6 @@
 export {
   githubDormancy,
+  defaultWhitelistHandler,
   GithubIssueNotifier,
   NotificationStatus,
   normalizeRemoveAccountOutcome,

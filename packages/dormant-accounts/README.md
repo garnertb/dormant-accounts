@@ -141,7 +141,12 @@ Creates a new dormancy checker with the provided configuration.
 
 ## Integration with GitHub Actions
 
-This library can be used with the `copilot-dormancy` GitHub Action to automate dormancy checks in your organization:
+Two GitHub Actions build on this library:
+
+- [`copilot-dormancy`](https://github.com/garnertb/dormant-accounts/tree/main/actions/copilot-dormancy) finds inactive GitHub Copilot seats.
+- [`github-dormancy`](https://github.com/garnertb/dormant-accounts/tree/main/actions/github-dormancy) finds inactive organization members from the audit log, and can also count Copilot usage as activity.
+
+For example, to check Copilot dormancy:
 
 ```yaml
 name: Check GitHub Copilot Dormancy
