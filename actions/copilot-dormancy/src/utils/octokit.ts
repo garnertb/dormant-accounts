@@ -1,8 +1,10 @@
-import { throttling } from '@octokit/plugin-throttling';
+import { throttling, type ThrottlingOptions } from '@octokit/plugin-throttling';
 import { GitHub, getOctokitOptions } from '@actions/github/lib/utils';
 import { OctokitClient } from '@dormant-accounts/github';
 
 const MAX_RETRY_COUNT = 3;
+
+type LimitHandler = NonNullable<ThrottlingOptions['onRateLimit']>;
 
 /**
  * Configuration options for creating a throttled Octokit client
@@ -25,11 +27,7 @@ export function createThrottledOctokit({
    * Rate limit callback handler for both primary and secondary rate limits.
    * Retries once when rate limit is hit.
    */
-  const rateLimitCallBack = (
-    retryAfter: number,
-    options: any,
-    octokit: OctokitClient,
-  ) => {
+  const rateLimitCallBack: LimitHandler = (retryAfter, options, octokit) => {
     octokit.log.warn(
       `Request quota exhausted for request ${options.method} ${options.url}`,
     );
@@ -40,7 +38,6 @@ export function createThrottledOctokit({
     }
   };
 
-  // @ts-expect-error
   const ThrottledOctokit = GitHub.plugin(throttling);
 
   // Initialize GitHub client with throttling
@@ -49,16 +46,6 @@ export function createThrottledOctokit({
     throttle: {
       onRateLimit: rateLimitCallBack,
       onSecondaryRateLimit: rateLimitCallBack,
-      onAbuseLimit: (
-        _retryAfter: number,
-        options: any,
-        octokit: OctokitClient,
-      ) => {
-        // does not retry, only logs a warning
-        octokit.log.warn(
-          `Abuse detected for request ${options.method} ${options.url}`,
-        );
-      },
     },
   });
 

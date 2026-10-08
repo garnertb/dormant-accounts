@@ -1,8 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import {
-  createDefaultNotificationBodyHandler,
-  type NotificationBodyHandler,
-} from './templateHandler';
+import { createDefaultNotificationBodyHandler } from './templateHandler';
 
 describe('createDefaultNotificationBodyHandler', () => {
   it('should replace all placeholders in the template', () => {

@@ -32,25 +32,31 @@
       "prettier --ignore-unknown --write"
     ]
   },
-  "prettier": "@vercel/style-guide/prettier",
+  "prettier": {
+    "endOfLine": "lf",
+    "plugins": [
+      "prettier-plugin-packagejson"
+    ],
+    "printWidth": 80,
+    "singleQuote": true,
+    "tabWidth": 2,
+    "useTabs": false
+  },
   "devDependencies": {
     "@changesets/cli": "2.31.0",
     "@types/node": "catalog:default",
-    "@vercel/style-guide": "catalog:default",
     "@vitest/coverage-v8": "catalog:default",
-    "eslint": "catalog:default",
-    "eslint-config-custom": "workspace:*",
     "husky": "9.1.7",
     "lint-staged": "16.4.0",
     "prettier": "catalog:default",
-    "prettier-plugin-packagejson": "2.5.19",
-    "publint": "0.3.21",
-    "turbo": "2.10.2",
+    "prettier-plugin-packagejson": "3.0.2",
+    "publint": "0.3.25",
+    "turbo": "2.11.7",
     "typescript": "catalog:default",
     "vitest": "catalog:default"
   },
   "packageManager": "pnpm@10.19.0+sha512.c9fc7236e92adf5c8af42fd5bf1612df99c2ceb62f27047032f4720b33f8eacdde311865e91c411f2774f618d82f320808ecb51718bfa82c060c4ba7c76a32b8",
   "engines": {
-    "node": ">=18 <=24"
+    "node": ">=20.19 <=24"
   }
 }

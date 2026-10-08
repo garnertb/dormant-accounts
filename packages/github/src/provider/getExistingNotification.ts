@@ -3,12 +3,11 @@ import { GetResponseDataTypeFromEndpointMethod } from '@octokit/types';
 import { getNotifications } from './getNotifications';
 
 /**
- * Interface representing a notification issue retrieved via GraphQL API
+ * Type representing a notification issue retrieved via GraphQL API
  */
-export interface NotificationIssue
-  extends GetResponseDataTypeFromEndpointMethod<
-    OctokitClient['rest']['issues']['create']
-  > {}
+export type NotificationIssue = GetResponseDataTypeFromEndpointMethod<
+  OctokitClient['rest']['issues']['create']
+>;
 
 /**
  * Configuration for retrieving existing notifications

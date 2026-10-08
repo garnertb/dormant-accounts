@@ -3,12 +3,14 @@
   "version": "0.0.0",
   "private": true,
   "license": "Apache-2.0",
-  "main": "index.js",
+  "type": "module",
+  "exports": "./index.js",
   "dependencies": {
-    "@vercel/style-guide": "catalog:default",
+    "@eslint/js": "10.0.1",
     "eslint": "catalog:default",
-    "eslint-config-prettier": "^9.1.2",
-    "eslint-config-turbo": "2.6.0",
-    "typescript": "catalog:default"
+    "eslint-config-prettier": "^10.1.8",
+    "eslint-config-turbo": "2.11.7",
+    "typescript": "catalog:default",
+    "typescript-eslint": "8.71.0"
   }
 }

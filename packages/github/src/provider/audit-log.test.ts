@@ -1,6 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { githubDormancy, defaultWhitelistHandler } from './audit-log';
-import type { GitHubHandlerArgs } from './types';
+import { defaultWhitelistHandler } from './audit-log';
 
 // Update the import to import the entire module
 import * as database from 'dormant-accounts/database';
@@ -12,24 +11,6 @@ vi.mock('dormant-accounts/database', () => ({
 
 describe('GitHub Activity Check', () => {
   let mockDb: database.Database;
-  let mockOctokit: ReturnType<typeof createMockOctokit>;
-  let defaultConfig: GitHubHandlerArgs;
-
-  const createMockOctokit = () => ({
-    paginate: {
-      iterator: vi.fn(),
-    },
-    rest: {
-      issues: {
-        create: vi.fn(),
-        listForRepo: vi.fn().mockResolvedValue({ data: [] }),
-      },
-      orgs: {
-        checkMembershipForUser: vi.fn(),
-        removeMembershipForUser: vi.fn(),
-      },
-    },
-  });
 
   beforeEach(() => {
     mockDb = {
@@ -38,17 +19,6 @@ describe('GitHub Activity Check', () => {
       updateUserActivity: vi.fn(),
       getActivityRecords: vi.fn().mockResolvedValue([]),
     } as any as database.Database;
-
-    mockOctokit = createMockOctokit();
-    defaultConfig = {
-      conf: {
-        octokit: mockOctokit as any,
-        org: 'test-org',
-        notificationRepo: 'notifications',
-        inactiveUserLabel: 'inactive',
-        notificationBody: 'test notification',
-      },
-    };
 
     // Update how we set the mock implementation
     // @ts-expect-error

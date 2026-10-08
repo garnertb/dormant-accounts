@@ -57,7 +57,7 @@ export const removeCopilotLicense = async ({
     return false;
   }
 
-  let accountRemoved = false;
+  let accountRemoved: boolean;
   // When `assigning_team` is not null, the user is provisioned access for GitHub Copilot via a team
   // and we need to remove them from that team if allowTeamRemoval is true
   if (assigning_team) {

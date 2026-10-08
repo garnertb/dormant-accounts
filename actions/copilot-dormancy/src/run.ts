@@ -1,5 +1,4 @@
 import * as core from '@actions/core';
-import * as github from '@actions/github';
 import {
   GithubIssueNotifier,
   OctokitClient,
@@ -43,7 +42,7 @@ const formatDate = (isoString: string): string => {
       hour: '2-digit',
       minute: '2-digit',
     });
-  } catch (e) {
+  } catch {
     return isoString;
   }
 };
@@ -327,7 +326,10 @@ async function run(): Promise<void> {
 
       // Function to generate a link list for notification issues
       const generateIssueLinkList = (
-        notificationItems: Array<{ user: string; notification: any }>,
+        notificationItems: Array<{
+          user: string;
+          notification: { html_url: string; title: string };
+        }>,
         title: string,
       ) => {
         if (notificationItems.length === 0) return;

@@ -34,16 +34,16 @@
   "scripts": {
     "build": "rimraf dist && ncc build src/index.ts -o dist",
     "dev": "npx nodemon --watch src --ext ts --exec 'pnpm build'",
-    "eslint": "eslint-runner",
-    "eslint:fix": "eslint-runner --fix",
+    "lint": "eslint .",
+    "lint:fix": "eslint . --fix",
     "test": "vitest --run",
     "test:watch": "vitest",
     "type-check": "tsc --noEmit"
   },
   "dependencies": {
-    "@actions/core": "1.11.1",
+    "@actions/core": "3.0.1",
     "@actions/github": "catalog:default",
-    "@octokit/plugin-throttling": "11.0.3",
+    "@octokit/plugin-throttling": "11.0.5",
     "@types/ms": "catalog:default",
     "ms": "catalog:default",
     "zod": "catalog:default"
@@ -51,8 +51,9 @@
   "devDependencies": {
     "@dormant-accounts/github": "workspace:*",
     "@types/node": "catalog:default",
-    "@vercel/ncc": "0.44.1",
+    "@vercel/ncc": "0.45.0",
     "dormant-accounts": "workspace:*",
+    "eslint": "catalog:default",
     "eslint-config-custom": "workspace:*",
     "rimraf": "catalog:default",
     "tsconfig": "workspace:*",

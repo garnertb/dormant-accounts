@@ -24,25 +24,22 @@ export async function getActivityLog(
       path,
       ref: branchName,
     });
+    const file = data as { content: string; sha: string };
 
-    const activityLog = Buffer.from(
-      // @ts-ignore
-      data?.content,
-      'base64',
-    ).toString('utf8');
+    const activityLog = Buffer.from(file.content, 'base64').toString('utf8');
 
-    // @ts-ignore
-    return { content: activityLog, sha: data?.sha };
-  } catch (error: any) {
+    return { content: activityLog, sha: file.sha };
+  } catch (error) {
     core.error(`getActivityLog() error: ${error}`);
-    core.debug(`getActivityLog() error.status: ${error.status}`);
+    const { status } = error as { status?: number };
+    core.debug(`getActivityLog() error.status: ${status}`);
     // If the activity log doesn't exist, return false
-    if (error.status === 404) {
+    if (status === 404) {
       core.info(`🔍 activity log does not exist on branch: ${branchName}`);
       return false;
     }
 
     // If some other error occurred, throw it
-    throw new Error(error);
+    throw new Error(String(error), { cause: error });
   }
 }

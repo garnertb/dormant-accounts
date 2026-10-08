@@ -118,7 +118,7 @@ export class Database {
   async getActivityRecords(): Promise<LastActivityRecord[]> {
     await this.validateCheckType();
     return Object.entries(this.db.data)
-      .filter(([key, value]) => key !== '_state')
+      .filter(([key]) => key !== '_state')
       .map(([login, record]) => {
         if (!isUserRecord(record)) {
           logger.error(

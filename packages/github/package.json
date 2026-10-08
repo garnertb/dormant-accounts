@@ -38,8 +38,8 @@
   "scripts": {
     "build": "rimraf dist && tsup",
     "dev": "tsup --watch --clean=false",
-    "eslint": "eslint-runner",
-    "eslint:fix": "eslint-runner --fix",
+    "lint": "eslint .",
+    "lint:fix": "eslint . --fix",
     "test": "vitest --run",
     "test:watch": "vitest",
     "type-check": "tsc --noEmit"
@@ -53,6 +53,7 @@
     "@octokit/types": "16.0.0",
     "@types/node": "catalog:default",
     "dormant-accounts": "workspace:*",
+    "eslint": "catalog:default",
     "eslint-config-custom": "workspace:*",
     "rimraf": "catalog:default",
     "tsconfig": "workspace:*",
