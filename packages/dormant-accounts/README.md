@@ -72,9 +72,7 @@ const checker = dormancyCheck<GitHubConfig>({
       `Fetching activity for ${organizationName} since ${lastFetchTime}`,
     );
     // Implement custom fetching logic
-    return [
-      /* activity records */
-    ];
+    return [/* activity records */];
   },
 
   // Custom dormancy checker
