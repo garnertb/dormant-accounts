@@ -46654,7 +46654,7 @@ function logNotificationResults(results, { dryRun }) {
 //# sourceMappingURL=index.js.map
 // EXTERNAL MODULE: ../../node_modules/.pnpm/ms@2.1.3/node_modules/ms/index.js
 var node_modules_ms = __nccwpck_require__(3723);
-;// CONCATENATED MODULE: ../../packages/github/dist/chunk-YD5FY3EY.js
+;// CONCATENATED MODULE: ../../packages/github/dist/chunk-CLEQXQJ4.js
 // src/provider/copilot/fetchLatestActivityFromCopilot.ts
 
 var determineLastActivity = (lastActivityAt, lastAuthenticatedAt, createdAt, behavior = "ignore") => {
@@ -46692,6 +46692,7 @@ var determineLastActivity = (lastActivityAt, lastAuthenticatedAt, createdAt, beh
     }
   }
 };
+var getLastAuthenticatedAt = (seat) => seat.last_authenticated_at;
 var copilotSeatToActivityRecord = (seat, {
   authenticatedAtBehavior = "ignore",
   fallbackToCreatedAt = true
@@ -46700,10 +46701,9 @@ var copilotSeatToActivityRecord = (seat, {
   if (!login) {
     return null;
   }
-  const lastAuthenticatedAt = seat.last_authenticated_at;
   const { date, usedAuthenticated } = determineLastActivity(
     seat.last_activity_at,
-    lastAuthenticatedAt,
+    getLastAuthenticatedAt(seat),
     fallbackToCreatedAt ? seat.created_at : null,
     authenticatedAtBehavior
   );
@@ -46761,8 +46761,7 @@ var fetchCopilotSeatActivity = async ({
           );
           continue;
         }
-        const lastAuthenticatedAt = seat.last_authenticated_at;
-        if (!seat.last_activity_at && lastAuthenticatedAt !== null && authenticatedAtBehavior !== "ignore") {
+        if (!seat.last_activity_at && getLastAuthenticatedAt(seat) !== null && authenticatedAtBehavior !== "ignore") {
           const behaviorMessage = authenticatedAtBehavior === "most-recent" ? ", using most recent of activity/authenticated times" : authenticatedAtBehavior === "fallback" ? ", using authenticated_at as fallback" : "";
           logger.debug(
             checkType,
@@ -46801,7 +46800,7 @@ var fetchLatestActivityFromCopilot = async ({
 });
 
 
-//# sourceMappingURL=chunk-YD5FY3EY.js.map
+//# sourceMappingURL=chunk-CLEQXQJ4.js.map
 ;// CONCATENATED MODULE: ../../node_modules/.pnpm/consola@3.4.2/node_modules/consola/dist/core.mjs
 const LogLevels = {
   silent: Number.NEGATIVE_INFINITY,
@@ -48696,7 +48695,7 @@ function JSONFileSyncPreset(filename, defaultData) {
 
 
 
-;// CONCATENATED MODULE: ../../packages/dormant-accounts/dist/chunk-DBX7BI4L.js
+;// CONCATENATED MODULE: ../../packages/dormant-accounts/dist/chunk-6UGTASTN.js
 
 
 // src/database.ts
@@ -48848,7 +48847,7 @@ var Database = class {
 };
 
 
-//# sourceMappingURL=chunk-DBX7BI4L.js.map
+//# sourceMappingURL=chunk-6UGTASTN.js.map
 ;// CONCATENATED MODULE: ../../packages/dormant-accounts/dist/index.js
 
 
@@ -49042,6 +49041,7 @@ var DormantAccountCheck = class {
     this.logger.start(`Merging latest activity`);
     const stored = await this.listAccounts();
     const rosterInitializedAt = this.firstSeenBaseline ? await this.db.getRosterInitializedAt() : null;
+    const establishesBaseline = this.firstSeenBaseline && !rosterInitializedAt;
     const { records, pruned, firstSeen } = mergeActivityRecords({
       stored,
       incoming: entries,
@@ -49061,13 +49061,13 @@ var DormantAccountCheck = class {
         `Stamped ${firstSeen.length} newly seen accounts with first-seen activity`
       );
     }
-    if (this.firstSeenBaseline && !rosterInitializedAt) {
+    if (establishesBaseline) {
       this.logger.info("Establishing first-seen roster baseline");
     }
     await this.db.replaceActivityRecords({
       records,
       lastRun: fetchStartTime,
-      rosterInitializedAt: this.firstSeenBaseline && !rosterInitializedAt ? fetchStartTime : void 0
+      rosterInitializedAt: establishesBaseline ? fetchStartTime : void 0
     });
     this.logger.success(`Merged ${records.length} activity records`);
   }
@@ -49391,6 +49391,11 @@ var GithubIssueNotifier = class {
       users.map((user) => user.login.toLowerCase())
     );
     const inScopeLogins = toLowercaseSet(options.inScopeLogins);
+    const removalResults = {
+      removed: result.removed,
+      "already-absent": result.departed,
+      skipped: result.skipped
+    };
     for (const user of users) {
       try {
         const notification = openNotifications.get(user.login.toLowerCase());
@@ -49409,8 +49414,7 @@ var GithubIssueNotifier = class {
             continue;
           }
           const outcome = await this.removeAccount(user, notification);
-          const bucket = outcome === "removed" ? result.removed : outcome === "already-absent" ? result.departed : result.skipped;
-          bucket.push({ user: user.login, notification });
+          removalResults[outcome].push({ user: user.login, notification });
         } else if (!this.config.dryRun) {
           const newNotification = await this.notifyUser(user);
           result.notified.push({
@@ -49659,17 +49663,18 @@ ${notificationBody}`,
       if (issue.pull_request) {
         continue;
       }
-      const login = issue.title.toLowerCase();
+      const notification = issue;
+      const login = notification.title.toLowerCase();
       const existing = byLogin.get(login);
       if (!existing) {
-        byLogin.set(login, issue);
+        byLogin.set(login, notification);
         continue;
       }
-      const keep = Date.parse(issue.created_at) < Date.parse(existing.created_at) ? issue : existing;
+      const oldest = Date.parse(notification.created_at) < Date.parse(existing.created_at) ? notification : existing;
       console.warn(
-        `Multiple open notifications found for ${issue.title}; using #${keep.number}`
+        `Multiple open notifications found for ${notification.title}; using #${oldest.number}`
       );
-      byLogin.set(login, keep);
+      byLogin.set(login, oldest);
     }
     return byLogin;
   }
@@ -49986,6 +49991,18 @@ var fetchMembershipActivity = async ({
 
 // src/provider/membership/removeOrgMember.ts
 var hasStatus = (error, status) => typeof error === "object" && error !== null && "status" in error && error.status === status;
+var getMembership = async (octokit, org, username) => {
+  try {
+    const { data } = await octokit.rest.orgs.getMembershipForUser({
+      org,
+      username
+    });
+    return data;
+  } catch (error) {
+    if (hasStatus(error, 404)) return null;
+    throw error;
+  }
+};
 var removeOrgMember = async ({
   octokit,
   notificationsOctokit = octokit,
@@ -50013,15 +50030,7 @@ var removeOrgMember = async ({
     );
     return "skipped";
   }
-  let membership = null;
-  try {
-    ({ data: membership } = await octokit.rest.orgs.getMembershipForUser({
-      org,
-      username: login
-    }));
-  } catch (error) {
-    if (!hasStatus(error, 404)) throw error;
-  }
+  const membership = await getMembership(octokit, org, login);
   if (membership?.role === "admin") {
     console.warn(`${login} is an owner of ${org}; skipping removal`);
     return "skipped";
@@ -50274,7 +50283,7 @@ async function processNotifications({ inputs, context, octokit, notificationsOct
 async function run() {
     try {
         const inputs = readInputs();
-        const { org, duration, dryRun } = inputs;
+        const { org, duration, dryRun, excludeUsers, notificationCommentsRepo } = inputs;
         const notificationsRequested = lib_core.getInput('notifications-enabled') === 'true';
         const notificationContext = getNotificationContext({
             baseLabel: CHECK_TYPE,
@@ -50295,7 +50304,7 @@ async function run() {
         lib_core.info(`Activity sources: ${[
             'audit log',
             ...(inputs.includeCopilotActivity ? ['Copilot'] : []),
-            ...(inputs.notificationCommentsRepo ? ['notification comments'] : []),
+            ...(notificationCommentsRepo ? ['notification comments'] : []),
         ].join(', ')}`);
         if (notificationContext) {
             lib_core.info(`Notifications enabled with grace period: ${notificationContext.duration}`);
@@ -50320,7 +50329,6 @@ async function run() {
             // Never start from a stale local file when no log has been saved
             await (0,promises_namespaceObject.rm)(ACTIVITY_LOG_PATH, { force: true });
         }
-        const { excludeUsers, notificationCommentsRepo } = inputs;
         const check = githubMembershipDormancy({
             type: CHECK_TYPE,
             duration,

@@ -207,6 +207,7 @@ export class DormantAccountCheck<TConfig> {
     const rosterInitializedAt = this.firstSeenBaseline
       ? await this.db.getRosterInitializedAt()
       : null;
+    const establishesBaseline = this.firstSeenBaseline && !rosterInitializedAt;
 
     const { records, pruned, firstSeen } = mergeActivityRecords({
       stored,
@@ -232,17 +233,14 @@ export class DormantAccountCheck<TConfig> {
       );
     }
 
-    if (this.firstSeenBaseline && !rosterInitializedAt) {
+    if (establishesBaseline) {
       this.logger.info('Establishing first-seen roster baseline');
     }
 
     await this.db.replaceActivityRecords({
       records,
       lastRun: fetchStartTime,
-      rosterInitializedAt:
-        this.firstSeenBaseline && !rosterInitializedAt
-          ? fetchStartTime
-          : undefined,
+      rosterInitializedAt: establishesBaseline ? fetchStartTime : undefined,
     });
 
     this.logger.success(`Merged ${records.length} activity records`);

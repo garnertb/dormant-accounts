@@ -20,8 +20,6 @@ import {
 import { removeCopilotLicense } from './utils/removeCopilotLicense';
 import { Activity } from 'dormant-accounts';
 
-const CHECK_TYPE = 'copilot-dormancy';
-
 /**
  * Notification settings for the Copilot check
  */
@@ -91,7 +89,7 @@ async function run(): Promise<void> {
     const authenticatedAtBehavior = core.getInput(
       'authenticated-at-behavior',
     ) as 'ignore' | 'fallback' | 'most-recent';
-    const checkType = CHECK_TYPE;
+    const checkType = 'copilot-dormancy';
 
     const baseNotificationsContext = getNotificationContext({
       baseLabel: checkType,
@@ -237,9 +235,8 @@ async function run(): Promise<void> {
       core.info(`Saving activity log to ${activityLogRepo}`);
 
       try {
-        const dateStamp = new Date().toISOString().split('T')[0];
-
         if (!dryRun) {
+          const dateStamp = new Date().toISOString().split('T')[0];
           await saveActivityLog(activityLogOctokit, {
             repo: activityLogContext.repo,
             branch: branchName,

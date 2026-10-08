@@ -30,6 +30,30 @@ const hasStatus = (error: unknown, status: number) =>
   error.status === status;
 
 /**
+ * Reads a user's organization membership
+ * @param octokit - Client allowed to read organization membership
+ * @param org - Organization login
+ * @param username - Account login
+ * @returns The membership, or null when the lookup returns 404
+ */
+const getMembership = async (
+  octokit: OctokitClient,
+  org: string,
+  username: string,
+) => {
+  try {
+    const { data } = await octokit.rest.orgs.getMembershipForUser({
+      org,
+      username,
+    });
+    return data;
+  } catch (error) {
+    if (hasStatus(error, 404)) return null;
+    throw error;
+  }
+};
+
+/**
  * Removes a dormant account from an organization after re-reading its current
  * state.
  *
@@ -77,20 +101,7 @@ export const removeOrgMember = async ({
     return 'skipped';
   }
 
-  let membership:
-    | Awaited<
-        ReturnType<OctokitClient['rest']['orgs']['getMembershipForUser']>
-      >['data']
-    | null = null;
-
-  try {
-    ({ data: membership } = await octokit.rest.orgs.getMembershipForUser({
-      org,
-      username: login,
-    }));
-  } catch (error) {
-    if (!hasStatus(error, 404)) throw error;
-  }
+  const membership = await getMembership(octokit, org, login);
 
   if (membership?.role === 'admin') {
     console.warn(`${login} is an owner of ${org}; skipping removal`);

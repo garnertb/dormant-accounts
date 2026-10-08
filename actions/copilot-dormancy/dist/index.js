@@ -35268,6 +35268,11 @@ var GithubIssueNotifier = class {
       users.map((user) => user.login.toLowerCase())
     );
     const inScopeLogins = toLowercaseSet(options.inScopeLogins);
+    const removalResults = {
+      removed: result.removed,
+      "already-absent": result.departed,
+      skipped: result.skipped
+    };
     for (const user of users) {
       try {
         const notification = openNotifications.get(user.login.toLowerCase());
@@ -35286,8 +35291,7 @@ var GithubIssueNotifier = class {
             continue;
           }
           const outcome = await this.removeAccount(user, notification);
-          const bucket = outcome === "removed" ? result.removed : outcome === "already-absent" ? result.departed : result.skipped;
-          bucket.push({ user: user.login, notification });
+          removalResults[outcome].push({ user: user.login, notification });
         } else if (!this.config.dryRun) {
           const newNotification = await this.notifyUser(user);
           result.notified.push({
@@ -35536,17 +35540,18 @@ ${notificationBody}`,
       if (issue.pull_request) {
         continue;
       }
-      const login = issue.title.toLowerCase();
+      const notification = issue;
+      const login = notification.title.toLowerCase();
       const existing = byLogin.get(login);
       if (!existing) {
-        byLogin.set(login, issue);
+        byLogin.set(login, notification);
         continue;
       }
-      const keep = Date.parse(issue.created_at) < Date.parse(existing.created_at) ? issue : existing;
+      const oldest = Date.parse(notification.created_at) < Date.parse(existing.created_at) ? notification : existing;
       console.warn(
-        `Multiple open notifications found for ${issue.title}; using #${keep.number}`
+        `Multiple open notifications found for ${notification.title}; using #${oldest.number}`
       );
-      byLogin.set(login, keep);
+      byLogin.set(login, oldest);
     }
     return byLogin;
   }
@@ -35863,6 +35868,18 @@ var fetchMembershipActivity = async ({
 
 // src/provider/membership/removeOrgMember.ts
 var hasStatus = (error, status) => typeof error === "object" && error !== null && "status" in error && error.status === status;
+var getMembership = async (octokit, org, username) => {
+  try {
+    const { data } = await octokit.rest.orgs.getMembershipForUser({
+      org,
+      username
+    });
+    return data;
+  } catch (error) {
+    if (hasStatus(error, 404)) return null;
+    throw error;
+  }
+};
 var removeOrgMember = async ({
   octokit,
   notificationsOctokit = octokit,
@@ -35890,15 +35907,7 @@ var removeOrgMember = async ({
     );
     return "skipped";
   }
-  let membership = null;
-  try {
-    ({ data: membership } = await octokit.rest.orgs.getMembershipForUser({
-      org,
-      username: login
-    }));
-  } catch (error) {
-    if (!hasStatus(error, 404)) throw error;
-  }
+  const membership = await getMembership(octokit, org, login);
   if (membership?.role === "admin") {
     console.warn(`${login} is an owner of ${org}; skipping removal`);
     return "skipped";
@@ -35951,7 +35960,7 @@ var githubMembershipDormancy = (config) => {
 };
 
 //# sourceMappingURL=index.js.map
-;// CONCATENATED MODULE: ../../packages/github/dist/chunk-YD5FY3EY.js
+;// CONCATENATED MODULE: ../../packages/github/dist/chunk-CLEQXQJ4.js
 // src/provider/copilot/fetchLatestActivityFromCopilot.ts
 
 var determineLastActivity = (lastActivityAt, lastAuthenticatedAt, createdAt, behavior = "ignore") => {
@@ -35989,6 +35998,7 @@ var determineLastActivity = (lastActivityAt, lastAuthenticatedAt, createdAt, beh
     }
   }
 };
+var getLastAuthenticatedAt = (seat) => seat.last_authenticated_at;
 var copilotSeatToActivityRecord = (seat, {
   authenticatedAtBehavior = "ignore",
   fallbackToCreatedAt = true
@@ -35997,10 +36007,9 @@ var copilotSeatToActivityRecord = (seat, {
   if (!login) {
     return null;
   }
-  const lastAuthenticatedAt = seat.last_authenticated_at;
   const { date, usedAuthenticated } = determineLastActivity(
     seat.last_activity_at,
-    lastAuthenticatedAt,
+    getLastAuthenticatedAt(seat),
     fallbackToCreatedAt ? seat.created_at : null,
     authenticatedAtBehavior
   );
@@ -36010,7 +36019,7 @@ var copilotSeatToActivityRecord = (seat, {
     lastActivity: date
   };
 };
-var chunk_YD5FY3EY_fetchCopilotSeatActivity = async ({
+var chunk_CLEQXQJ4_fetchCopilotSeatActivity = async ({
   octokit,
   org,
   logger,
@@ -36058,8 +36067,7 @@ var chunk_YD5FY3EY_fetchCopilotSeatActivity = async ({
           );
           continue;
         }
-        const lastAuthenticatedAt = seat.last_authenticated_at;
-        if (!seat.last_activity_at && lastAuthenticatedAt !== null && authenticatedAtBehavior !== "ignore") {
+        if (!seat.last_activity_at && getLastAuthenticatedAt(seat) !== null && authenticatedAtBehavior !== "ignore") {
           const behaviorMessage = authenticatedAtBehavior === "most-recent" ? ", using most recent of activity/authenticated times" : authenticatedAtBehavior === "fallback" ? ", using authenticated_at as fallback" : "";
           logger.debug(
             checkType,
@@ -36088,7 +36096,7 @@ var fetchLatestActivityFromCopilot = async ({
   checkType,
   logger,
   authenticatedAtBehavior = "ignore"
-}) => chunk_YD5FY3EY_fetchCopilotSeatActivity({
+}) => chunk_CLEQXQJ4_fetchCopilotSeatActivity({
   octokit,
   org,
   checkType,
@@ -36098,7 +36106,7 @@ var fetchLatestActivityFromCopilot = async ({
 });
 
 
-//# sourceMappingURL=chunk-YD5FY3EY.js.map
+//# sourceMappingURL=chunk-CLEQXQJ4.js.map
 ;// CONCATENATED MODULE: ../../node_modules/.pnpm/lowdb@7.0.1/node_modules/lowdb/lib/core/Low.js
 function checkArgs(adapter, defaultData) {
     if (adapter === undefined)
@@ -36394,7 +36402,7 @@ function JSONFileSyncPreset(filename, defaultData) {
 
 
 
-;// CONCATENATED MODULE: ../../packages/dormant-accounts/dist/chunk-DBX7BI4L.js
+;// CONCATENATED MODULE: ../../packages/dormant-accounts/dist/chunk-6UGTASTN.js
 
 
 // src/database.ts
@@ -36546,7 +36554,7 @@ var Database = class {
 };
 
 
-//# sourceMappingURL=chunk-DBX7BI4L.js.map
+//# sourceMappingURL=chunk-6UGTASTN.js.map
 ;// CONCATENATED MODULE: ../../packages/dormant-accounts/dist/index.js
 
 
@@ -36740,6 +36748,7 @@ var DormantAccountCheck = class {
     this.logger.start(`Merging latest activity`);
     const stored = await this.listAccounts();
     const rosterInitializedAt = this.firstSeenBaseline ? await this.db.getRosterInitializedAt() : null;
+    const establishesBaseline = this.firstSeenBaseline && !rosterInitializedAt;
     const { records, pruned, firstSeen } = mergeActivityRecords({
       stored,
       incoming: entries,
@@ -36759,13 +36768,13 @@ var DormantAccountCheck = class {
         `Stamped ${firstSeen.length} newly seen accounts with first-seen activity`
       );
     }
-    if (this.firstSeenBaseline && !rosterInitializedAt) {
+    if (establishesBaseline) {
       this.logger.info("Establishing first-seen roster baseline");
     }
     await this.db.replaceActivityRecords({
       records,
       lastRun: fetchStartTime,
-      rosterInitializedAt: this.firstSeenBaseline && !rosterInitializedAt ? fetchStartTime : void 0
+      rosterInitializedAt: establishesBaseline ? fetchStartTime : void 0
     });
     this.logger.success(`Merged ${records.length} activity records`);
   }
@@ -50364,7 +50373,6 @@ const removeCopilotLicense = async ({ lastActivityRecord, octokit, owner, remove
 
 
 
-const CHECK_TYPE = 'copilot-dormancy';
 async function processNotifications(octokit, notificationsOctokit, context, dormantAccounts, check, dormantAfter, org) {
     const { duration: gracePeriod, body, assignUserToIssue, removeDormantAccounts, allowTeamRemoval, repo, baseLabels, dryRun, } = context;
     const notifier = new GithubIssueNotifier({
@@ -50402,7 +50410,7 @@ async function run() {
         const notificationsToken = lib_core.getInput('notifications-token') || token;
         const dryRun = lib_core.getInput('dry-run') === 'true';
         const authenticatedAtBehavior = lib_core.getInput('authenticated-at-behavior');
-        const checkType = CHECK_TYPE;
+        const checkType = 'copilot-dormancy';
         const baseNotificationsContext = getNotificationContext({
             baseLabel: checkType,
             dryRun,
@@ -50499,8 +50507,8 @@ async function run() {
         if (activityLogRepo) {
             lib_core.info(`Saving activity log to ${activityLogRepo}`);
             try {
-                const dateStamp = new Date().toISOString().split('T')[0];
                 if (!dryRun) {
+                    const dateStamp = new Date().toISOString().split('T')[0];
                     await saveActivityLog(activityLogOctokit, {
                         repo: activityLogContext.repo,
                         branch: branchName,

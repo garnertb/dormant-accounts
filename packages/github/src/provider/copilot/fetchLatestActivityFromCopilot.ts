@@ -94,6 +94,15 @@ export interface CopilotSeatActivityOptions {
 }
 
 /**
+ * Reads a seat's `last_authenticated_at`, which the `@actions/github` seat
+ * type omits
+ * @param seat - Seat returned by the Copilot seat listing API
+ * @returns The timestamp, if the API returned one
+ */
+const getLastAuthenticatedAt = (seat: CopilotSeat): string | null | undefined =>
+  (seat as { last_authenticated_at?: string | null }).last_authenticated_at;
+
+/**
  * Maps a Copilot seat to an activity record without filtering pending
  * cancellations.
  *
@@ -117,13 +126,9 @@ export const copilotSeatToActivityRecord = (
     return null;
   }
 
-  const lastAuthenticatedAt = (
-    seat as { last_authenticated_at?: string | null }
-  ).last_authenticated_at;
-
   const { date, usedAuthenticated } = determineLastActivity(
     seat.last_activity_at,
-    lastAuthenticatedAt,
+    getLastAuthenticatedAt(seat),
     fallbackToCreatedAt ? seat.created_at : null,
     authenticatedAtBehavior,
   );
@@ -216,13 +221,9 @@ export const fetchCopilotSeatActivity = async ({
           continue;
         }
 
-        const lastAuthenticatedAt = (
-          seat as { last_authenticated_at?: string | null }
-        ).last_authenticated_at;
-
         if (
           !seat.last_activity_at &&
-          lastAuthenticatedAt !== null &&
+          getLastAuthenticatedAt(seat) !== null &&
           authenticatedAtBehavior !== 'ignore'
         ) {
           const behaviorMessage =

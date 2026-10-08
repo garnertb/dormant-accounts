@@ -97,7 +97,8 @@ export async function processNotifications({
 export async function run(): Promise<void> {
   try {
     const inputs = readInputs();
-    const { org, duration, dryRun } = inputs;
+    const { org, duration, dryRun, excludeUsers, notificationCommentsRepo } =
+      inputs;
 
     const notificationsRequested =
       core.getInput('notifications-enabled') === 'true';
@@ -125,7 +126,7 @@ export async function run(): Promise<void> {
       `Activity sources: ${[
         'audit log',
         ...(inputs.includeCopilotActivity ? ['Copilot'] : []),
-        ...(inputs.notificationCommentsRepo ? ['notification comments'] : []),
+        ...(notificationCommentsRepo ? ['notification comments'] : []),
       ].join(', ')}`,
     );
 
@@ -165,8 +166,6 @@ export async function run(): Promise<void> {
       // Never start from a stale local file when no log has been saved
       await rm(ACTIVITY_LOG_PATH, { force: true });
     }
-
-    const { excludeUsers, notificationCommentsRepo } = inputs;
 
     const check = githubMembershipDormancy({
       type: CHECK_TYPE,

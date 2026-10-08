@@ -189,6 +189,11 @@ export class GithubIssueNotifier implements DormantAccountNotifier {
       users.map((user) => user.login.toLowerCase()),
     );
     const inScopeLogins = toLowercaseSet(options.inScopeLogins);
+    const removalResults: Record<RemoveAccountOutcome, NotificationEntry[]> = {
+      removed: result.removed,
+      'already-absent': result.departed,
+      skipped: result.skipped,
+    };
 
     for (const user of users) {
       try {
@@ -212,13 +217,7 @@ export class GithubIssueNotifier implements DormantAccountNotifier {
           }
 
           const outcome = await this.removeAccount(user, notification);
-          const bucket =
-            outcome === 'removed'
-              ? result.removed
-              : outcome === 'already-absent'
-                ? result.departed
-                : result.skipped;
-          bucket.push({ user: user.login, notification });
+          removalResults[outcome].push({ user: user.login, notification });
         } else if (!this.config.dryRun) {
           const newNotification = await this.notifyUser(user);
           result.notified.push({
@@ -528,20 +527,23 @@ export class GithubIssueNotifier implements DormantAccountNotifier {
       if (issue.pull_request) {
         continue;
       }
-      const login = issue.title.toLowerCase();
+
+      const notification = issue as NotificationIssue;
+      const login = notification.title.toLowerCase();
       const existing = byLogin.get(login);
       if (!existing) {
-        byLogin.set(login, issue as NotificationIssue);
+        byLogin.set(login, notification);
         continue;
       }
-      const keep =
-        Date.parse(issue.created_at) < Date.parse(existing.created_at)
-          ? (issue as NotificationIssue)
+
+      const oldest =
+        Date.parse(notification.created_at) < Date.parse(existing.created_at)
+          ? notification
           : existing;
       console.warn(
-        `Multiple open notifications found for ${issue.title}; using #${keep.number}`,
+        `Multiple open notifications found for ${notification.title}; using #${oldest.number}`,
       );
-      byLogin.set(login, keep);
+      byLogin.set(login, oldest);
     }
     return byLogin;
   }

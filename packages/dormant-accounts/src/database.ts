@@ -124,7 +124,7 @@ export class Database {
     };
 
     for (const { login, ...record } of records) {
-      data[login] = record as UserRecord;
+      data[login] = record;
     }
 
     this.db.data = data;
