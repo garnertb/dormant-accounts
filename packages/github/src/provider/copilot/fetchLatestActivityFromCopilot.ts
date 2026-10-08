@@ -16,7 +16,7 @@ import ms from 'ms';
  *
  * @param lastActivityAt - The last_activity_at timestamp from the API
  * @param lastAuthenticatedAt - The last_authenticated_at timestamp from the API
- * @param createdAt - The created_at timestamp from the API
+ * @param createdAt - The created_at timestamp to fall back to, or null for no fallback
  * @param behavior - How to handle last_authenticated_at ('ignore', 'fallback', or 'most-recent')
  * @returns Object with the determined date and whether last_authenticated_at was used
  */
@@ -77,17 +77,37 @@ export type CopilotSeat = NonNullable<
 >[number];
 
 /**
+ * Options for mapping a Copilot seat to an activity record
+ */
+export interface CopilotSeatActivityOptions {
+  /**
+   * How `last_authenticated_at` is used
+   * @default 'ignore'
+   */
+  authenticatedAtBehavior?: AuthenticatedAtBehavior;
+  /**
+   * Use the seat's `created_at`, when it was last assigned, if it has no
+   * activity date. When false, such a seat's record has a `null` date.
+   * @default true
+   */
+  fallbackToCreatedAt?: boolean;
+}
+
+/**
  * Maps a Copilot seat to an activity record without filtering pending
  * cancellations.
  *
  * @param seat - Seat returned by the Copilot seat listing API
- * @param authenticatedAtBehavior - How `last_authenticated_at` is used
+ * @param options - How the activity date is chosen
  * @returns The activity record keyed by lowercase login, or null when the seat
  * has no assignee login
  */
 export const copilotSeatToActivityRecord = (
   seat: CopilotSeat,
-  authenticatedAtBehavior: AuthenticatedAtBehavior = 'ignore',
+  {
+    authenticatedAtBehavior = 'ignore',
+    fallbackToCreatedAt = true,
+  }: CopilotSeatActivityOptions = {},
 ): LastActivityRecord | null => {
   const login = (
     seat.assignee as { login?: string } | null | undefined
@@ -104,7 +124,7 @@ export const copilotSeatToActivityRecord = (
   const { date, usedAuthenticated } = determineLastActivity(
     seat.last_activity_at,
     lastAuthenticatedAt,
-    seat.created_at,
+    fallbackToCreatedAt ? seat.created_at : null,
     authenticatedAtBehavior,
   );
 
@@ -118,16 +138,12 @@ export const copilotSeatToActivityRecord = (
 /**
  * Options for {@link fetchCopilotSeatActivity}
  */
-export interface FetchCopilotSeatActivityOptions {
+export interface FetchCopilotSeatActivityOptions
+  extends CopilotSeatActivityOptions {
   octokit: OctokitClient;
   org: string;
   logger: typeof dormancyLogger;
   checkType?: string;
-  /**
-   * How `last_authenticated_at` is used
-   * @default 'ignore'
-   */
-  authenticatedAtBehavior?: AuthenticatedAtBehavior;
   /**
    * Include seats that are pending cancellation
    * @default false
@@ -148,6 +164,7 @@ export const fetchCopilotSeatActivity = async ({
   logger,
   checkType = 'copilot',
   authenticatedAtBehavior = 'ignore',
+  fallbackToCreatedAt = true,
   includePendingCancellation = false,
 }: FetchCopilotSeatActivityOptions): Promise<LastActivityRecord[]> => {
   logger.debug(checkType, `Fetching Copilot seats for ${org}`);
@@ -176,10 +193,10 @@ export const fetchCopilotSeatActivity = async ({
       if (!seats?.length) continue;
 
       for (const seat of seats) {
-        const record = copilotSeatToActivityRecord(
-          seat,
+        const record = copilotSeatToActivityRecord(seat, {
           authenticatedAtBehavior,
-        );
+          fallbackToCreatedAt,
+        });
 
         if (!record) {
           logger.warn(

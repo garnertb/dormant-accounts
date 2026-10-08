@@ -26,7 +26,8 @@ export interface GitHubMembershipConfig extends GitHubHandlerConfig {
   includeOutsideCollaborators?: boolean;
 
   /**
-   * Count Copilot seat activity, including seats pending cancellation
+   * Count Copilot seat activity, including seats pending cancellation. A
+   * seat's assignment date (`created_at`) is not activity.
    * @default false
    */
   includeCopilotActivity?: boolean;

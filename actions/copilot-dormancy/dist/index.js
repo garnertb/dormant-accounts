@@ -35832,8 +35832,11 @@ var fetchMembershipActivity = async ({
         logger,
         checkType,
         authenticatedAtBehavior,
+        fallbackToCreatedAt: false,
         includePendingCancellation: true
-      }).then((records2) => records2.map(toCopilotActivity))
+      }).then(
+        (records2) => records2.filter(({ lastActivity }) => lastActivity !== null).map(toCopilotActivity)
+      )
     ) : Promise.resolve([]),
     countNotificationComments ? fromSource(
       "notification comment activity",
@@ -35948,7 +35951,7 @@ var githubMembershipDormancy = (config) => {
 };
 
 //# sourceMappingURL=index.js.map
-;// CONCATENATED MODULE: ../../packages/github/dist/chunk-3KPO7JJI.js
+;// CONCATENATED MODULE: ../../packages/github/dist/chunk-YD5FY3EY.js
 // src/provider/copilot/fetchLatestActivityFromCopilot.ts
 
 var determineLastActivity = (lastActivityAt, lastAuthenticatedAt, createdAt, behavior = "ignore") => {
@@ -35986,7 +35989,10 @@ var determineLastActivity = (lastActivityAt, lastAuthenticatedAt, createdAt, beh
     }
   }
 };
-var copilotSeatToActivityRecord = (seat, authenticatedAtBehavior = "ignore") => {
+var copilotSeatToActivityRecord = (seat, {
+  authenticatedAtBehavior = "ignore",
+  fallbackToCreatedAt = true
+} = {}) => {
   const login = seat.assignee?.login?.toLowerCase();
   if (!login) {
     return null;
@@ -35995,7 +36001,7 @@ var copilotSeatToActivityRecord = (seat, authenticatedAtBehavior = "ignore") => 
   const { date, usedAuthenticated } = determineLastActivity(
     seat.last_activity_at,
     lastAuthenticatedAt,
-    seat.created_at,
+    fallbackToCreatedAt ? seat.created_at : null,
     authenticatedAtBehavior
   );
   return {
@@ -36004,12 +36010,13 @@ var copilotSeatToActivityRecord = (seat, authenticatedAtBehavior = "ignore") => 
     lastActivity: date
   };
 };
-var chunk_3KPO7JJI_fetchCopilotSeatActivity = async ({
+var chunk_YD5FY3EY_fetchCopilotSeatActivity = async ({
   octokit,
   org,
   logger,
   checkType = "copilot",
   authenticatedAtBehavior = "ignore",
+  fallbackToCreatedAt = true,
   includePendingCancellation = false
 }) => {
   logger.debug(checkType, `Fetching Copilot seats for ${org}`);
@@ -36032,10 +36039,10 @@ var chunk_3KPO7JJI_fetchCopilotSeatActivity = async ({
       );
       if (!seats?.length) continue;
       for (const seat of seats) {
-        const record = copilotSeatToActivityRecord(
-          seat,
-          authenticatedAtBehavior
-        );
+        const record = copilotSeatToActivityRecord(seat, {
+          authenticatedAtBehavior,
+          fallbackToCreatedAt
+        });
         if (!record) {
           logger.warn(
             checkType,
@@ -36081,7 +36088,7 @@ var fetchLatestActivityFromCopilot = async ({
   checkType,
   logger,
   authenticatedAtBehavior = "ignore"
-}) => chunk_3KPO7JJI_fetchCopilotSeatActivity({
+}) => chunk_YD5FY3EY_fetchCopilotSeatActivity({
   octokit,
   org,
   checkType,
@@ -36091,7 +36098,7 @@ var fetchLatestActivityFromCopilot = async ({
 });
 
 
-//# sourceMappingURL=chunk-3KPO7JJI.js.map
+//# sourceMappingURL=chunk-YD5FY3EY.js.map
 ;// CONCATENATED MODULE: ../../node_modules/.pnpm/lowdb@7.0.1/node_modules/lowdb/lib/core/Low.js
 function checkArgs(adapter, defaultData) {
     if (adapter === undefined)

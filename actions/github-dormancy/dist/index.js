@@ -46654,7 +46654,7 @@ function logNotificationResults(results, { dryRun }) {
 //# sourceMappingURL=index.js.map
 // EXTERNAL MODULE: ../../node_modules/.pnpm/ms@2.1.3/node_modules/ms/index.js
 var node_modules_ms = __nccwpck_require__(3723);
-;// CONCATENATED MODULE: ../../packages/github/dist/chunk-3KPO7JJI.js
+;// CONCATENATED MODULE: ../../packages/github/dist/chunk-YD5FY3EY.js
 // src/provider/copilot/fetchLatestActivityFromCopilot.ts
 
 var determineLastActivity = (lastActivityAt, lastAuthenticatedAt, createdAt, behavior = "ignore") => {
@@ -46692,7 +46692,10 @@ var determineLastActivity = (lastActivityAt, lastAuthenticatedAt, createdAt, beh
     }
   }
 };
-var copilotSeatToActivityRecord = (seat, authenticatedAtBehavior = "ignore") => {
+var copilotSeatToActivityRecord = (seat, {
+  authenticatedAtBehavior = "ignore",
+  fallbackToCreatedAt = true
+} = {}) => {
   const login = seat.assignee?.login?.toLowerCase();
   if (!login) {
     return null;
@@ -46701,7 +46704,7 @@ var copilotSeatToActivityRecord = (seat, authenticatedAtBehavior = "ignore") => 
   const { date, usedAuthenticated } = determineLastActivity(
     seat.last_activity_at,
     lastAuthenticatedAt,
-    seat.created_at,
+    fallbackToCreatedAt ? seat.created_at : null,
     authenticatedAtBehavior
   );
   return {
@@ -46716,6 +46719,7 @@ var fetchCopilotSeatActivity = async ({
   logger,
   checkType = "copilot",
   authenticatedAtBehavior = "ignore",
+  fallbackToCreatedAt = true,
   includePendingCancellation = false
 }) => {
   logger.debug(checkType, `Fetching Copilot seats for ${org}`);
@@ -46738,10 +46742,10 @@ var fetchCopilotSeatActivity = async ({
       );
       if (!seats?.length) continue;
       for (const seat of seats) {
-        const record = copilotSeatToActivityRecord(
-          seat,
-          authenticatedAtBehavior
-        );
+        const record = copilotSeatToActivityRecord(seat, {
+          authenticatedAtBehavior,
+          fallbackToCreatedAt
+        });
         if (!record) {
           logger.warn(
             checkType,
@@ -46797,7 +46801,7 @@ var fetchLatestActivityFromCopilot = async ({
 });
 
 
-//# sourceMappingURL=chunk-3KPO7JJI.js.map
+//# sourceMappingURL=chunk-YD5FY3EY.js.map
 ;// CONCATENATED MODULE: ../../node_modules/.pnpm/consola@3.4.2/node_modules/consola/dist/core.mjs
 const LogLevels = {
   silent: Number.NEGATIVE_INFINITY,
@@ -49951,8 +49955,11 @@ var fetchMembershipActivity = async ({
         logger,
         checkType,
         authenticatedAtBehavior,
+        fallbackToCreatedAt: false,
         includePendingCancellation: true
-      }).then((records2) => records2.map(toCopilotActivity))
+      }).then(
+        (records2) => records2.filter(({ lastActivity }) => lastActivity !== null).map(toCopilotActivity)
+      )
     ) : Promise.resolve([]),
     countNotificationComments ? fromSource(
       "notification comment activity",

@@ -78,7 +78,7 @@ This GitHub Action finds inactive members of a GitHub organization. It reads act
     include-copilot-activity: ''
 
     # How Copilot's last_authenticated_at is used:
-    # - ignore: use last_activity_at, falling back to the seat's created_at
+    # - ignore: use only last_activity_at
     # - fallback: use last_authenticated_at when last_activity_at is empty
     # - most-recent: use the newer of last_activity_at and last_authenticated_at
     # Default: ignore
@@ -148,11 +148,11 @@ The default `github.token` cannot read the audit log, so set `token` to an organ
 
 ## Activity Sources
 
-| Source                | Enabled by                    | Activity                                                                                                                                                                              |
-| --------------------- | ----------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Audit log             | Always                        | The newest organization audit log event by the account, including git clone, fetch and push events                                                                                    |
-| Copilot               | `include-copilot-activity`    | The seat's `last_activity_at`, adjusted by `authenticated-at-behavior`. A seat without activity counts from its assignment date. Seats pending cancellation still count               |
-| Notification comments | `count-notification-comments` | A comment by the account on its own open notification issue in `notifications-repo`. Only issues with the `github-dormancy` label whose title matches the login, ignoring case, count |
+| Source                | Enabled by                    | Activity                                                                                                                                                                                |
+| --------------------- | ----------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Audit log             | Always                        | The newest organization audit log event by the account, including git clone, fetch and push events                                                                                      |
+| Copilot               | `include-copilot-activity`    | The seat's `last_activity_at`, adjusted by `authenticated-at-behavior`. An unused seat adds no activity, because assigning a seat doesn't count. Seats pending cancellation still count |
+| Notification comments | `count-notification-comments` | A comment by the account on its own open notification issue in `notifications-repo`. Only issues with the `github-dormancy` label whose title matches the login, ignoring case, count   |
 
 Use Copilot activity when some members use their GitHub account only for Copilot, for example developers who work on an on-premises server and hold a cloud account just for a Copilot license.
 

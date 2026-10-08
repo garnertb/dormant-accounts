@@ -183,6 +183,65 @@ describe('fetchMembershipActivity', () => {
     });
   });
 
+  it("doesn't count a Copilot seat's assignment date as activity", async () => {
+    const octokit = createFakeOctokit({
+      members: ['alice', 'bob'],
+      auditEntries: [
+        {
+          actor: 'bob',
+          action: 'git.push',
+          '@timestamp': Date.parse('2025-06-01T00:00:00Z'),
+        },
+      ],
+      seats: ['alice', 'bob'].map((login) => ({
+        assignee: { login },
+        last_activity_at: null,
+        last_activity_editor: null,
+        created_at: '2025-06-29T00:00:00Z',
+      })),
+    });
+
+    const records = await run(octokit, { includeCopilotActivity: true });
+
+    expect(records).toEqual([
+      { login: 'alice', lastActivity: null, type: NO_ACTIVITY_TYPE },
+      {
+        login: 'bob',
+        lastActivity: new Date('2025-06-01T00:00:00Z'),
+        type: 'git.push',
+      },
+    ]);
+  });
+
+  it.each(['fallback', 'most-recent'] as const)(
+    'counts a Copilot seat by last_authenticated_at in %s mode',
+    async (authenticatedAtBehavior) => {
+      const octokit = createFakeOctokit({
+        members: ['alice'],
+        seats: [
+          {
+            assignee: { login: 'alice' },
+            last_activity_at: null,
+            last_activity_editor: null,
+            last_authenticated_at: '2025-06-20T00:00:00Z',
+            created_at: '2025-06-29T00:00:00Z',
+          },
+        ],
+      });
+
+      const [record] = await run(octokit, {
+        includeCopilotActivity: true,
+        authenticatedAtBehavior,
+      });
+
+      expect(record).toEqual({
+        login: 'alice',
+        lastActivity: new Date('2025-06-20T00:00:00Z'),
+        type: 'copilot:last_authentication',
+      });
+    },
+  );
+
   it('skips Copilot and comment sources when disabled', async () => {
     const octokit = createFakeOctokit({ members: ['alice'] });
 

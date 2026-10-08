@@ -629,11 +629,34 @@ describe('fetchLatestActivityFromCopilot', () => {
         lastActivity: new Date('2023-01-01T00:00:00Z'),
         type: undefined,
       });
-      expect(copilotSeatToActivityRecord(seat, 'fallback')).toEqual({
+      expect(
+        copilotSeatToActivityRecord(seat, {
+          authenticatedAtBehavior: 'fallback',
+        }),
+      ).toEqual({
         login: 'user1',
         lastActivity: new Date('2023-05-01T00:00:00Z'),
         type: 'last_authentication',
       });
     });
+
+    it.each(['ignore', 'fallback', 'most-recent'] as const)(
+      'leaves an unused seat undated in %s mode without the created_at fallback',
+      (authenticatedAtBehavior) => {
+        const seat = {
+          assignee: { login: 'User1' },
+          last_activity_at: null,
+          last_authenticated_at: null,
+          created_at: '2023-01-01T00:00:00Z',
+        } as any;
+
+        expect(
+          copilotSeatToActivityRecord(seat, {
+            authenticatedAtBehavior,
+            fallbackToCreatedAt: false,
+          }),
+        ).toMatchObject({ login: 'user1', lastActivity: null });
+      },
+    );
   });
 });
