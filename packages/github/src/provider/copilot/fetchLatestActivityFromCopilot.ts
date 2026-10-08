@@ -2,20 +2,15 @@ import type {
   FetchActivityHandler,
   LastActivityRecord,
 } from 'dormant-accounts';
-import { GitHubHandlerConfig } from '../types';
+import type { logger as dormancyLogger } from 'dormant-accounts/utils';
+import type { GetResponseDataTypeFromEndpointMethod } from '@octokit/types';
+import {
+  AuthenticatedAtBehavior,
+  GitHubHandlerConfig,
+  OctokitClient,
+} from '../types';
 import ms from 'ms';
 
-/**
- * Fetches the latest activity from GitHub Copilot for a given organization and returns the
- * users last activity or the date they were added to Copilot if no activity is found.
- *
- * @param octokit - The Octokit instance for making API calls.
- * @param org - The organization to fetch activity for.
- * @param checkType - The type of check being performed.
- * @param logger - The logger instance for logging messages.
- *
- * @returns A promise that resolves to an array of LastActivityRecord objects.
- */
 /**
  * Determines the last activity date based on the configured behavior.
  *
@@ -29,7 +24,7 @@ const determineLastActivity = (
   lastActivityAt: string | null | undefined,
   lastAuthenticatedAt: string | null | undefined,
   createdAt: string | null | undefined,
-  behavior: 'ignore' | 'fallback' | 'most-recent' = 'ignore',
+  behavior: AuthenticatedAtBehavior = 'ignore',
 ): { date: Date | null; usedAuthenticated: boolean } => {
   const activityDate = lastActivityAt ? new Date(lastActivityAt) : null;
   const authenticatedDate = lastAuthenticatedAt
@@ -72,15 +67,89 @@ const determineLastActivity = (
   }
 };
 
-export const fetchLatestActivityFromCopilot: FetchActivityHandler<
-  GitHubHandlerConfig
-> = async ({
+/**
+ * A seat returned by the Copilot seat listing API
+ */
+export type CopilotSeat = NonNullable<
+  GetResponseDataTypeFromEndpointMethod<
+    OctokitClient['rest']['copilot']['listCopilotSeats']
+  >['seats']
+>[number];
+
+/**
+ * Maps a Copilot seat to an activity record without filtering pending
+ * cancellations.
+ *
+ * @param seat - Seat returned by the Copilot seat listing API
+ * @param authenticatedAtBehavior - How `last_authenticated_at` is used
+ * @returns The activity record keyed by lowercase login, or null when the seat
+ * has no assignee login
+ */
+export const copilotSeatToActivityRecord = (
+  seat: CopilotSeat,
+  authenticatedAtBehavior: AuthenticatedAtBehavior = 'ignore',
+): LastActivityRecord | null => {
+  const login = (
+    seat.assignee as { login?: string } | null | undefined
+  )?.login?.toLowerCase();
+
+  if (!login) {
+    return null;
+  }
+
+  const lastAuthenticatedAt = (
+    seat as { last_authenticated_at?: string | null }
+  ).last_authenticated_at;
+
+  const { date, usedAuthenticated } = determineLastActivity(
+    seat.last_activity_at,
+    lastAuthenticatedAt,
+    seat.created_at,
+    authenticatedAtBehavior,
+  );
+
+  return {
+    type: usedAuthenticated ? 'last_authentication' : seat.last_activity_editor,
+    login,
+    lastActivity: date,
+  } as LastActivityRecord;
+};
+
+/**
+ * Options for {@link fetchCopilotSeatActivity}
+ */
+export interface FetchCopilotSeatActivityOptions {
+  octokit: OctokitClient;
+  org: string;
+  logger: typeof dormancyLogger;
+  checkType?: string;
+  /**
+   * How `last_authenticated_at` is used
+   * @default 'ignore'
+   */
+  authenticatedAtBehavior?: AuthenticatedAtBehavior;
+  /**
+   * Include seats that are pending cancellation
+   * @default false
+   */
+  includePendingCancellation?: boolean;
+}
+
+/**
+ * Lists every Copilot seat in an organization and returns the latest activity
+ * record per assignee.
+ *
+ * @param options - Fetch options
+ * @returns One activity record per seat assignee
+ */
+export const fetchCopilotSeatActivity = async ({
   octokit,
   org,
-  checkType,
   logger,
+  checkType = 'copilot',
   authenticatedAtBehavior = 'ignore',
-}) => {
+  includePendingCancellation = false,
+}: FetchCopilotSeatActivityOptions): Promise<LastActivityRecord[]> => {
   logger.debug(checkType, `Fetching audit log for ${org}`);
 
   const payload = {
@@ -107,7 +176,12 @@ export const fetchLatestActivityFromCopilot: FetchActivityHandler<
       if (!seats?.length) continue;
 
       for (const seat of seats) {
-        if (!seat.assignee?.login) {
+        const record = copilotSeatToActivityRecord(
+          seat,
+          authenticatedAtBehavior,
+        );
+
+        if (!record) {
           logger.warn(
             checkType,
             `Skipping activity record for seat with no assignee login - ${JSON.stringify(seat, undefined, 2)}`,
@@ -115,11 +189,9 @@ export const fetchLatestActivityFromCopilot: FetchActivityHandler<
           continue;
         }
 
-        const actor = (seat.assignee.login as string).toLowerCase();
+        const actor = record.login;
 
-        if (!actor) continue;
-
-        if (seat.pending_cancellation_date) {
+        if (seat.pending_cancellation_date && !includePendingCancellation) {
           logger.debug(
             checkType,
             `Skipping activity record for ${actor} due to pending cancellation`,
@@ -148,25 +220,12 @@ export const fetchLatestActivityFromCopilot: FetchActivityHandler<
           );
         }
 
-        const { date: lastActivity, usedAuthenticated } = determineLastActivity(
-          seat.last_activity_at,
-          lastAuthenticatedAt,
-          seat.created_at,
-          authenticatedAtBehavior,
-        );
-        const record = {
-          type: usedAuthenticated
-            ? 'last_authentication'
-            : seat.last_activity_editor,
-          login: actor,
-          lastActivity: lastActivity,
-        };
+        const { lastActivity } = record;
 
         if (
           !processed[actor]?.lastActivity ||
           (lastActivity && lastActivity > processed[actor].lastActivity)
         ) {
-          // @ts-expect-error
           processed[actor] = record;
           const log = lastActivity
             ? `${ms(Date.now() - lastActivity.getTime())} ago`
@@ -183,3 +242,33 @@ export const fetchLatestActivityFromCopilot: FetchActivityHandler<
     throw error;
   }
 };
+
+/**
+ * Fetches the latest activity from GitHub Copilot for a given organization and
+ * returns each user's last activity, or the date they were added to Copilot if
+ * no activity is found. Seats pending cancellation are skipped.
+ *
+ * @param octokit - The Octokit instance for making API calls.
+ * @param org - The organization to fetch activity for.
+ * @param checkType - The type of check being performed.
+ * @param logger - The logger instance for logging messages.
+ *
+ * @returns A promise that resolves to an array of LastActivityRecord objects.
+ */
+export const fetchLatestActivityFromCopilot: FetchActivityHandler<
+  GitHubHandlerConfig
+> = async ({
+  octokit,
+  org,
+  checkType,
+  logger,
+  authenticatedAtBehavior = 'ignore',
+}) =>
+  fetchCopilotSeatActivity({
+    octokit,
+    org,
+    checkType,
+    logger,
+    authenticatedAtBehavior,
+    includePendingCancellation: false,
+  });
