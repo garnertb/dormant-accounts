@@ -40782,7 +40782,7 @@ var GithubIssueNotifier = class {
             console.log(`[DRY RUN] Would notify user: ${user.login}`);
             result.notified.push({
               user: user.login,
-              // @ts-ignore
+              // @ts-expect-error -- dry-run placeholder is not a complete issue
               notification: {
                 id: 0,
                 number: 0,
@@ -40883,7 +40883,7 @@ ${notificationBody}`,
           lastActivityRecord: user
         });
         console.log(
-          `Account removal handler executed for ${user.login}: ${Boolean(removed) ? "success" : "failure"}`
+          `Account removal handler executed for ${user.login}: ${removed ? "success" : "failure"}`
         );
         if (!removed) {
           return;
@@ -41337,7 +41337,7 @@ function JSONFileSyncPreset(filename, defaultData) {
 
 
 
-;// CONCATENATED MODULE: ../../packages/dormant-accounts/dist/chunk-EJG67HCE.js
+;// CONCATENATED MODULE: ../../packages/dormant-accounts/dist/chunk-KMDTWZVQ.js
 
 
 // src/database.ts
@@ -41420,7 +41420,7 @@ var Database = class {
   }
   async getActivityRecords() {
     await this.validateCheckType();
-    return Object.entries(this.db.data).filter(([key, value]) => key !== "_state").map(([login, record]) => {
+    return Object.entries(this.db.data).filter(([key]) => key !== "_state").map(([login, record]) => {
       if (!isUserRecord(record)) {
         logger.error(
           `Unexpected non-user record found in database: ${JSON.stringify(record)}`
@@ -41449,7 +41449,7 @@ var Database = class {
 };
 
 
-//# sourceMappingURL=chunk-EJG67HCE.js.map
+//# sourceMappingURL=chunk-KMDTWZVQ.js.map
 ;// CONCATENATED MODULE: ../../packages/dormant-accounts/dist/index.js
 
 
@@ -41770,7 +41770,8 @@ async function isTeamIdpSynced({
     logger2.debug(`Team ${team_slug} is not IdP synced.`);
     return false;
   } catch (error) {
-    if (error.status === 403 && error.response?.data?.message?.includes(
+    const requestError = error;
+    if (requestError.status === 403 && requestError.response?.data?.message?.includes(
       "This team is not externally managed"
     )) {
       logger2.debug(
@@ -42105,7 +42106,7 @@ const removeCopilotLicense = async ({ lastActivityRecord, octokit, owner, remove
         lib_core.info(`remove-dormant-accounts setting is disabled, checking if user ${lastActivityRecord.login} has been removed from Copilot externally`);
         return false;
     }
-    let accountRemoved = false;
+    let accountRemoved;
     // When `assigning_team` is not null, the user is provisioned access for GitHub Copilot via a team
     // and we need to remove them from that team if allowTeamRemoval is true
     if (assigning_team) {
@@ -42155,22 +42156,21 @@ async function getActivityLog(octokit, context, branchName, path) {
             path,
             ref: branchName,
         });
-        const activityLog = Buffer.from(
-        // @ts-ignore
-        data?.content, 'base64').toString('utf8');
-        // @ts-ignore
-        return { content: activityLog, sha: data?.sha };
+        const file = data;
+        const activityLog = Buffer.from(file.content, 'base64').toString('utf8');
+        return { content: activityLog, sha: file.sha };
     }
     catch (error) {
         lib_core.error(`getActivityLog() error: ${error}`);
-        lib_core.debug(`getActivityLog() error.status: ${error.status}`);
+        const { status } = error;
+        lib_core.debug(`getActivityLog() error.status: ${status}`);
         // If the activity log doesn't exist, return false
-        if (error.status === 404) {
+        if (status === 404) {
             lib_core.info(`🔍 activity log does not exist on branch: ${branchName}`);
             return false;
         }
         // If some other error occurred, throw it
-        throw new Error(error);
+        throw new Error(String(error), { cause: error });
     }
 }
 
@@ -42198,15 +42198,16 @@ async function checkBranch(octokit, context, branchName) {
         return true;
     }
     catch (error) {
-        lib_core.debug(`checkBranch() error.status: ${error.status}`);
+        const { status } = error;
+        lib_core.debug(`checkBranch() error.status: ${status}`);
         // Check if the error was due to the activity log branch not existing
-        if (error.status === 404) {
+        if (status === 404) {
             lib_core.debug(`activity log branch ${branchName} does not exist`);
             return false;
         }
         else {
             lib_core.error('an unexpected status code was returned while checking for the activity log branch');
-            throw new Error(error);
+            throw new Error(String(error), { cause: error });
         }
     }
 }
@@ -52101,7 +52102,7 @@ const formatDate = (isoString) => {
             minute: '2-digit',
         });
     }
-    catch (e) {
+    catch {
         return isoString;
     }
 };

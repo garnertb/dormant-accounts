@@ -39,7 +39,6 @@ describe('DormantAccountCheck with activityResultType', () => {
   const mockRemoveUser = vi.fn();
 
   let checker: DormantAccountCheck<unknown>;
-  let databaseMock: any;
 
   beforeEach(() => {
     vi.clearAllMocks();
@@ -64,8 +63,6 @@ describe('DormantAccountCheck with activityResultType', () => {
         getRawData: vi.fn().mockResolvedValue({}),
       };
     });
-
-    databaseMock = (Database as any).mock.results[0]?.value;
   });
 
   describe('with partial activity results', () => {

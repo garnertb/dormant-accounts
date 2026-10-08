@@ -1,6 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { fetchLatestActivityFromCopilot } from './fetchLatestActivityFromCopilot';
-import { warn } from 'console';
 
 describe('fetchLatestActivityFromCopilot', () => {
   // Mock logger with minimal required properties

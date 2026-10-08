@@ -61,8 +61,8 @@ const fetchAuditLogActivity: FetchActivityHandler<
           }
         }
       }
-    } catch (err: any) {
-      if (err.status === 404) {
+    } catch (err) {
+      if ((err as { status?: number }).status === 404) {
         logger.error(
           `Audit log not found for organization ${org}. The organization may not have audit log access.`,
         );

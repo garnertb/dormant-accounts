@@ -43,9 +43,6 @@ vi.mock('@dormant-accounts/github', () => {
   };
 });
 
-// Mock process.env
-const originalEnv = process.env;
-
 describe('Copilot Dormancy Action', () => {
   // Create a mock check object to reuse
   const createMockCheckObject = () => ({

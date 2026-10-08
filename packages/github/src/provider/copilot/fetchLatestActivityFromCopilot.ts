@@ -171,7 +171,7 @@ export const fetchLatestActivityFromCopilot: FetchActivityHandler<
           !processed[actor]?.lastActivity ||
           (lastActivity && lastActivity > processed[actor].lastActivity)
         ) {
-          // @ts-expect-error
+          // @ts-expect-error -- last_activity_editor may be null or undefined
           processed[actor] = record;
           const log = lastActivity
             ? `${ms(Date.now() - lastActivity.getTime())} ago`

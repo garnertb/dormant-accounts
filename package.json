@@ -32,14 +32,20 @@
       "prettier --ignore-unknown --write"
     ]
   },
-  "prettier": "@vercel/style-guide/prettier",
+  "prettier": {
+    "endOfLine": "lf",
+    "plugins": [
+      "prettier-plugin-packagejson"
+    ],
+    "printWidth": 80,
+    "singleQuote": true,
+    "tabWidth": 2,
+    "useTabs": false
+  },
   "devDependencies": {
     "@changesets/cli": "2.31.0",
     "@types/node": "catalog:default",
-    "@vercel/style-guide": "catalog:default",
     "@vitest/coverage-v8": "catalog:default",
-    "eslint": "catalog:default",
-    "eslint-config-custom": "workspace:*",
     "husky": "9.1.7",
     "lint-staged": "16.4.0",
     "prettier": "catalog:default",

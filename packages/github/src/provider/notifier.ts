@@ -165,7 +165,7 @@ export class GithubIssueNotifier implements DormantAccountNotifier {
             console.log(`[DRY RUN] Would notify user: ${user.login}`);
             result.notified.push({
               user: user.login,
-              // @ts-ignore
+              // @ts-expect-error -- dry-run placeholder is not a complete issue
               notification: {
                 id: 0,
                 number: 0,
@@ -293,7 +293,7 @@ export class GithubIssueNotifier implements DormantAccountNotifier {
           lastActivityRecord: user,
         });
         console.log(
-          `Account removal handler executed for ${user.login}: ${Boolean(removed) ? 'success' : 'failure'}`,
+          `Account removal handler executed for ${user.login}: ${removed ? 'success' : 'failure'}`,
         );
         if (!removed) {
           return;
@@ -478,7 +478,7 @@ export class GithubIssueNotifier implements DormantAccountNotifier {
       console.log(`Removed label ${label} from issue #${issueNumber}`);
     } catch (error) {
       // Check if error is because the label doesn't exist on the issue
-      if ((error as any)?.status === 404) {
+      if ((error as { status?: number } | undefined)?.status === 404) {
         console.log(
           `Label ${label} not found on issue #${issueNumber}, skipping removal`,
         );

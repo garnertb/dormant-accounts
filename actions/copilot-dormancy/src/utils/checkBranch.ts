@@ -23,17 +23,18 @@ export async function checkBranch(
     // If the branch exists, return true
     core.debug(`branch '${branchName}' exists`);
     return true;
-  } catch (error: any) {
-    core.debug(`checkBranch() error.status: ${error.status}`);
+  } catch (error) {
+    const { status } = error as { status?: number };
+    core.debug(`checkBranch() error.status: ${status}`);
     // Check if the error was due to the activity log branch not existing
-    if (error.status === 404) {
+    if (status === 404) {
       core.debug(`activity log branch ${branchName} does not exist`);
       return false;
     } else {
       core.error(
         'an unexpected status code was returned while checking for the activity log branch',
       );
-      throw new Error(error);
+      throw new Error(String(error), { cause: error });
     }
   }
 }

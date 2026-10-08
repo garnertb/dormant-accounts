@@ -212,7 +212,7 @@ describe('Dormant Account Check', () => {
         conf: { testConfig: true },
       });
 
-      const workflow = dormancyCheck(config);
+      dormancyCheck(config);
 
       expect(config.isDormant).not.toHaveBeenCalled();
       expect(config.inactivityHandler).not.toHaveBeenCalled();
@@ -284,7 +284,7 @@ describe('Dormant Account Check', () => {
         .mockResolvedValueOnce(true)
         .mockResolvedValueOnce(false);
 
-      const workflow = dormancyCheck(config);
+      dormancyCheck(config);
       // await workflow.processDormantUsers();
       // await workflow.processDormantUsers();
 
@@ -303,7 +303,7 @@ describe('Dormant Account Check', () => {
         conf: { testConfig: true },
       });
 
-      const workflow = dormancyCheck(config);
+      dormancyCheck(config);
       //await workflow.processDormantUsers();
 
       expect(config.isDormant).not.toHaveBeenCalled();

@@ -4,8 +4,6 @@
   "private": true,
   "license": "Apache-2.0",
   "devDependencies": {
-    "@vercel/style-guide": "catalog:default",
-    "eslint": "catalog:default",
     "typescript": "catalog:default"
   }
 }
