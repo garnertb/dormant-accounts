@@ -3,6 +3,7 @@ import {
   GithubIssueNotifier,
   NotificationConfig,
   NotificationStatus,
+  normalizeRemoveAccountOutcome,
 } from './notifier';
 import { NotificationIssue } from './getExistingNotification';
 import { LastActivityRecord } from 'dormant-accounts';
@@ -229,209 +230,334 @@ describe('GithubIssueNotifier', () => {
   });
 
   describe('processDormantUsers', () => {
+    const DAY = 24 * 60 * 60 * 1000;
+
+    const openIssue = (
+      number: number,
+      title: string,
+      {
+        ageDays = 1,
+        labels = ['dormant-account', NotificationStatus.PENDING],
+        pullRequest = false,
+      }: { ageDays?: number; labels?: string[]; pullRequest?: boolean } = {},
+    ) => ({
+      id: number,
+      number,
+      title,
+      state: 'open',
+      html_url: `https://github.com/test-owner/test-repo/issues/${number}`,
+      created_at: new Date(Date.now() - ageDays * DAY).toISOString(),
+      labels: labels.map((name) => ({ name })),
+      ...(pullRequest ? { pull_request: { url: 'pr' } } : {}),
+    });
+
+    const dormant = (login: string): LastActivityRecord => ({
+      login,
+      lastActivity: new Date('2023-01-01'),
+      type: 'user',
+    });
+
+    const mockOpenIssues = (issues: unknown[]) =>
+      mockOctokit.rest.issues.listForRepo.mockResolvedValue({ data: issues });
+
+    const users = (entries: Array<{ user: string }>) =>
+      entries.map(({ user }) => user);
+
     it('properly processes users in different states', async () => {
-      // Mock existing notifications
-      mockOctokit.rest.issues.listForRepo
-        // First call for findReactivatedUsers
-        .mockResolvedValueOnce({
-          data: [
-            {
-              title: 'reactivated-user',
-              labels: [{ name: 'dormant-account' }],
-            },
-          ],
-        })
-        // Second call for getExistingNotification - in grace period
-        .mockResolvedValueOnce({
-          data: [
-            {
-              title: 'grace-period-user',
-              number: 2,
-              id: 2,
-              created_at: new Date().toISOString(), // recent, still in grace period
-              state: 'open',
-              labels: [
-                { name: 'dormant-account' },
-                { name: 'pending-removal' },
-              ],
-            },
-          ],
-        })
-        // Third call for getExistingNotification - expired
-        .mockResolvedValueOnce({
-          data: [
-            {
-              title: 'expired-user',
-              number: 3,
-              id: 3,
-              created_at: new Date(
-                Date.now() - 10 * 24 * 60 * 60 * 1000,
-              ).toISOString(), // 10 days old
-              state: 'open',
-              labels: [
-                { name: 'dormant-account' },
-                { name: 'pending-removal' },
-              ],
-            },
-          ],
-        })
-        // Fourth call for getExistingNotification - excluded
-        .mockResolvedValueOnce({
-          data: [
-            {
-              title: 'excluded-user',
-              number: 4,
-              id: 4,
-              created_at: new Date().toISOString(),
-              state: 'open',
-              labels: [
-                { name: 'dormant-account' },
-                { name: 'admin-exclusion' },
-              ],
-            },
-          ],
-        })
-        // Fifth call for getExistingNotification - new user (empty response)
-        .mockResolvedValueOnce({ data: [] })
-        // Sixth call for reactivated-user's notification
-        .mockResolvedValueOnce({
-          data: [
-            {
-              title: 'reactivated-user',
-              number: 5,
-              id: 5,
-              created_at: new Date().toISOString(),
-              state: 'open',
-              labels: [{ name: 'dormant-account' }],
-            },
-          ],
-        });
+      mockOpenIssues([
+        openIssue(2, 'grace-period-user'),
+        openIssue(3, 'expired-user', { ageDays: 10 }),
+        openIssue(4, 'excluded-user', {
+          labels: ['dormant-account', NotificationStatus.EXCLUDED],
+        }),
+        openIssue(5, 'reactivated-user'),
+      ]);
 
-      const dormantUsers: LastActivityRecord[] = [
+      const result = await notifier.processDormantUsers([
+        dormant('grace-period-user'),
+        dormant('expired-user'),
+        dormant('excluded-user'),
+        dormant('new-user'),
+      ]);
+
+      expect(users(result.inGracePeriod)).toEqual(['grace-period-user']);
+      expect(users(result.removed)).toEqual(['expired-user']);
+      expect(users(result.excluded)).toEqual(['excluded-user']);
+      expect(users(result.notified)).toEqual(['new-user']);
+      expect(users(result.reactivated)).toEqual(['reactivated-user']);
+      expect(result.departed).toEqual([]);
+      expect(result.skipped).toEqual([]);
+      expect(result.wouldRemove).toEqual([]);
+      expect(result.errors).toEqual([]);
+    });
+
+    it('lists open notifications once using the base labels', async () => {
+      mockOpenIssues([]);
+
+      await notifier.processDormantUsers([dormant('a'), dormant('b')]);
+
+      expect(mockOctokit.rest.issues.listForRepo).toHaveBeenCalledTimes(1);
+      expect(mockOctokit.rest.issues.listForRepo).toHaveBeenCalledWith(
+        expect.objectContaining({
+          owner: 'test-owner',
+          repo: 'test-repo',
+          state: 'open',
+          labels: 'dormant-account',
+        }),
+      );
+    });
+
+    it('finds the exact title among more than 50 open notifications', async () => {
+      const issues = Array.from({ length: 120 }, (_, i) =>
+        openIssue(i + 1, `user${i + 1}`),
+      );
+      mockOpenIssues(issues);
+
+      const result = await notifier.processDormantUsers([dormant('user1')]);
+
+      expect(result.inGracePeriod).toHaveLength(1);
+      expect(result.inGracePeriod[0]?.notification.number).toBe(1);
+      expect(mockOctokit.rest.issues.create).not.toHaveBeenCalled();
+      expect(result.reactivated).toHaveLength(119);
+    });
+
+    it('matches notification titles case-insensitively', async () => {
+      mockOpenIssues([openIssue(7, 'Mixed-Case')]);
+
+      const result = await notifier.processDormantUsers([
+        dormant('mixed-case'),
+      ]);
+
+      expect(result.inGracePeriod).toEqual([
         {
-          login: 'grace-period-user',
-          lastActivity: new Date('2023-01-01'),
-          type: 'user',
+          user: 'mixed-case',
+          notification: expect.objectContaining({ number: 7 }),
         },
-        {
-          login: 'expired-user',
-          lastActivity: new Date('2023-01-01'),
-          type: 'user',
-        },
-        {
-          login: 'excluded-user',
-          lastActivity: new Date('2023-01-01'),
-          type: 'user',
-        },
-        {
-          login: 'new-user',
-          lastActivity: new Date('2023-01-01'),
-          type: 'user',
-        },
-      ];
+      ]);
+      expect(result.reactivated).toEqual([]);
+      expect(mockOctokit.rest.issues.create).not.toHaveBeenCalled();
+    });
 
-      const result = await notifier.processDormantUsers(dormantUsers);
+    it('uses the oldest notification when titles are duplicated', async () => {
+      mockOpenIssues([
+        openIssue(9, 'dup-user', { ageDays: 1 }),
+        openIssue(8, 'dup-user', { ageDays: 3 }),
+      ]);
 
-      // Verify results
-      expect(result.inGracePeriod.length).toBe(1);
-      // @ts-expect-error
-      expect(result.inGracePeriod[0].user).toBe('grace-period-user');
+      const result = await notifier.processDormantUsers([dormant('dup-user')]);
 
-      expect(result.removed.length).toBe(1);
-      // @ts-expect-error
-      expect(result.removed[0].user).toBe('expired-user');
+      expect(result.inGracePeriod[0]?.notification.number).toBe(8);
+    });
 
-      expect(result.excluded.length).toBe(1);
-      // @ts-expect-error
-      expect(result.excluded[0].user).toBe('excluded-user');
+    it('ignores pull requests carrying the base label', async () => {
+      mockOpenIssues([openIssue(11, 'pr-user', { pullRequest: true })]);
 
-      expect(result.notified.length).toBe(1);
-      // @ts-expect-error
-      expect(result.notified[0].user).toBe('new-user');
+      const result = await notifier.processDormantUsers([dormant('pr-user')]);
 
-      expect(result.reactivated.length).toBe(1);
-      // @ts-expect-error
-      expect(result.reactivated[0].user).toBe('reactivated-user');
+      expect(users(result.notified)).toEqual(['pr-user']);
+      expect(result.reactivated).toEqual([]);
+    });
+
+    it('closes notifications for users no longer in scope as departed', async () => {
+      mockOpenIssues([
+        openIssue(20, 'gone-user'),
+        openIssue(21, 'active-user'),
+      ]);
+
+      const result = await notifier.processDormantUsers([], {
+        inScopeLogins: ['Active-User', 'someone-else'],
+      });
+
+      expect(users(result.departed)).toEqual(['gone-user']);
+      expect(users(result.reactivated)).toEqual(['active-user']);
+
+      expect(mockOctokit.rest.issues.addLabels).toHaveBeenCalledWith(
+        expect.objectContaining({
+          issue_number: 20,
+          labels: [NotificationStatus.DEPARTED],
+        }),
+      );
+      expect(mockOctokit.rest.issues.addLabels).toHaveBeenCalledWith(
+        expect.objectContaining({
+          issue_number: 21,
+          labels: [NotificationStatus.ACTIVE],
+        }),
+      );
+      expect(mockOctokit.rest.issues.update).toHaveBeenCalledWith(
+        expect.objectContaining({
+          issue_number: 20,
+          state: 'closed',
+          state_reason: 'not_planned',
+        }),
+      );
+    });
+
+    it('treats every non-dormant notification as reactivated without a scope', async () => {
+      mockOpenIssues([openIssue(30, 'gone-user')]);
+
+      const result = await notifier.processDormantUsers([]);
+
+      expect(users(result.reactivated)).toEqual(['gone-user']);
+      expect(result.departed).toEqual([]);
     });
 
     it('respects dryRun flag', async () => {
-      // Create a notifier with dryRun enabled
-      const dryRunNotifier = new GithubIssueNotifier({
-        githubClient: mockOctokit,
-        gracePeriod: '7d',
-        repository: {
-          owner: 'test-owner',
-          repo: 'test-repo',
-          baseLabels: ['dormant-account'],
-        },
-        notificationBody: 'Test notification body',
-        dryRun: true,
-      });
+      const removeAccount = vi.fn().mockResolvedValue('removed');
+      const dryRunNotifier = createNotifier({ dryRun: true, removeAccount });
 
-      // Reset mock call counts
-      mockOctokit.rest.issues.create.mockClear();
-      mockOctokit.rest.issues.update.mockClear();
+      mockOpenIssues([
+        openIssue(40, 'expired-user', { ageDays: 10 }),
+        openIssue(41, 'gone-user'),
+        openIssue(42, 'active-user'),
+      ]);
 
-      // Mock for no existing notifications to keep test simple
-      mockOctokit.rest.issues.listForRepo.mockResolvedValue({ data: [] });
+      const result = await dryRunNotifier.processDormantUsers(
+        [dormant('expired-user'), dormant('new-user')],
+        { inScopeLogins: ['expired-user', 'new-user', 'active-user'] },
+      );
 
-      const dormantUsers: LastActivityRecord[] = [
-        {
-          login: 'test-user',
-          lastActivity: new Date('2023-01-01'),
-          type: 'user',
-        },
-      ];
+      expect(users(result.notified)).toEqual(['new-user']);
+      expect(users(result.wouldRemove)).toEqual(['expired-user']);
+      expect(users(result.departed)).toEqual(['gone-user']);
+      expect(users(result.reactivated)).toEqual(['active-user']);
+      expect(result.removed).toEqual([]);
 
-      await dryRunNotifier.processDormantUsers(dormantUsers);
-
-      // In dry run mode, should not call create or update
+      expect(removeAccount).not.toHaveBeenCalled();
       expect(mockOctokit.rest.issues.create).not.toHaveBeenCalled();
       expect(mockOctokit.rest.issues.update).not.toHaveBeenCalled();
+      expect(mockOctokit.rest.issues.createComment).not.toHaveBeenCalled();
+      expect(mockOctokit.rest.issues.addLabels).not.toHaveBeenCalled();
+      expect(mockOctokit.rest.issues.removeLabel).not.toHaveBeenCalled();
+    });
+
+    describe('expired notifications', () => {
+      const expired = openIssue(50, 'expired-user', { ageDays: 10 });
+
+      beforeEach(() => {
+        mockOpenIssues([expired]);
+      });
+
+      it.each([true, 'removed'] as const)(
+        'records %s from the handler as removed',
+        async (handlerResult) => {
+          const removeAccount = vi.fn().mockResolvedValue(handlerResult);
+          const result = await createNotifier({
+            removeAccount,
+          }).processDormantUsers([dormant('expired-user')]);
+
+          expect(users(result.removed)).toEqual(['expired-user']);
+          expect(mockOctokit.rest.issues.addLabels).toHaveBeenCalledWith(
+            expect.objectContaining({
+              issue_number: 50,
+              labels: [NotificationStatus.REMOVED],
+            }),
+          );
+          expect(mockOctokit.rest.issues.update).toHaveBeenCalledWith(
+            expect.objectContaining({ issue_number: 50, state: 'closed' }),
+          );
+        },
+      );
+
+      it('passes the notification issue to the handler', async () => {
+        const removeAccount = vi.fn().mockResolvedValue('removed');
+        const user = dormant('expired-user');
+
+        await createNotifier({ removeAccount }).processDormantUsers([user]);
+
+        expect(removeAccount).toHaveBeenCalledWith({
+          lastActivityRecord: user,
+          notification: expect.objectContaining({ number: 50 }),
+        });
+      });
+
+      it('closes already-absent accounts as departed', async () => {
+        const removeAccount = vi.fn().mockResolvedValue('already-absent');
+
+        const result = await createNotifier({
+          removeAccount,
+        }).processDormantUsers([dormant('expired-user')]);
+
+        expect(users(result.departed)).toEqual(['expired-user']);
+        expect(result.removed).toEqual([]);
+        expect(mockOctokit.rest.issues.addLabels).toHaveBeenCalledWith(
+          expect.objectContaining({
+            issue_number: 50,
+            labels: [NotificationStatus.DEPARTED],
+          }),
+        );
+        expect(mockOctokit.rest.issues.update).toHaveBeenCalledWith(
+          expect.objectContaining({
+            issue_number: 50,
+            state: 'closed',
+            state_reason: 'not_planned',
+          }),
+        );
+      });
+
+      it.each([false, 'skipped'] as const)(
+        'leaves the notification open when the handler returns %s',
+        async (handlerResult) => {
+          const removeAccount = vi.fn().mockResolvedValue(handlerResult);
+
+          const result = await createNotifier({
+            removeAccount,
+          }).processDormantUsers([dormant('expired-user')]);
+
+          expect(users(result.skipped)).toEqual(['expired-user']);
+          expect(result.removed).toEqual([]);
+          expect(mockOctokit.rest.issues.update).not.toHaveBeenCalled();
+          expect(mockOctokit.rest.issues.createComment).not.toHaveBeenCalled();
+          expect(mockOctokit.rest.issues.addLabels).not.toHaveBeenCalled();
+        },
+      );
+
+      it('records handler errors and leaves the notification open', async () => {
+        const removeAccount = vi.fn().mockRejectedValue(new Error('boom'));
+
+        const result = await createNotifier({
+          removeAccount,
+        }).processDormantUsers([dormant('expired-user')]);
+
+        expect(result.errors).toEqual([
+          { user: 'expired-user', error: new Error('boom') },
+        ]);
+        expect(result.removed).toEqual([]);
+        expect(result.skipped).toEqual([]);
+        expect(mockOctokit.rest.issues.update).not.toHaveBeenCalled();
+      });
     });
   });
 
   describe('removeAccount', () => {
+    const user: LastActivityRecord = {
+      login: 'test-user',
+      lastActivity: new Date('2023-01-01'),
+      type: 'user',
+    };
+
+    const notification = {
+      id: 123,
+      number: 1,
+      title: 'test-user',
+      created_at: new Date().toISOString(),
+      labels: [],
+      state: 'open',
+    } as unknown as NotificationIssue;
+
     it('handles user removal with a custom handler', async () => {
       const mockRemoveHandler = vi.fn().mockResolvedValue(true);
-
-      const handlerNotifier = new GithubIssueNotifier({
-        githubClient: mockOctokit,
-        gracePeriod: '7d',
-        repository: {
-          owner: 'test-owner',
-          repo: 'test-repo',
-          baseLabels: ['dormant-account'],
-        },
-        notificationBody: 'Test notification body',
-        dryRun: false,
+      const handlerNotifier = createNotifier({
         removeAccount: mockRemoveHandler,
       });
 
-      const user: LastActivityRecord = {
-        login: 'test-user',
-        lastActivity: new Date('2023-01-01'),
-        type: 'user',
-      };
+      const outcome = await handlerNotifier.removeAccount(user, notification);
 
-      const notification = {
-        id: 123,
-        number: 1,
-        title: 'test-user',
-        created_at: new Date().toISOString(),
-        labels: [],
-        state: 'open',
-      };
-
-      // @ts-expect-error
-      await handlerNotifier.removeAccount(user, notification);
-
-      // Verify handler was called with correct parameters
+      expect(outcome).toBe('removed');
       expect(mockRemoveHandler).toHaveBeenCalledWith({
         lastActivityRecord: user,
+        notification,
       });
 
-      // Verify issue was updated correctly
       expect(mockOctokit.rest.issues.createComment).toHaveBeenCalledWith(
         expect.objectContaining({
           issue_number: 1,
@@ -455,31 +581,28 @@ describe('GithubIssueNotifier', () => {
     });
 
     it('works without a custom handler', async () => {
-      const user: LastActivityRecord = {
-        login: 'test-user',
-        lastActivity: new Date('2023-01-01'),
-        type: 'user',
-      };
+      const outcome = await notifier.removeAccount(user, notification);
 
-      const notification = {
-        id: 123,
-        number: 1,
-        title: 'test-user',
-        created_at: new Date().toISOString(),
-        labels: [],
-        state: 'open',
-      };
-
-      // @ts-expect-error
-      await notifier.removeAccount(user, notification);
-
-      // Just verify the issue was updated correctly
+      expect(outcome).toBe('removed');
       expect(mockOctokit.rest.issues.update).toHaveBeenCalledWith(
         expect.objectContaining({
           issue_number: 1,
           state: 'closed',
         }),
       );
+    });
+  });
+
+  describe('normalizeRemoveAccountOutcome', () => {
+    it.each([
+      [true, 'removed'],
+      ['removed', 'removed'],
+      ['already-absent', 'already-absent'],
+      [false, 'skipped'],
+      ['skipped', 'skipped'],
+      [undefined, 'skipped'],
+    ] as const)('maps %s to %s', (input, expected) => {
+      expect(normalizeRemoveAccountOutcome(input)).toBe(expected);
     });
   });
 
