@@ -1,7 +1,9 @@
 import { readFileSync } from 'fs';
 import { fileURLToPath } from 'url';
 import { parse } from 'yaml';
+import { DEFAULT_IGNORED_AUDIT_ACTIONS } from '@dormant-accounts/github';
 import { describe, expect, it } from 'vitest';
+import { parseIgnoredAuditActions } from './inputs';
 
 interface ActionDefinition {
   inputs: Record<string, { required?: boolean; default?: unknown }>;
@@ -47,7 +49,16 @@ describe('action.yml', () => {
       'exclude-users': '',
       'first-seen-baseline': 'true',
       'allow-activity-gap': 'false',
+      'ignore-audit-actions': 'org_credential_authorization.deauthorize',
     });
+  });
+
+  it("defaults ignore-audit-actions to the provider's default list", () => {
+    expect(
+      parseIgnoredAuditActions(
+        String(action.inputs['ignore-audit-actions']?.default),
+      ),
+    ).toEqual([...DEFAULT_IGNORED_AUDIT_ACTIONS]);
   });
 
   it('marks no input as required, so defaults and fallbacks apply', () => {

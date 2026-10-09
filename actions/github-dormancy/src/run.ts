@@ -129,6 +129,9 @@ export async function run(): Promise<void> {
         ...(notificationCommentsRepo ? ['notification comments'] : []),
       ].join(', ')}`,
     );
+    core.info(
+      `Ignored audit log actions: ${inputs.ignoreAuditActions.join(', ') || 'none'}`,
+    );
 
     if (notificationContext) {
       core.info(
@@ -182,6 +185,7 @@ export async function run(): Promise<void> {
         includeCopilotActivity: inputs.includeCopilotActivity,
         includeOutsideCollaborators: inputs.includeOutsideCollaborators,
         allowActivityGap: inputs.allowActivityGap,
+        ignoreAuditActions: inputs.ignoreAuditActions,
         countNotificationComments: notificationCommentsRepo && {
           octokit: notificationsOctokit,
           ...notificationCommentsRepo,

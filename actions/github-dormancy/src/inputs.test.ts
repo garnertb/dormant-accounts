@@ -1,5 +1,7 @@
+import { DEFAULT_IGNORED_AUDIT_ACTIONS } from '@dormant-accounts/github';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import {
+  parseIgnoredAuditActions,
   parseLoginList,
   readBooleanInput,
   readInputs,
@@ -78,6 +80,38 @@ describe('inputs', () => {
     });
   });
 
+  describe('parseIgnoredAuditActions', () => {
+    it.each(['', '  ', ' ,\n, '])(
+      'returns the default list for %j',
+      (value) => {
+        expect(parseIgnoredAuditActions(value)).toEqual([
+          ...DEFAULT_IGNORED_AUDIT_ACTIONS,
+        ]);
+      },
+    );
+
+    it('replaces the default list, splitting on commas, whitespace and newlines and ignoring case and duplicates', () => {
+      expect(
+        parseIgnoredAuditActions(
+          'Git.Clone, git.clone\nREPO.download  org.add_member,,\n',
+        ),
+      ).toEqual(['git.clone', 'repo.download', 'org.add_member']);
+    });
+
+    it.each(['none', 'NONE', ' None\n'])(
+      'counts every action for %j',
+      (value) => {
+        expect(parseIgnoredAuditActions(value)).toEqual([]);
+      },
+    );
+
+    it('rejects none combined with other actions', () => {
+      expect(() => parseIgnoredAuditActions('none, Git.Clone')).toThrow(
+        'Invalid ignore-audit-actions "none, git.clone". Use "none" on its own to count every audit log action',
+      );
+    });
+  });
+
   describe('readInputs', () => {
     it('applies defaults when optional inputs are empty', () => {
       setInputs(REQUIRED);
@@ -97,6 +131,7 @@ describe('inputs', () => {
         excludeUsers: new Set(),
         firstSeenBaseline: true,
         allowActivityGap: false,
+        ignoreAuditActions: ['org_credential_authorization.deauthorize'],
       });
     });
 
@@ -115,6 +150,8 @@ describe('inputs', () => {
         'exclude-users': 'Bot-One\n@bot-two',
         'first-seen-baseline': 'false',
         'allow-activity-gap': 'true',
+        'ignore-audit-actions':
+          'Repo.Download\nworkflows.completed_workflow_run',
       });
 
       expect(readInputs()).toEqual({
@@ -132,6 +169,10 @@ describe('inputs', () => {
         excludeUsers: new Set(['bot-one', 'bot-two']),
         firstSeenBaseline: false,
         allowActivityGap: true,
+        ignoreAuditActions: [
+          'repo.download',
+          'workflows.completed_workflow_run',
+        ],
       });
     });
 
@@ -158,6 +199,10 @@ describe('inputs', () => {
         'Invalid authenticated-at-behavior "always". Expected one of: ignore, fallback, most-recent',
       ],
       [{ 'first-seen-baseline': 'no' }, 'first-seen-baseline'],
+      [
+        { 'ignore-audit-actions': 'none git.clone' },
+        'Invalid ignore-audit-actions "none, git.clone"',
+      ],
     ])('rejects %j', (overrides, error) => {
       setInputs({ ...REQUIRED, ...overrides });
       expect(() => readInputs()).toThrow(error);

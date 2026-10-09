@@ -49803,6 +49803,9 @@ var listInScopeLogins = async ({
 
 
 var AUDIT_LOG_GIT_EVENT_RETENTION_MS = node_modules_ms("7d");
+var DEFAULT_IGNORED_AUDIT_ACTIONS = [
+  "org_credential_authorization.deauthorize"
+];
 var auditLogQueryStart = (lastRun) => new Date(Math.max(0, lastRun.getTime() - AUDIT_LOG_GIT_EVENT_RETENTION_MS));
 var assertActivityGapWithinRetention = ({
   lastRun,
@@ -49830,9 +49833,12 @@ var fetchAuditLogActivitySince = async ({
   octokit,
   org,
   since,
+  ignoreActions = DEFAULT_IGNORED_AUDIT_ACTIONS,
   logger
 }) => {
   logger.debug(`Fetching audit log for ${org} since ${since.toISOString()}`);
+  const ignored = new Set(ignoreActions.map((action) => action.toLowerCase()));
+  const ignoredCounts = /* @__PURE__ */ new Map();
   const latest = /* @__PURE__ */ new Map();
   for await (const {
     data: entries
@@ -49844,6 +49850,11 @@ var fetchAuditLogActivitySince = async ({
     order: "desc"
   })) {
     for (const entry of entries) {
+      const action = entry.action?.toLowerCase();
+      if (action && ignored.has(action)) {
+        ignoredCounts.set(action, (ignoredCounts.get(action) ?? 0) + 1);
+        continue;
+      }
       const lastActivity = parseAuditTimestamp(entry["@timestamp"]);
       if (!entry.actor || !lastActivity) continue;
       const login = entry.actor.toLowerCase();
@@ -49856,6 +49867,11 @@ var fetchAuditLogActivitySince = async ({
         })
       );
     }
+  }
+  if (ignoredCounts.size > 0) {
+    logger.info(
+      `Ignored audit log events that are not activity: ${[...ignoredCounts].map(([action, count]) => `${action} (${count})`).join(", ")}`
+    );
   }
   return [...latest.values()];
 };
@@ -49938,7 +49954,8 @@ var fetchMembershipActivity = async ({
   includeCopilotActivity = false,
   countNotificationComments,
   allowActivityGap = false,
-  authenticatedAtBehavior = "ignore"
+  authenticatedAtBehavior = "ignore",
+  ignoreAuditActions
 }) => {
   const lastRun = new Date(lastFetchTime);
   assertActivityGapWithinRetention({ lastRun, allowActivityGap, logger });
@@ -49950,7 +49967,13 @@ var fetchMembershipActivity = async ({
     ),
     fromSource(
       "audit log activity",
-      fetchAuditLogActivitySince({ octokit, org, since, logger })
+      fetchAuditLogActivitySince({
+        octokit,
+        org,
+        since,
+        ignoreActions: ignoreAuditActions,
+        logger
+      })
     ),
     includeCopilotActivity ? fromSource(
       "Copilot seat activity",
@@ -50087,7 +50110,10 @@ var githubMembershipDormancy = (config) => {
 
 
 
+
 const ONE_DAY_MS = 24 * 60 * 60 * 1000;
+/** `ignore-audit-actions` value that counts every audit log action */
+const IGNORE_NO_AUDIT_ACTIONS = 'none';
 const AUTHENTICATED_AT_BEHAVIORS = [
     'ignore',
     'fallback',
@@ -50136,6 +50162,30 @@ function parseLoginList(value) {
         .map((login) => login.replace(/^@/, '').toLowerCase())
         .filter(Boolean));
 }
+/**
+ * Parses the audit log actions that are not activity, separated by commas,
+ * whitespace or newlines. An empty value means the default list, and `none`
+ * counts every action.
+ *
+ * @param value - The raw input value
+ * @returns Lowercase, deduplicated action names
+ * @throws When `none` is combined with action names
+ */
+function parseIgnoredAuditActions(value) {
+    const actions = [
+        ...new Set(value
+            .split(/[\s,]+/)
+            .map((action) => action.toLowerCase())
+            .filter(Boolean)),
+    ];
+    if (actions.length === 0)
+        return [...DEFAULT_IGNORED_AUDIT_ACTIONS];
+    if (!actions.includes(IGNORE_NO_AUDIT_ACTIONS))
+        return actions;
+    if (actions.length === 1)
+        return [];
+    throw new Error(`Invalid ignore-audit-actions "${actions.join(', ')}". Use "${IGNORE_NO_AUDIT_ACTIONS}" on its own to count every audit log action`);
+}
 const readRequiredInput = (name) => {
     const value = lib_core.getInput(name);
     if (!value) {
@@ -50176,6 +50226,7 @@ function readInputs() {
         excludeUsers: parseLoginList(lib_core.getInput('exclude-users')),
         firstSeenBaseline: readBooleanInput('first-seen-baseline', true),
         allowActivityGap: readBooleanInput('allow-activity-gap', false),
+        ignoreAuditActions: parseIgnoredAuditActions(lib_core.getInput('ignore-audit-actions')),
     };
 }
 
@@ -50306,6 +50357,7 @@ async function run() {
             ...(inputs.includeCopilotActivity ? ['Copilot'] : []),
             ...(notificationCommentsRepo ? ['notification comments'] : []),
         ].join(', ')}`);
+        lib_core.info(`Ignored audit log actions: ${inputs.ignoreAuditActions.join(', ') || 'none'}`);
         if (notificationContext) {
             lib_core.info(`Notifications enabled with grace period: ${notificationContext.duration}`);
             lib_core.info(`Notification repository: ${notificationContext.repo.owner}/${notificationContext.repo.repo}`);
@@ -50343,6 +50395,7 @@ async function run() {
                 includeCopilotActivity: inputs.includeCopilotActivity,
                 includeOutsideCollaborators: inputs.includeOutsideCollaborators,
                 allowActivityGap: inputs.allowActivityGap,
+                ignoreAuditActions: inputs.ignoreAuditActions,
                 countNotificationComments: notificationCommentsRepo && {
                     octokit: notificationsOctokit,
                     ...notificationCommentsRepo,

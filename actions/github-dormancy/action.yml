@@ -84,6 +84,10 @@ inputs:
     description: "Proceed when the last saved run is more than 7 days old, beyond the audit log's retention for git events"
     required: false
     default: 'false'
+  ignore-audit-actions:
+    description: "Audit log actions that GitHub records for a user without the user doing anything, so they don't count as activity. Separate actions with commas, whitespace or newlines; matching ignores case. A value replaces the default list; 'none' counts every action."
+    required: false
+    default: 'org_credential_authorization.deauthorize'
 outputs:
   dormant-users:
     description: 'JSON string containing list of dormant accounts'

@@ -3,10 +3,16 @@ import {
   parseRepository,
   type RepoContext,
 } from '@dormant-accounts/action-utils';
-import type { AuthenticatedAtBehavior } from '@dormant-accounts/github';
+import {
+  DEFAULT_IGNORED_AUDIT_ACTIONS,
+  type AuthenticatedAtBehavior,
+} from '@dormant-accounts/github';
 import { durationToMillis } from 'dormant-accounts/utils';
 
 const ONE_DAY_MS = 24 * 60 * 60 * 1000;
+
+/** `ignore-audit-actions` value that counts every audit log action */
+const IGNORE_NO_AUDIT_ACTIONS = 'none';
 
 const AUTHENTICATED_AT_BEHAVIORS: readonly AuthenticatedAtBehavior[] = [
   'ignore',
@@ -35,6 +41,8 @@ export interface ActionInputs {
   excludeUsers: Set<string>;
   firstSeenBaseline: boolean;
   allowActivityGap: boolean;
+  /** Lowercase audit log actions that are not activity */
+  ignoreAuditActions: string[];
 }
 
 /**
@@ -86,6 +94,34 @@ export function parseLoginList(value: string): Set<string> {
       .split(/[\s,]+/)
       .map((login) => login.replace(/^@/, '').toLowerCase())
       .filter(Boolean),
+  );
+}
+
+/**
+ * Parses the audit log actions that are not activity, separated by commas,
+ * whitespace or newlines. An empty value means the default list, and `none`
+ * counts every action.
+ *
+ * @param value - The raw input value
+ * @returns Lowercase, deduplicated action names
+ * @throws When `none` is combined with action names
+ */
+export function parseIgnoredAuditActions(value: string): string[] {
+  const actions = [
+    ...new Set(
+      value
+        .split(/[\s,]+/)
+        .map((action) => action.toLowerCase())
+        .filter(Boolean),
+    ),
+  ];
+
+  if (actions.length === 0) return [...DEFAULT_IGNORED_AUDIT_ACTIONS];
+  if (!actions.includes(IGNORE_NO_AUDIT_ACTIONS)) return actions;
+  if (actions.length === 1) return [];
+
+  throw new Error(
+    `Invalid ignore-audit-actions "${actions.join(', ')}". Use "${IGNORE_NO_AUDIT_ACTIONS}" on its own to count every audit log action`,
   );
 }
 
@@ -148,5 +184,8 @@ export function readInputs(): ActionInputs {
     excludeUsers: parseLoginList(core.getInput('exclude-users')),
     firstSeenBaseline: readBooleanInput('first-seen-baseline', true),
     allowActivityGap: readBooleanInput('allow-activity-gap', false),
+    ignoreAuditActions: parseIgnoredAuditActions(
+      core.getInput('ignore-audit-actions'),
+    ),
   };
 }

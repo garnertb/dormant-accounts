@@ -753,6 +753,77 @@ describe('run', () => {
     ).toMatchObject({ lastActivity: iso(3), type: 'copilot:vscode' });
   });
 
+  describe('ignored audit actions', () => {
+    const deauthorizations = ['alice', 'bob', 'gina'].map((login) =>
+      auditEntry(login, 'org_credential_authorization.deauthorize', 1),
+    );
+
+    it('ignores SAML credential deauthorizations by default', async () => {
+      const github = createFixture();
+      github.state.auditEntries.push(...deauthorizations);
+
+      await runAction();
+
+      expect(logins(jsonOutput('dormant-users'))).toEqual([
+        'bob',
+        'carol',
+        'gina',
+      ]);
+      const log = github.readFile(LOG);
+      expect(log.alice).toEqual({ lastActivity: iso(2), type: 'git.clone' });
+      expect(log.bob).toEqual(legacyRecord(120));
+      expect(log.gina).toEqual({ lastActivity: null, type: 'no-activity' });
+
+      const later = new Date(NOW.getTime() + DAY);
+      github.state.members.add('hank');
+      github.state.auditEntries.push(
+        auditEntry('hank', 'org_credential_authorization.deauthorize', 0),
+      );
+      vi.setSystemTime(later);
+      await enterTempDir();
+
+      await runAction();
+
+      expect(github.readFile(LOG).hank).toEqual({
+        lastActivity: later.toISOString(),
+        type: 'first-seen',
+      });
+    });
+
+    it('ignores only the listed actions when ignore-audit-actions is set', async () => {
+      const github = createFixture();
+      github.state.auditEntries.push(
+        auditEntry('bob', 'org_credential_authorization.deauthorize', 1),
+        auditEntry('gina', 'workflows.completed_workflow_run', 1),
+      );
+
+      await runAction({
+        'ignore-audit-actions': 'workflows.completed_workflow_run',
+      });
+
+      expect(logins(jsonOutput('dormant-users'))).toEqual(['carol', 'gina']);
+      const log = github.readFile(LOG);
+      expect(log.bob).toEqual({
+        lastActivity: iso(1),
+        type: 'org_credential_authorization.deauthorize',
+      });
+      expect(log.gina).toEqual({ lastActivity: null, type: 'no-activity' });
+    });
+
+    it('counts every event when ignore-audit-actions is none', async () => {
+      const github = createFixture();
+      github.state.auditEntries.push(...deauthorizations);
+
+      await runAction({ 'ignore-audit-actions': 'none' });
+
+      expect(logins(jsonOutput('dormant-users'))).toEqual(['carol']);
+      expect(github.readFile(LOG).bob).toEqual({
+        lastActivity: iso(1),
+        type: 'org_credential_authorization.deauthorize',
+      });
+    });
+  });
+
   describe('removal', () => {
     it('leaves expired notifications open when removal is disabled', async () => {
       const github = createFixture();
@@ -859,6 +930,11 @@ describe('run', () => {
         name: 'an unknown authenticated-at behavior',
         inputs: { 'authenticated-at-behavior': 'sometimes' },
         error: 'Invalid authenticated-at-behavior "sometimes"',
+      },
+      {
+        name: 'none combined with ignored audit actions',
+        inputs: { 'ignore-audit-actions': 'none\ngit.clone' },
+        error: 'Invalid ignore-audit-actions "none, git.clone"',
       },
       {
         name: 'an invalid notifications repository',

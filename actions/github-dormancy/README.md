@@ -107,6 +107,13 @@ This GitHub Action finds inactive members of a GitHub organization. It reads act
     # log's retention for git events
     # Default: false
     allow-activity-gap: ''
+
+    # Audit log actions that GitHub records for a user without the user doing
+    # anything, so they don't count as activity. Separate actions with commas,
+    # spaces or newlines. Matching ignores case. A value replaces the default
+    # list, and none counts every action
+    # Default: org_credential_authorization.deauthorize
+    ignore-audit-actions: ''
 ```
 
 <!-- end usage -->
@@ -150,11 +157,17 @@ The default `github.token` cannot read the audit log, so set `token` to an organ
 
 | Source                | Enabled by                    | Activity                                                                                                                                                                                |
 | --------------------- | ----------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Audit log             | Always                        | The newest organization audit log event by the account, including git clone, fetch and push events                                                                                      |
+| Audit log             | Always                        | The newest organization audit log event by the account, including git clone, fetch and push events. Actions in `ignore-audit-actions` don't count                                       |
 | Copilot               | `include-copilot-activity`    | The seat's `last_activity_at`, adjusted by `authenticated-at-behavior`. An unused seat adds no activity, because assigning a seat doesn't count. Seats pending cancellation still count |
 | Notification comments | `count-notification-comments` | A comment by the account on its own open notification issue in `notifications-repo`. Only issues with the `github-dormancy` label whose title matches the login, ignoring case, count   |
 
 Use Copilot activity when some members use their GitHub account only for Copilot, for example developers who work on an on-premises server and hold a cloud account just for a Copilot license.
+
+### Ignored audit log actions
+
+GitHub records some audit log events under an account without the account doing anything, and counting them would keep departed accounts active. By default, `ignore-audit-actions` skips `org_credential_authorization.deauthorize`, which GitHub logs under an account when it removes one of the account's SAML credential authorizations.
+
+The account's other events still count, even when an ignored event is newer. Setting `ignore-audit-actions` replaces the default list, so include `org_credential_authorization.deauthorize` to keep ignoring it. Set it to `none` to count every event.
 
 ## Activity Log
 
