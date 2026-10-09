@@ -42,13 +42,11 @@
   },
   "dependencies": {
     "@actions/core": "1.11.1",
-    "@actions/github": "catalog:default",
-    "@octokit/plugin-throttling": "11.0.3",
     "@types/ms": "catalog:default",
-    "ms": "catalog:default",
-    "zod": "catalog:default"
+    "ms": "catalog:default"
   },
   "devDependencies": {
+    "@dormant-accounts/action-utils": "workspace:*",
     "@dormant-accounts/github": "workspace:*",
     "@types/node": "catalog:default",
     "@vercel/ncc": "0.44.1",

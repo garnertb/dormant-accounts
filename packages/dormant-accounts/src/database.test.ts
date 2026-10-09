@@ -295,5 +295,83 @@ describe('Database', () => {
       expect(mockDb.data._state).toBeDefined();
       expect(mockAdapter.write).not.toHaveBeenCalled();
     });
+
+    it('replaces records and run state in a single write', async () => {
+      const mockDb: { data: Record<string, any>; read: any; write: any } = {
+        data: {
+          _state: {
+            'check-type': TEST_CHECK_TYPE,
+            lastRun: new Date(0).toISOString(),
+            lastUpdated: new Date(0).toISOString(),
+          },
+          'stale-user': {
+            lastActivity: new Date('2024-01-01').toISOString(),
+            type: 'test',
+          },
+        },
+        read: mockAdapter.read,
+        write: mockAdapter.write,
+      };
+
+      vi.mocked(Low).mockImplementationOnce(function () {
+        return mockDb;
+      } as any);
+      db = new Database(TEST_CHECK_TYPE);
+
+      const lastRun = new Date('2025-01-02T00:00:00Z');
+      await db.replaceActivityRecords({
+        records: [
+          { login: 'b-user', lastActivity: new Date('2024-12-01'), type: 'x' },
+          { login: 'a-user', lastActivity: null, type: 'none' },
+        ],
+        lastRun,
+        rosterInitializedAt: lastRun,
+      });
+
+      expect(mockAdapter.write).toHaveBeenCalledTimes(1);
+      expect(Object.keys(mockDb.data)).toEqual(['_state', 'a-user', 'b-user']);
+      expect(mockDb.data['stale-user']).toBeUndefined();
+      expect(mockDb.data['a-user']).toEqual({
+        lastActivity: null,
+        type: 'none',
+      });
+      expect(mockDb.data._state).toMatchObject({
+        'check-type': TEST_CHECK_TYPE,
+        lastRun: lastRun.toISOString(),
+        rosterInitializedAt: lastRun.toISOString(),
+      });
+    });
+
+    it('keeps an existing roster baseline when none is provided', async () => {
+      const baseline = new Date('2024-06-01T00:00:00Z').toISOString();
+      const mockDb: { data: Record<string, any>; read: any; write: any } = {
+        data: {
+          _state: {
+            'check-type': TEST_CHECK_TYPE,
+            lastRun: new Date(0).toISOString(),
+            lastUpdated: new Date(0).toISOString(),
+            rosterInitializedAt: baseline,
+          },
+        },
+        read: mockAdapter.read,
+        write: mockAdapter.write,
+      };
+
+      vi.mocked(Low).mockImplementationOnce(function () {
+        return mockDb;
+      } as any);
+      db = new Database(TEST_CHECK_TYPE);
+
+      await db.replaceActivityRecords({ records: [], lastRun: new Date() });
+
+      expect(mockDb.data._state.rosterInitializedAt).toBe(baseline);
+      await expect(db.getRosterInitializedAt()).resolves.toEqual(
+        new Date(baseline),
+      );
+    });
+
+    it('returns null when no roster baseline exists', async () => {
+      await expect(db.getRosterInitializedAt()).resolves.toBeNull();
+    });
   });
 });

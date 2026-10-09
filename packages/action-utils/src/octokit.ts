@@ -1,5 +1,5 @@
 import { throttling } from '@octokit/plugin-throttling';
-import { GitHub, getOctokitOptions } from '@actions/github/lib/utils';
+import { GitHub, getOctokitOptions } from '@actions/github/lib/utils.js';
 import { OctokitClient } from '@dormant-accounts/github';
 
 const MAX_RETRY_COUNT = 3;

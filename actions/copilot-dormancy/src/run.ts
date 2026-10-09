@@ -1,5 +1,4 @@
 import * as core from '@actions/core';
-import * as github from '@actions/github';
 import {
   GithubIssueNotifier,
   OctokitClient,
@@ -7,51 +6,32 @@ import {
   ProcessingResult,
 } from '@dormant-accounts/github';
 import { copilotDormancy } from '@dormant-accounts/github/copilot';
-import { createBranch } from './utils/createBranch';
-import { removeCopilotLicense } from './utils/removeCopilotLicense';
-import { getActivityLog } from './utils/getActivityLog';
-import { writeFile } from 'fs/promises';
-import { checkBranch } from './utils/checkBranch';
 import {
+  addCheckSummary,
+  addNotificationResultsSummary,
+  createThrottledOctokit,
   getNotificationContext,
+  loadActivityLog,
+  logNotificationResults,
   NotificationContext,
-} from './utils/getNotificationContext';
-import { updateActivityLog } from './utils/updateActivityLog';
+  safeStringify,
+  saveActivityLog,
+} from '@dormant-accounts/action-utils';
+import { removeCopilotLicense } from './utils/removeCopilotLicense';
 import { Activity } from 'dormant-accounts';
-import { createThrottledOctokit } from './utils/octokit';
 
-// Function to safely stringify data for output
-const safeStringify = (data: unknown): string => {
-  try {
-    return JSON.stringify(data);
-  } catch (error) {
-    return JSON.stringify({
-      error: 'Failed to stringify data',
-      message: error instanceof Error ? error.message : 'Unknown error',
-    });
-  }
-};
-
-// Helper function to format date for human readability
-const formatDate = (isoString: string): string => {
-  try {
-    const date = new Date(isoString);
-    return date.toLocaleString('en-US', {
-      year: 'numeric',
-      month: 'long',
-      day: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit',
-    });
-  } catch (e) {
-    return isoString;
-  }
-};
+/**
+ * Notification settings for the Copilot check
+ */
+export interface CopilotNotificationContext extends NotificationContext {
+  /** Whether users may be removed from the team that assigns their Copilot seat */
+  allowTeamRemoval: boolean;
+}
 
 export async function processNotifications(
   octokit: OctokitClient,
   notificationsOctokit: OctokitClient,
-  context: NotificationContext,
+  context: CopilotNotificationContext,
   dormantAccounts: LastActivityRecord[],
   check: {
     activity: Activity;
@@ -111,7 +91,17 @@ async function run(): Promise<void> {
     ) as 'ignore' | 'fallback' | 'most-recent';
     const checkType = 'copilot-dormancy';
 
-    const notificationsContext = getNotificationContext();
+    const baseNotificationsContext = getNotificationContext({
+      baseLabel: checkType,
+      dryRun,
+    });
+    const notificationsContext: CopilotNotificationContext | false =
+      baseNotificationsContext && {
+        ...baseNotificationsContext,
+        allowTeamRemoval: core.getBooleanInput(
+          'remove-user-from-assigning-team',
+        ),
+      };
     const sendNotifications = notificationsContext !== false;
     let notificationsResults: ProcessingResult | null = null;
 
@@ -156,22 +146,11 @@ async function run(): Promise<void> {
       token: notificationsToken,
     });
 
-    const activityLog = await getActivityLog(
-      activityLogOctokit,
-      activityLogContext.repo,
-      branchName,
-      activityLogContext.path,
-    );
-
-    if (activityLog) {
-      core.info('Activity log exists, fetching latest activity...');
-      await writeFile(activityLogContext.path, activityLog.content);
-      core.info(`Activity log fetched and saved to ${activityLogContext.path}`);
-    } else {
-      core.info('Activity log does not exist, creating new one...');
-    }
-
-    const existingActivityLogSha = activityLog ? activityLog.sha : undefined;
+    const existingActivityLogSha = await loadActivityLog(activityLogOctokit, {
+      repo: activityLogContext.repo,
+      branch: branchName,
+      path: activityLogContext.path,
+    });
 
     // Run dormancy check
     const check = await copilotDormancy({
@@ -213,58 +192,11 @@ async function run(): Promise<void> {
     // Log the summary statistics
     core.info(`Check summary: ${safeStringify(summary)}`);
 
-    // Create a human-friendly job summary
-    core.summary
-      .addHeading('Copilot Dormancy Check Summary')
-      .addRaw(
-        `**Last Activity Fetch:** ${formatDate(summary.lastActivityFetch)}`,
-        true,
-      )
-      .addRaw(`**Dormancy Threshold:** ${summary.duration}`, true)
-      .addBreak()
-      .addHeading('Account Status Summary', 3)
-      .addTable([
-        [
-          { data: 'Count', header: true },
-          { data: 'Percentage', header: true },
-          { data: 'Account Type', header: true },
-        ],
-        [
-          'Active Accounts',
-          summary.activeAccounts.toString(),
-          `${summary.activeAccountPercentage.toFixed(1)}%`,
-        ],
-        [
-          'Dormant Accounts',
-          summary.dormantAccounts.toString(),
-          `${summary.dormantAccountPercentage.toFixed(1)}%`,
-        ],
-        ['Total Accounts', summary.totalAccounts.toString(), '100%'],
-      ]);
-
-    // If there are dormant accounts, add a section about them
-    if (dormantAccounts.length > 0) {
-      core.summary
-        .addHeading('Dormant Accounts', 3)
-        .addRaw(
-          `${dormantAccounts.length} accounts have been inactive for at least ${summary.duration}.`,
-          true,
-        );
-
-      core.summary.addEOL();
-
-      if (sendNotifications) {
-        core.summary.addRaw(
-          'Notifications are being sent to these accounts.',
-          true,
-        );
-      } else {
-        core.summary.addRaw(
-          'No notifications are being sent (notifications disabled).',
-          true,
-        );
-      }
-    }
+    addCheckSummary({
+      heading: 'Copilot Dormancy Check Summary',
+      summary,
+      notificationsEnabled: sendNotifications,
+    });
 
     if (sendNotifications) {
       core.debug(
@@ -286,116 +218,12 @@ async function run(): Promise<void> {
         safeStringify(notificationsResults),
       );
 
-      core.info(
-        `Created notifications for ${notificationsResults.notified.length} dormant accounts`,
-      );
-      core.info(
-        `Closed notifications for ${notificationsResults.reactivated.length} no longer dormant accounts`,
-      );
-      core.info(
-        `Removed ${notificationsResults.removed.length} dormant accounts`,
-      );
-
-      // Add notification results to summary
-      core.summary.addHeading('Notification Results', 3).addTable([
-        [
-          { data: 'Action', header: true },
-          { data: 'Count', header: true },
-        ],
-        [
-          'New notifications created',
-          notificationsResults.notified.length.toString(),
-        ],
-        [
-          'Notifications closed (reactivated users)',
-          notificationsResults.reactivated.length.toString(),
-        ],
-        [
-          'Users removed after grace period',
-          notificationsResults.removed.length.toString(),
-        ],
-        [
-          'Users with admin exclusions',
-          notificationsResults.excluded.length.toString(),
-        ],
-        [
-          'Users in grace period',
-          notificationsResults.inGracePeriod.length.toString(),
-        ],
-        ['Errors encountered', notificationsResults.errors.length.toString()],
-      ]);
-
-      // Function to generate a link list for notification issues
-      const generateIssueLinkList = (
-        notificationItems: Array<{ user: string; notification: any }>,
-        title: string,
-      ) => {
-        if (notificationItems.length === 0) return;
-
-        core.summary.addHeading(title, 4);
-
-        core.summary.addList(
-          notificationItems.map(
-            ({ notification }) =>
-              `<a href="${notification.html_url}">${notification.title}</a>`,
-          ),
-        );
-
-        core.summary.addEOL();
-      };
-
-      // Add issue links for each notification category
-      if (notificationsResults.notified.length > 0) {
-        generateIssueLinkList(
-          notificationsResults.notified,
-          'Newly Created Notifications',
-        );
-      }
-
-      if (notificationsResults.reactivated.length > 0) {
-        generateIssueLinkList(
-          notificationsResults.reactivated,
-          'Closed Notifications (Users Became Active)',
-        );
-      }
-
-      if (notificationsResults.removed.length > 0) {
-        generateIssueLinkList(
-          notificationsResults.removed,
-          'Users Removed (Grace Period Expired)',
-        );
-      }
-
-      if (notificationsResults.excluded.length > 0) {
-        generateIssueLinkList(
-          notificationsResults.excluded,
-          'Admin Exclusions',
-        );
-      }
-
-      if (notificationsResults.inGracePeriod.length > 0) {
-        generateIssueLinkList(
-          notificationsResults.inGracePeriod,
-          'Users in Grace Period',
-        );
-      }
-
-      // If there were any errors, show details
-      if (notificationsResults.errors.length > 0) {
-        core.summary
-          .addHeading('Notification Errors', 4)
-          .addRaw(
-            'The following errors occurred during notification processing:',
-            true,
-          );
-
-        notificationsResults.errors.forEach(({ user, error }, index) => {
-          core.summary.addRaw(
-            `${index + 1}. **${user}**: ${error.message}  `,
-            true,
-          );
-        });
-      }
+      logNotificationResults(notificationsResults, {
+        dryRun: notificationsContext.dryRun,
+      });
+      addNotificationResultsSummary(notificationsResults, {
+        dryRun: notificationsContext.dryRun,
+      });
     } else {
       core.info('Notifications are disabled');
     }
@@ -407,38 +235,15 @@ async function run(): Promise<void> {
       core.info(`Saving activity log to ${activityLogRepo}`);
 
       try {
-        const dateStamp = new Date().toISOString().split('T')[0];
-        const content = await check.activity.all();
-
-        const contentBase64 = Buffer.from(
-          JSON.stringify(content, null, 2),
-        ).toString('base64');
-
         if (!dryRun) {
-          // Check if the branch exists
-          const branchExists = await checkBranch(
-            activityLogOctokit,
-            activityLogContext.repo,
-            branchName,
-          );
-
-          if (!branchExists) {
-            core.info(`Creating branch: ${branchName}`);
-            await createBranch(
-              activityLogOctokit,
-              activityLogContext.repo,
-              checkType,
-            );
-          } else {
-            core.debug(`Branch already exists: ${branchName}`);
-          }
-
-          await updateActivityLog(activityLogOctokit, activityLogContext.repo, {
+          const dateStamp = new Date().toISOString().split('T')[0];
+          await saveActivityLog(activityLogOctokit, {
+            repo: activityLogContext.repo,
             branch: branchName,
             path: activityLogContext.path,
             sha: existingActivityLogSha,
             message: `Update Copilot dormancy log for ${dateStamp}`,
-            content: contentBase64,
+            content: await check.activity.all(),
           });
 
           core.info(

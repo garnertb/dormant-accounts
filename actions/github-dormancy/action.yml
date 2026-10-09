@@ -1,0 +1,107 @@
+name: 'GitHub Dormancy Check'
+description: 'Find, notify and optionally remove inactive members of a GitHub organization'
+inputs:
+  org:
+    description: 'GitHub organization to check for inactive members'
+    required: false
+    default: ${{ github.repository_owner }}
+  activity-log-repo:
+    description: 'Repository (owner/repo) that stores the activity log on the github-dormancy branch'
+    required: false
+    default: ${{ github.repository }}
+  duration:
+    description: 'Inactivity before an account is dormant, as an ms duration of at least one day (e.g., 90d, 90 days, 13w, 1y)'
+    required: false
+    default: '90d'
+  token:
+    description: 'Token used to read members, outside collaborators, the audit log and Copilot seats, and to remove members. Requires an organization owner.'
+    required: false
+    default: ${{ github.token }}
+  activity-log-token:
+    description: 'Token with contents write access to the activity log repository. Defaults to token.'
+    required: false
+  notifications-token:
+    description: 'Token with issues write access to the notifications repository. Defaults to token.'
+    required: false
+  dry-run:
+    description: 'Run without saving the activity log, writing to notification issues or removing anyone'
+    required: false
+    default: 'false'
+  notifications-enabled:
+    description: 'Open a notification issue for each dormant account'
+    required: false
+    default: 'false'
+  notifications-dry-run:
+    description: 'Report notification actions without writing to issues or removing anyone'
+    required: false
+    default: 'false'
+  notifications-repo:
+    description: 'Repository (owner/repo) that holds notification issues'
+    required: false
+    default: ${{ github.repository }}
+  notifications-duration:
+    description: 'Grace period between the notification and removal, as an ms duration of at least one day (e.g., 7d, 2w)'
+    required: false
+    default: '7d'
+  notifications-body:
+    description: 'Notification issue body template. Supports {{account}}, {{dormantAfter}}, {{gracePeriod}}, {{lastActivity}} and {{timeSinceLastActivity}}. Defaults to a message that lists the activity this check counts.'
+    required: false
+    default: ''
+  assign-user-to-notification-issue:
+    # Note: users must have write access to the repo to be assigned
+    description: 'Assign each notification issue to the dormant account'
+    required: false
+    default: 'false'
+  remove-dormant-accounts:
+    description: 'Remove dormant accounts from the organization once the grace period expires. Requires notifications-enabled.'
+    required: false
+    default: 'false'
+  include-copilot-activity:
+    description: 'Count Copilot usage, including seats pending cancellation, as activity'
+    required: false
+    default: 'false'
+  authenticated-at-behavior:
+    description: "How Copilot's last_authenticated_at is used: 'ignore', 'fallback' or 'most-recent'"
+    required: false
+    default: 'ignore'
+  count-notification-comments:
+    description: "Count a user's comment on their own open notification issue as activity, even when notifications are disabled"
+    required: false
+    default: 'false'
+  include-outside-collaborators:
+    description: 'Also check outside collaborators of organization repositories'
+    required: false
+    default: 'false'
+  exclude-users:
+    description: 'Logins that are always treated as active, separated by commas, whitespace or newlines. Matching ignores case.'
+    required: false
+    default: ''
+  first-seen-baseline:
+    description: 'Give accounts first seen after the initial run the full inactivity window instead of treating them as dormant'
+    required: false
+    default: 'true'
+  allow-activity-gap:
+    description: "Proceed when the last saved run is more than 7 days old, beyond the audit log's retention for git events"
+    required: false
+    default: 'false'
+  ignore-audit-actions:
+    description: "Audit log actions that GitHub records for a user without the user doing anything, so they don't count as activity. Separate actions with commas, whitespace or newlines; matching ignores case. A value replaces the default list; 'none' counts every action."
+    required: false
+    default: 'org_credential_authorization.deauthorize'
+outputs:
+  dormant-users:
+    description: 'JSON string containing list of dormant accounts'
+  active-users:
+    description: 'JSON string containing list of active accounts'
+  last-activity-fetch:
+    description: 'Timestamp of when the activity was last fetched'
+  check-stats:
+    description: 'Statistics about the dormancy check'
+  notification-results:
+    description: 'Results of the notification process'
+  error:
+    description: 'Any errors encountered during the process'
+
+runs:
+  using: 'node20'
+  main: 'dist/index.js'

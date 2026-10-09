@@ -1,6 +1,10 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { fetchLatestActivityFromCopilot } from './fetchLatestActivityFromCopilot';
-import { warn } from 'console';
+import {
+  COPILOT_UNKNOWN_EDITOR_TYPE,
+  copilotSeatToActivityRecord,
+  fetchCopilotSeatActivity,
+  fetchLatestActivityFromCopilot,
+} from './fetchLatestActivityFromCopilot';
 
 describe('fetchLatestActivityFromCopilot', () => {
   // Mock logger with minimal required properties
@@ -166,7 +170,7 @@ describe('fetchLatestActivityFromCopilot', () => {
     expect(result[0]).toEqual({
       login: 'user1',
       lastActivity: new Date(createdAt),
-      type: null,
+      type: COPILOT_UNKNOWN_EDITOR_TYPE,
     });
   });
 
@@ -318,7 +322,7 @@ describe('fetchLatestActivityFromCopilot', () => {
       expect(result[0]).toEqual({
         login: 'user1',
         lastActivity: new Date(createdAt),
-        type: null,
+        type: COPILOT_UNKNOWN_EDITOR_TYPE,
       });
     });
 
@@ -420,7 +424,7 @@ describe('fetchLatestActivityFromCopilot', () => {
       expect(result[0]).toEqual({
         login: 'user1',
         lastActivity: new Date(createdAt),
-        type: null,
+        type: COPILOT_UNKNOWN_EDITOR_TYPE,
       });
     });
 
@@ -557,7 +561,121 @@ describe('fetchLatestActivityFromCopilot', () => {
       expect(result[0]).toEqual({
         login: 'user1',
         lastActivity: new Date(createdAt),
-        type: null,
+        type: COPILOT_UNKNOWN_EDITOR_TYPE,
+      });
+    });
+  });
+
+  describe('fetchCopilotSeatActivity', () => {
+    const pendingSeat = {
+      assignee: { login: 'Pending-User' },
+      last_activity_at: new Date('2023-06-01').toISOString(),
+      last_activity_editor: 'vscode',
+      created_at: new Date('2023-01-01').toISOString(),
+      pending_cancellation_date: new Date('2023-07-01').toISOString(),
+    };
+
+    it('includes seats pending cancellation when requested', async () => {
+      const mockOctokit = createMockOctokit([pendingSeat]);
+
+      const result = await fetchCopilotSeatActivity({
+        octokit: mockOctokit as any,
+        org: 'test-org',
+        logger: mockLogger,
+        includePendingCancellation: true,
+      });
+
+      expect(result).toEqual([
+        {
+          login: 'pending-user',
+          lastActivity: new Date('2023-06-01'),
+          type: 'vscode',
+        },
+      ]);
+    });
+
+    it('skips seats pending cancellation by default', async () => {
+      const mockOctokit = createMockOctokit([pendingSeat]);
+
+      const result = await fetchCopilotSeatActivity({
+        octokit: mockOctokit as any,
+        org: 'test-org',
+        logger: mockLogger,
+      });
+
+      expect(result).toEqual([]);
+    });
+  });
+
+  describe('copilotSeatToActivityRecord', () => {
+    it('returns null for seats without an assignee login', () => {
+      expect(
+        copilotSeatToActivityRecord({
+          assignee: null,
+          created_at: '2023-01-01T00:00:00Z',
+        } as any),
+      ).toBeNull();
+    });
+
+    it('applies the authenticated-at behavior', () => {
+      const seat = {
+        assignee: { login: 'User1' },
+        last_activity_at: null,
+        last_authenticated_at: '2023-05-01T00:00:00Z',
+        created_at: '2023-01-01T00:00:00Z',
+      } as any;
+
+      expect(copilotSeatToActivityRecord(seat)).toEqual({
+        login: 'user1',
+        lastActivity: new Date('2023-01-01T00:00:00Z'),
+        type: COPILOT_UNKNOWN_EDITOR_TYPE,
+      });
+      expect(
+        copilotSeatToActivityRecord(seat, {
+          authenticatedAtBehavior: 'fallback',
+        }),
+      ).toEqual({
+        login: 'user1',
+        lastActivity: new Date('2023-05-01T00:00:00Z'),
+        type: 'last_authentication',
+      });
+    });
+
+    it.each(['ignore', 'fallback', 'most-recent'] as const)(
+      'leaves an unused seat undated in %s mode without the created_at fallback',
+      (authenticatedAtBehavior) => {
+        const seat = {
+          assignee: { login: 'User1' },
+          last_activity_at: null,
+          last_authenticated_at: null,
+          created_at: '2023-01-01T00:00:00Z',
+        } as any;
+
+        expect(
+          copilotSeatToActivityRecord(seat, {
+            authenticatedAtBehavior,
+            fallbackToCreatedAt: false,
+          }),
+        ).toEqual({
+          login: 'user1',
+          lastActivity: null,
+          type: COPILOT_UNKNOWN_EDITOR_TYPE,
+        });
+      },
+    );
+
+    it('uses the fallback type for activity without an editor', () => {
+      expect(
+        copilotSeatToActivityRecord({
+          assignee: { login: 'user1' },
+          last_activity_at: '2023-05-01T00:00:00Z',
+          last_activity_editor: null,
+          created_at: '2023-01-01T00:00:00Z',
+        } as any),
+      ).toEqual({
+        login: 'user1',
+        lastActivity: new Date('2023-05-01T00:00:00Z'),
+        type: COPILOT_UNKNOWN_EDITOR_TYPE,
       });
     });
   });

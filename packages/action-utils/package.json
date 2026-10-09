@@ -1,0 +1,50 @@
+{
+  "name": "@dormant-accounts/action-utils",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Shared helpers for the dormant-accounts GitHub Actions.",
+  "license": "MIT",
+  "sideEffects": false,
+  "type": "module",
+  "exports": {
+    ".": {
+      "import": "./dist/index.js",
+      "require": "./dist/index.cjs"
+    }
+  },
+  "main": "./dist/index.js",
+  "typesVersions": {
+    "*": {
+      "*": [
+        "dist/index.d.ts",
+        "dist/index.d.cts"
+      ]
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "rimraf dist && tsup",
+    "dev": "tsup --watch --clean=false",
+    "test": "vitest --run",
+    "test:watch": "vitest",
+    "type-check": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@actions/core": "1.11.1",
+    "@actions/github": "catalog:default",
+    "@dormant-accounts/github": "workspace:*",
+    "@octokit/plugin-throttling": "11.0.3",
+    "dormant-accounts": "workspace:*",
+    "zod": "catalog:default"
+  },
+  "devDependencies": {
+    "@types/node": "catalog:default",
+    "rimraf": "catalog:default",
+    "tsconfig": "workspace:*",
+    "tsup": "catalog:default",
+    "typescript": "catalog:default",
+    "vitest": "catalog:default"
+  }
+}

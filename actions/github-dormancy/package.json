@@ -1,0 +1,62 @@
+{
+  "name": "@dormant-accounts/github-dormancy-action",
+  "version": "0.0.0",
+  "description": "A GitHub Action that finds and removes inactive members of a GitHub organization.",
+  "keywords": [
+    "github",
+    "action",
+    "dormant",
+    "accounts"
+  ],
+  "license": "MIT",
+  "author": "Tyler Garner",
+  "sideEffects": false,
+  "type": "module",
+  "exports": {
+    ".": {
+      "import": "./dist/index.js",
+      "require": "./dist/index.cjs"
+    }
+  },
+  "main": "./dist/index.js",
+  "typesVersions": {
+    "*": {
+      ".": [
+        "dist/*.d.ts",
+        "dist/*.d.cts"
+      ]
+    }
+  },
+  "files": [
+    "dist",
+    "CHANGELOG.md"
+  ],
+  "scripts": {
+    "build": "rimraf dist && ncc build src/index.ts -o dist",
+    "dev": "npx nodemon --watch src --ext ts --exec 'pnpm build'",
+    "eslint": "eslint-runner",
+    "eslint:fix": "eslint-runner --fix",
+    "test": "vitest --run",
+    "test:watch": "vitest",
+    "type-check": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@actions/core": "1.11.1"
+  },
+  "devDependencies": {
+    "@dormant-accounts/action-utils": "workspace:*",
+    "@dormant-accounts/github": "workspace:*",
+    "@types/node": "catalog:default",
+    "@vercel/ncc": "0.44.1",
+    "dormant-accounts": "workspace:*",
+    "eslint-config-custom": "workspace:*",
+    "rimraf": "catalog:default",
+    "tsconfig": "workspace:*",
+    "typescript": "catalog:default",
+    "vitest": "catalog:default",
+    "yaml": "2.8.3"
+  },
+  "publishConfig": {
+    "access": "public"
+  }
+}

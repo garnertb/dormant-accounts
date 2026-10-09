@@ -4,3 +4,4 @@ export * from './notifier';
 export * from './getExistingNotification';
 export * from './getNotifications';
 export * from './templateHandler';
+export * from './membership';
