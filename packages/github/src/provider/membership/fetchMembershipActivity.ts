@@ -36,7 +36,8 @@ const toCopilotActivity = (record: LastActivityRecord): LastActivityRecord => ({
  * Fetches a complete activity snapshot for every account in scope. Each
  * account gets its newest activity across the audit log and, when enabled,
  * Copilot seats and notification comments, or a `null` date when none is found.
- * A Copilot seat counts only when used: its assignment date is not activity.
+ * Audit log events with an action in `ignoreAuditActions` are skipped, and a
+ * Copilot seat counts only when used: its assignment date is not activity.
  *
  * Any source error, an empty member list or an activity gap longer than the
  * audit log's git-event retention throws before anything is written.
@@ -56,6 +57,7 @@ export const fetchMembershipActivity: FetchActivityHandler<
   countNotificationComments,
   allowActivityGap = false,
   authenticatedAtBehavior = 'ignore',
+  ignoreAuditActions,
 }) => {
   const lastRun = new Date(lastFetchTime);
   assertActivityGapWithinRetention({ lastRun, allowActivityGap, logger });
@@ -69,7 +71,13 @@ export const fetchMembershipActivity: FetchActivityHandler<
     ),
     fromSource(
       'audit log activity',
-      fetchAuditLogActivitySince({ octokit, org, since, logger }),
+      fetchAuditLogActivitySince({
+        octokit,
+        org,
+        since,
+        ignoreActions: ignoreAuditActions,
+        logger,
+      }),
     ),
     includeCopilotActivity
       ? fromSource(

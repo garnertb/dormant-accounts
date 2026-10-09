@@ -9,6 +9,16 @@ import type { OctokitClient } from '../types';
  */
 export const AUDIT_LOG_GIT_EVENT_RETENTION_MS = ms('7d');
 
+/**
+ * Audit log actions that GitHub records for a user without the user doing
+ * anything, so they are not activity. GitHub logs
+ * `org_credential_authorization.deauthorize` under a user when it removes one
+ * of the user's SAML credential authorizations.
+ */
+export const DEFAULT_IGNORED_AUDIT_ACTIONS: readonly string[] = [
+  'org_credential_authorization.deauthorize',
+];
+
 type AuditLogEntry = {
   '@timestamp'?: number | string;
   action?: string;
@@ -85,12 +95,19 @@ export interface FetchAuditLogActivitySinceOptions {
   org: string;
   /** Earliest event time to read */
   since: Date;
-  logger: Pick<typeof dormancyLogger, 'debug'>;
+  /**
+   * Audit log actions that are not activity, matched exactly and ignoring
+   * case. An actor's other events still count. Pass `[]` to count every action.
+   * @default DEFAULT_IGNORED_AUDIT_ACTIONS
+   */
+  ignoreActions?: readonly string[];
+  logger: Pick<typeof dormancyLogger, 'debug' | 'info'>;
 }
 
 /**
- * Reads the organization audit log and returns the newest event per actor.
- * Unlike the audit log check, every error (including a 404) is thrown.
+ * Reads the organization audit log and returns the newest event per actor,
+ * skipping events whose action is ignored. Unlike the audit log check, every
+ * error (including a 404) is thrown.
  *
  * @param options - Fetch options
  * @returns One activity record per actor, keyed by lowercase login
@@ -99,10 +116,13 @@ export const fetchAuditLogActivitySince = async ({
   octokit,
   org,
   since,
+  ignoreActions = DEFAULT_IGNORED_AUDIT_ACTIONS,
   logger,
 }: FetchAuditLogActivitySinceOptions): Promise<LastActivityRecord[]> => {
   logger.debug(`Fetching audit log for ${org} since ${since.toISOString()}`);
 
+  const ignored = new Set(ignoreActions.map((action) => action.toLowerCase()));
+  const ignoredCounts = new Map<string, number>();
   const latest = new Map<string, LastActivityRecord>();
 
   for await (const {
@@ -115,6 +135,12 @@ export const fetchAuditLogActivitySince = async ({
     order: 'desc',
   })) {
     for (const entry of entries) {
+      const action = entry.action?.toLowerCase();
+      if (action && ignored.has(action)) {
+        ignoredCounts.set(action, (ignoredCounts.get(action) ?? 0) + 1);
+        continue;
+      }
+
       const lastActivity = parseAuditTimestamp(entry['@timestamp']);
       if (!entry.actor || !lastActivity) continue;
 
@@ -128,6 +154,14 @@ export const fetchAuditLogActivitySince = async ({
         }),
       );
     }
+  }
+
+  if (ignoredCounts.size > 0) {
+    logger.info(
+      `Ignored audit log events that are not activity: ${[...ignoredCounts]
+        .map(([action, count]) => `${action} (${count})`)
+        .join(', ')}`,
+    );
   }
 
   return [...latest.values()];

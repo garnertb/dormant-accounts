@@ -35680,6 +35680,9 @@ var listInScopeLogins = async ({
 
 
 var AUDIT_LOG_GIT_EVENT_RETENTION_MS = node_modules_ms("7d");
+var DEFAULT_IGNORED_AUDIT_ACTIONS = (/* unused pure expression or super */ null && ([
+  "org_credential_authorization.deauthorize"
+]));
 var auditLogQueryStart = (lastRun) => new Date(Math.max(0, lastRun.getTime() - AUDIT_LOG_GIT_EVENT_RETENTION_MS));
 var assertActivityGapWithinRetention = ({
   lastRun,
@@ -35707,9 +35710,12 @@ var fetchAuditLogActivitySince = async ({
   octokit,
   org,
   since,
+  ignoreActions = DEFAULT_IGNORED_AUDIT_ACTIONS,
   logger
 }) => {
   logger.debug(`Fetching audit log for ${org} since ${since.toISOString()}`);
+  const ignored = new Set(ignoreActions.map((action) => action.toLowerCase()));
+  const ignoredCounts = /* @__PURE__ */ new Map();
   const latest = /* @__PURE__ */ new Map();
   for await (const {
     data: entries
@@ -35721,6 +35727,11 @@ var fetchAuditLogActivitySince = async ({
     order: "desc"
   })) {
     for (const entry of entries) {
+      const action = entry.action?.toLowerCase();
+      if (action && ignored.has(action)) {
+        ignoredCounts.set(action, (ignoredCounts.get(action) ?? 0) + 1);
+        continue;
+      }
       const lastActivity = parseAuditTimestamp(entry["@timestamp"]);
       if (!entry.actor || !lastActivity) continue;
       const login = entry.actor.toLowerCase();
@@ -35733,6 +35744,11 @@ var fetchAuditLogActivitySince = async ({
         })
       );
     }
+  }
+  if (ignoredCounts.size > 0) {
+    logger.info(
+      `Ignored audit log events that are not activity: ${[...ignoredCounts].map(([action, count]) => `${action} (${count})`).join(", ")}`
+    );
   }
   return [...latest.values()];
 };
@@ -35815,7 +35831,8 @@ var fetchMembershipActivity = async ({
   includeCopilotActivity = false,
   countNotificationComments,
   allowActivityGap = false,
-  authenticatedAtBehavior = "ignore"
+  authenticatedAtBehavior = "ignore",
+  ignoreAuditActions
 }) => {
   const lastRun = new Date(lastFetchTime);
   assertActivityGapWithinRetention({ lastRun, allowActivityGap, logger });
@@ -35827,7 +35844,13 @@ var fetchMembershipActivity = async ({
     ),
     fromSource(
       "audit log activity",
-      fetchAuditLogActivitySince({ octokit, org, since, logger })
+      fetchAuditLogActivitySince({
+        octokit,
+        org,
+        since,
+        ignoreActions: ignoreAuditActions,
+        logger
+      })
     ),
     includeCopilotActivity ? fromSource(
       "Copilot seat activity",

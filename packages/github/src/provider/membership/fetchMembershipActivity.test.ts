@@ -259,6 +259,111 @@ describe('fetchMembershipActivity', () => {
     );
   });
 
+  describe('ignored audit actions', () => {
+    const auditEntry = (actor: string, action: string, at: string) => ({
+      actor,
+      action,
+      '@timestamp': Date.parse(at),
+    });
+
+    it("skips actions GitHub records without the user doing anything, still counting the actor's other events", async () => {
+      const octokit = createFakeOctokit({
+        members: ['alice', 'bob', 'carol'],
+        auditEntries: [
+          auditEntry(
+            'alice',
+            'org_credential_authorization.deauthorize',
+            '2025-06-29T00:00:00Z',
+          ),
+          auditEntry('alice', 'git.clone', '2025-06-10T00:00:00Z'),
+          auditEntry(
+            'bob',
+            'org_credential_authorization.deauthorize',
+            '2025-06-28T00:00:00Z',
+          ),
+          auditEntry(
+            'carol',
+            'org_credential_authorization.grant',
+            '2025-06-26T00:00:00Z',
+          ),
+        ],
+      });
+
+      const records = await run(octokit);
+
+      expect(records).toEqual([
+        {
+          login: 'alice',
+          lastActivity: new Date('2025-06-10T00:00:00Z'),
+          type: 'git.clone',
+        },
+        { login: 'bob', lastActivity: null, type: NO_ACTIVITY_TYPE },
+        {
+          login: 'carol',
+          lastActivity: new Date('2025-06-26T00:00:00Z'),
+          type: 'org_credential_authorization.grant',
+        },
+      ]);
+    });
+
+    it('replaces the default list with the configured actions, ignoring case', async () => {
+      const octokit = createFakeOctokit({
+        members: ['alice', 'bob'],
+        auditEntries: [
+          auditEntry(
+            'alice',
+            'workflows.completed_workflow_run',
+            '2025-06-29T00:00:00Z',
+          ),
+          auditEntry('alice', 'git.push', '2025-06-10T00:00:00Z'),
+          auditEntry(
+            'bob',
+            'org_credential_authorization.deauthorize',
+            '2025-06-28T00:00:00Z',
+          ),
+        ],
+      });
+
+      const records = await run(octokit, {
+        ignoreAuditActions: ['Workflows.Completed_Workflow_Run'],
+      });
+
+      expect(records).toEqual([
+        {
+          login: 'alice',
+          lastActivity: new Date('2025-06-10T00:00:00Z'),
+          type: 'git.push',
+        },
+        {
+          login: 'bob',
+          lastActivity: new Date('2025-06-28T00:00:00Z'),
+          type: 'org_credential_authorization.deauthorize',
+        },
+      ]);
+    });
+
+    it('counts every action when the list is empty', async () => {
+      const octokit = createFakeOctokit({
+        members: ['bob'],
+        auditEntries: [
+          auditEntry(
+            'bob',
+            'org_credential_authorization.deauthorize',
+            '2025-06-28T00:00:00Z',
+          ),
+        ],
+      });
+
+      const [record] = await run(octokit, { ignoreAuditActions: [] });
+
+      expect(record).toEqual({
+        login: 'bob',
+        lastActivity: new Date('2025-06-28T00:00:00Z'),
+        type: 'org_credential_authorization.deauthorize',
+      });
+    });
+  });
+
   describe('fails closed', () => {
     const enabled: Partial<GitHubMembershipConfig> = {
       includeOutsideCollaborators: true,

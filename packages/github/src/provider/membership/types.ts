@@ -43,6 +43,15 @@ export interface GitHubMembershipConfig extends GitHubHandlerConfig {
    * @default false
    */
   allowActivityGap?: boolean;
+
+  /**
+   * Audit log actions that are not activity, matched exactly and ignoring
+   * case. A user's other events still count. Defaults to actions that GitHub
+   * records for a user without the user doing anything. Pass `[]` to count
+   * every action.
+   * @default DEFAULT_IGNORED_AUDIT_ACTIONS
+   */
+  ignoreAuditActions?: readonly string[];
 }
 
 type ForcedProps =
