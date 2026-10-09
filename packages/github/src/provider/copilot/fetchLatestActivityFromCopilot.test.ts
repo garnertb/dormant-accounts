@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import {
+  COPILOT_UNKNOWN_EDITOR_TYPE,
   copilotSeatToActivityRecord,
   fetchCopilotSeatActivity,
   fetchLatestActivityFromCopilot,
@@ -169,7 +170,7 @@ describe('fetchLatestActivityFromCopilot', () => {
     expect(result[0]).toEqual({
       login: 'user1',
       lastActivity: new Date(createdAt),
-      type: null,
+      type: COPILOT_UNKNOWN_EDITOR_TYPE,
     });
   });
 
@@ -321,7 +322,7 @@ describe('fetchLatestActivityFromCopilot', () => {
       expect(result[0]).toEqual({
         login: 'user1',
         lastActivity: new Date(createdAt),
-        type: null,
+        type: COPILOT_UNKNOWN_EDITOR_TYPE,
       });
     });
 
@@ -423,7 +424,7 @@ describe('fetchLatestActivityFromCopilot', () => {
       expect(result[0]).toEqual({
         login: 'user1',
         lastActivity: new Date(createdAt),
-        type: null,
+        type: COPILOT_UNKNOWN_EDITOR_TYPE,
       });
     });
 
@@ -560,7 +561,7 @@ describe('fetchLatestActivityFromCopilot', () => {
       expect(result[0]).toEqual({
         login: 'user1',
         lastActivity: new Date(createdAt),
-        type: null,
+        type: COPILOT_UNKNOWN_EDITOR_TYPE,
       });
     });
   });
@@ -627,7 +628,7 @@ describe('fetchLatestActivityFromCopilot', () => {
       expect(copilotSeatToActivityRecord(seat)).toEqual({
         login: 'user1',
         lastActivity: new Date('2023-01-01T00:00:00Z'),
-        type: undefined,
+        type: COPILOT_UNKNOWN_EDITOR_TYPE,
       });
       expect(
         copilotSeatToActivityRecord(seat, {
@@ -655,8 +656,27 @@ describe('fetchLatestActivityFromCopilot', () => {
             authenticatedAtBehavior,
             fallbackToCreatedAt: false,
           }),
-        ).toMatchObject({ login: 'user1', lastActivity: null });
+        ).toEqual({
+          login: 'user1',
+          lastActivity: null,
+          type: COPILOT_UNKNOWN_EDITOR_TYPE,
+        });
       },
     );
+
+    it('uses the fallback type for activity without an editor', () => {
+      expect(
+        copilotSeatToActivityRecord({
+          assignee: { login: 'user1' },
+          last_activity_at: '2023-05-01T00:00:00Z',
+          last_activity_editor: null,
+          created_at: '2023-01-01T00:00:00Z',
+        } as any),
+      ).toEqual({
+        login: 'user1',
+        lastActivity: new Date('2023-05-01T00:00:00Z'),
+        type: COPILOT_UNKNOWN_EDITOR_TYPE,
+      });
+    });
   });
 });

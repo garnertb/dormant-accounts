@@ -12,3 +12,5 @@ Add a `removeOrgMember` handler that re-checks membership and the notification i
 - Closes notifications for accounts outside an optional in-scope set with a `departed` label.
 - Passes the notification issue to `removeAccount` and accepts `removed`, `already-absent` and `skipped` results as well as booleans.
 - Reports an account as removed only after a successful removal, and as `wouldRemove` in dry run.
+
+Copilot activity records now always have a `type`. A seat that reports no editor, such as an unused seat dated by its assignment, gets `unknown_editor` instead of `null`.

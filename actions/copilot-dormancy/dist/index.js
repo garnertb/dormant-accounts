@@ -35819,7 +35819,7 @@ var fromSource = async (source, pending) => {
 };
 var toCopilotActivity = (record) => ({
   ...record,
-  type: record.type ? `copilot:${record.type}` : "copilot"
+  type: `copilot:${record.type}`
 });
 var fetchMembershipActivity = async ({
   lastFetchTime,
@@ -35983,7 +35983,7 @@ var githubMembershipDormancy = (config) => {
 };
 
 //# sourceMappingURL=index.js.map
-;// CONCATENATED MODULE: ../../packages/github/dist/chunk-CLEQXQJ4.js
+;// CONCATENATED MODULE: ../../packages/github/dist/chunk-WKFVKREQ.js
 // src/provider/copilot/fetchLatestActivityFromCopilot.ts
 
 var determineLastActivity = (lastActivityAt, lastAuthenticatedAt, createdAt, behavior = "ignore") => {
@@ -36022,6 +36022,7 @@ var determineLastActivity = (lastActivityAt, lastAuthenticatedAt, createdAt, beh
   }
 };
 var getLastAuthenticatedAt = (seat) => seat.last_authenticated_at;
+var COPILOT_UNKNOWN_EDITOR_TYPE = "unknown_editor";
 var copilotSeatToActivityRecord = (seat, {
   authenticatedAtBehavior = "ignore",
   fallbackToCreatedAt = true
@@ -36037,12 +36038,12 @@ var copilotSeatToActivityRecord = (seat, {
     authenticatedAtBehavior
   );
   return {
-    type: usedAuthenticated ? "last_authentication" : seat.last_activity_editor,
+    type: usedAuthenticated ? "last_authentication" : seat.last_activity_editor || COPILOT_UNKNOWN_EDITOR_TYPE,
     login,
     lastActivity: date
   };
 };
-var chunk_CLEQXQJ4_fetchCopilotSeatActivity = async ({
+var chunk_WKFVKREQ_fetchCopilotSeatActivity = async ({
   octokit,
   org,
   logger,
@@ -36102,7 +36103,7 @@ var chunk_CLEQXQJ4_fetchCopilotSeatActivity = async ({
           processed[actor] = record;
           const log = lastActivity ? `${node_modules_ms(Date.now() - lastActivity.getTime())} ago` : "never";
           logger.debug(
-            `Activity record found for ${actor} - ${log}${record.type ? ` - ${record.type}` : ""}`
+            `Activity record found for ${actor} - ${log} - ${record.type}`
           );
         }
       }
@@ -36119,7 +36120,7 @@ var fetchLatestActivityFromCopilot = async ({
   checkType,
   logger,
   authenticatedAtBehavior = "ignore"
-}) => chunk_CLEQXQJ4_fetchCopilotSeatActivity({
+}) => chunk_WKFVKREQ_fetchCopilotSeatActivity({
   octokit,
   org,
   checkType,
@@ -36129,7 +36130,7 @@ var fetchLatestActivityFromCopilot = async ({
 });
 
 
-//# sourceMappingURL=chunk-CLEQXQJ4.js.map
+//# sourceMappingURL=chunk-WKFVKREQ.js.map
 ;// CONCATENATED MODULE: ../../node_modules/.pnpm/lowdb@7.0.1/node_modules/lowdb/lib/core/Low.js
 function checkArgs(adapter, defaultData) {
     if (adapter === undefined)

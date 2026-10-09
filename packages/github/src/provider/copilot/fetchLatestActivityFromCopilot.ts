@@ -103,6 +103,12 @@ const getLastAuthenticatedAt = (seat: CopilotSeat): string | null | undefined =>
   (seat as { last_authenticated_at?: string | null }).last_authenticated_at;
 
 /**
+ * Activity type for a Copilot seat record without an editor, such as an unused
+ * seat dated by its assignment
+ */
+export const COPILOT_UNKNOWN_EDITOR_TYPE = 'unknown_editor';
+
+/**
  * Maps a Copilot seat to an activity record without filtering pending
  * cancellations.
  *
@@ -134,10 +140,12 @@ export const copilotSeatToActivityRecord = (
   );
 
   return {
-    type: usedAuthenticated ? 'last_authentication' : seat.last_activity_editor,
+    type: usedAuthenticated
+      ? 'last_authentication'
+      : seat.last_activity_editor || COPILOT_UNKNOWN_EDITOR_TYPE,
     login,
     lastActivity: date,
-  } as LastActivityRecord;
+  };
 };
 
 /**
@@ -249,7 +257,7 @@ export const fetchCopilotSeatActivity = async ({
             ? `${ms(Date.now() - lastActivity.getTime())} ago`
             : 'never';
           logger.debug(
-            `Activity record found for ${actor} - ${log}${record.type ? ` - ${record.type}` : ''}`,
+            `Activity record found for ${actor} - ${log} - ${record.type}`,
           );
         }
       }

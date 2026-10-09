@@ -29,7 +29,7 @@ const fromSource = async <T>(source: string, pending: Promise<T>) => {
 
 const toCopilotActivity = (record: LastActivityRecord): LastActivityRecord => ({
   ...record,
-  type: record.type ? `copilot:${record.type}` : 'copilot',
+  type: `copilot:${record.type}`,
 });
 
 /**
