@@ -43,7 +43,7 @@
   "dependencies": {
     "@actions/core": "1.11.1",
     "@actions/github": "catalog:default",
-    "@octokit/plugin-throttling": "11.0.3",
+    "@octokit/plugin-throttling": "11.0.5",
     "@types/ms": "catalog:default",
     "ms": "catalog:default",
     "zod": "catalog:default"
